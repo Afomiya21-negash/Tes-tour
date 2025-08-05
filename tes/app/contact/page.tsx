@@ -36,8 +36,8 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-1">Phone</h3>
-                    <p className="text-gray-600">+1 (555) 123-4567</p>
-                    <p className="text-gray-600">+1 (555) 987-6543</p>
+                    <p className="text-gray-600">+251 93 010 8686</p>
+                   
                   </div>
                 </div>
 
@@ -47,8 +47,8 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-1">Email</h3>
-                    <p className="text-gray-600">info@adventuretours.com</p>
-                    <p className="text-gray-600">bookings@adventuretours.com</p>
+                    <p className="text-gray-600">tesfaye.cartour@gmail.com</p>
+                    <p className="text-gray-600">info@testourandcarrent.com</p>
                   </div>
                 </div>
 
@@ -59,11 +59,11 @@ export default function ContactPage() {
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-1">Address</h3>
                     <p className="text-gray-600">
-                      123 Adventure Street
+                    Bole Gulf Aziz Building
                       <br />
-                      Travel District, TD 12345
+                   Building # 113
                       <br />
-                      United States
+                   Addis Ababa, Ethiopia
                     </p>
                   </div>
                 </div>
@@ -81,7 +81,7 @@ export default function ContactPage() {
                       <br />
                       Sunday: Closed
                       <br />
-                      <span className="text-emerald-600 font-medium">Emergency support: 24/7</span>
+                     
                     </p>
                   </div>
                 </div>
@@ -187,18 +187,7 @@ export default function ContactPage() {
                   ></textarea>
                 </div>
 
-                {/* Newsletter Subscription */}
-                <div className="flex items-center">
-                  <input
-                    id="newsletter"
-                    name="newsletter"
-                    type="checkbox"
-                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor="newsletter" className="ml-2 block text-sm text-gray-700">
-                    Subscribe to our newsletter for travel tips and exclusive deals
-                  </label>
-                </div>
+                
 
                 {/* Submit Button */}
                 <button type="submit" className="w-full btn-primary">
