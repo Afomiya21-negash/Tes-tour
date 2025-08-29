@@ -3,11 +3,11 @@
 import { useState } from "react"
 import Image from "next/image"
 import { ChevronDown, ChevronUp, Phone, Mail, MapPin, ChevronLeft, ChevronRight } from "lucide-react"
-
+import BookingPopup from "../../../components/BookingPopup"
 export default function FullDayTripPAge() {
   const [activeTab, setActiveTab] = useState("overview")
 
-
+ const [isBookingOpen, setIsBookingOpen] = useState(false)
 
   // Sample images for the scrollable gallery
   const images = [
@@ -163,11 +163,23 @@ export default function FullDayTripPAge() {
           </div>
 
           {/* Book Now Section */}
-          <div className="mt-12 text-center">
-            <button className="btn-primary text-lg px-12 py-4">Book Now</button>
-          </div>
-        </div>
-      </section>
+        <div className="mt-12 text-center">
+                   <button 
+                     onClick={() => setIsBookingOpen(true)}
+                     className="btn-primary text-lg px-12 py-4"
+                   >
+                     Book Now
+                   </button>
+                 </div>
+               </div>
+             </section>
+       
+             {/* Booking Popup */}
+             <BookingPopup
+               isOpen={isBookingOpen}
+               onClose={() => setIsBookingOpen(false)}
+               tourName="Dalol Depression Tour"
+             />
     </div>
   )
 }

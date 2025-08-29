@@ -4,21 +4,21 @@ import { useState } from "react"
 import Image from "next/image"
 import { ChevronDown, ChevronUp, Phone, Mail, MapPin, ChevronLeft, ChevronRight } from "lucide-react"
 import BookingPopup from "../../../components/BookingPopup"
-export default function HalfDayTripPAge() {
+export default function GenaChristmasPage() {
   const [activeTab, setActiveTab] = useState("overview")
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+
  const [isBookingOpen, setIsBookingOpen] = useState(false)
-
-
   // Sample images for the scrollable gallery
   const images = [
- "/images/addis1.jpg",
-    "/images/addis2.jpg",
-    "/images/addis3.jpg",
-    "/images/addis4.jpg",
-     "/images/addis5.jpg",
+ "/images/gena1.jpg",
+    "/images/gena2.jpg",
+    "/images/lalibela.jpg",
+   
 ]
 
  const [selectedImage, setSelectedImage] = useState(images[0])
+
 
   
 
@@ -27,13 +27,11 @@ export default function HalfDayTripPAge() {
       {/* Header */}
       <section className="bg-gradient-to-r from-emerald-600 to-emerald-800 text-white section-padding">
         <div className="container-max">
-          <h1 className="text-4xl lg:text-5xl font-bold mb-4">Half day trip</h1>
-          
+          <h1 className="text-4xl lg:text-5xl font-bold mb-4">Gena- Christmas</h1>
           <div className="w-16 h-1 bg-amber-400"></div>
         </div>
       </section>
-
-      {/* Scrollable Image Gallery Header */}
+  {/* Scrollable Image Gallery Header */}
        <section className="bg-white">
              <div className="container-max">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -41,7 +39,7 @@ export default function HalfDayTripPAge() {
                  <div className="md:col-span-1">
                    <Image
                      src={selectedImage || "/placeholder.svg"}
-                     alt="half day trip"
+                     alt="7 Days OMO Valley Gallery"
                      width={500}
                      height={300}
                      className="w-full h-auto object-cover rounded-lg shadow-md"
@@ -61,7 +59,7 @@ export default function HalfDayTripPAge() {
                        >
                          <Image
                            src={image || "/placeholder.svg"}
-                           alt={`half day trip- Thumbnail ${index + 1}`}
+                           alt={`7 Days OMO Valley Gallery - Thumbnail ${index + 1}`}
                            layout="fill"
                            objectFit="cover"
                            className="rounded-lg"
@@ -73,6 +71,7 @@ export default function HalfDayTripPAge() {
                </div>
              </div>
            </section>
+     
      
 
       {/* Main Content */}
@@ -92,23 +91,23 @@ export default function HalfDayTripPAge() {
                   >
                     Overview
                   </button>
-                
+                 
                 </div>
               </div>
 
               {/* Tab Content */}
               {activeTab === "overview" && (
                 <div className="bg-white rounded-lg shadow-lg p-8">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-6">Program: Addis Ababa City</h3>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-6">Gena</h3>
                   <div className="w-8 h-1 bg-emerald-600 mb-6"></div>
 
                   <div className="space-y-4 text-gray-700 leading-relaxed">
-                    <p className="font-medium">Duration: Half Day</p>
-                    <p className="font-medium">Transportation: Land</p>
-                    <p>
-                      Our tour in Addis includes the following major historical sights: The National Museum of Ethiopia where the 3.5 million year old skeleton of LUCY is kept. 
-                      Baata Mariam church where we find the Mausoleum of Emperor Minilik II. The biggest open market in Africa which is known as "MERKATO". Mount Entoto in the Northern Part of the city that provides a panoramic view of Addis.
-                    </p>
+                <p>Year after year Christians recall the story of the Christ child in a manger, shepherds on Judean hills witnessing the celestial song of angels as they pronounced the Long Expected One had come.
+
+Celebrated on January 7th and preceded by a fast of 40 days, on the eve of Christmas people gather in churches for mass that lasts about 3 hours. The clergy and “Debtera” (scholars versed in liturgy and music of the church) lift their voices in hymns and chant just as it has been for over a thousand years when Ethiopia accepted Christianity.
+
+After mass, the fast is broken so the clergy and crowd alike disperse to their homes to feast. Food and drink is plentiful, with many homes preparing special meals that are characteristic to all big festivities highlighted on the Ethiopian calendar.</p>
+                   
                   </div>
                 </div>
               )}
@@ -163,8 +162,7 @@ export default function HalfDayTripPAge() {
             </div>
           </div>
 
-          {/* Book Now Section */}
-         <div className="mt-12 text-center">
+        <div className="mt-12 text-center">
                     <button 
                       onClick={() => setIsBookingOpen(true)}
                       className="btn-primary text-lg px-12 py-4"

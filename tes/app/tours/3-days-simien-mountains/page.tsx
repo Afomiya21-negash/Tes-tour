@@ -4,17 +4,18 @@ import { useState } from "react"
 import Image from "next/image"
 import { ChevronDown, ChevronUp, Phone, Mail, MapPin, ChevronLeft, ChevronRight } from "lucide-react"
 import BookingPopup from "../../../components/BookingPopup"
-export default function SevenDaysDanakilDepressionPage() {
+export default function ThreeDaysSimienMoutainPage() {
   const [activeTab, setActiveTab] = useState("overview")
   const [expandedDays, setExpandedDays] = useState<number[]>([])
   const [expandAll, setExpandAll] = useState(false)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
-const [isBookingOpen, setIsBookingOpen] = useState(false)
+ const [isBookingOpen, setIsBookingOpen] = useState(false)
   // Sample images for the scrollable gallery
-    const images = [
- "/images/5days danki.jpg?height=400&width=800",
-    "/images/dalol3.jpg??height=400&width=800",
-    "/images/dalol2.jpg??height=400&width=800",
+  const images = [
+ "/images/animal3.jpg",
+    "/images/animal2.jpg",
+    "/images/simien5.jpg",
+   
 ]
 
  const [selectedImage, setSelectedImage] = useState(images[0])
@@ -27,7 +28,7 @@ const [isBookingOpen, setIsBookingOpen] = useState(false)
     if (expandAll) {
       setExpandedDays([])
     } else {
-      setExpandedDays([1, 2, 3, 4, 5, 6, 7])
+      setExpandedDays([1, 2, 3])
     }
     setExpandAll(!expandAll)
   }
@@ -35,38 +36,26 @@ const [isBookingOpen, setIsBookingOpen] = useState(false)
   const itineraryData = [
     {
       day: 1,
-      title: "Arrive to Addis",
+      title: "Day 1  :Drive from Gondar to Debark (ደባርቅ) (By Cars) ",
       content:
-        "In the evening attend a folkloric dinner where you will have a chance to taste several national dishes and watch dances of the various ethnic groups of Ethiopia. The traditional coffee ceremony will also be served. Later you will be transferred to the airport for your departure.",
+        "Here we obtain a permit from the Park headquarters and collect our obligatory scout before continuing to Sankabar (ሳንቃ በር) (3250m ASL) for the first overnight camp. An early start is needed as the drive from Gondar takes a 2-3 hours. The trek begins at Buytras (Simien Lodge), taking about 3-4 hours to walk to the Sankabar campsite is usually possible. An early start is needed as the drive from Gondar takes 2-3 hours. The trek begins at Buytras (Simien Lodge), taking about 3 – 4 hours to walk to the Sankabar campsite is usually possible. During the walk there’s a good chance of seeing your first Gelada baboons. Overnight Camping",
       overnight: "",
     },
     {
       day: 2,
-      title: "Fly to Mekelle-Drive to Dodom-Volcano",
+      title: "DAY 2 : Sankabar (ሳንቃ በር) to Geech (ገችች)",
       content:
-        "We drive from Mekele to - Dodom. We start early drive to Dodom (at the base of Erta Ale). Leave after an early breakfast, possible at 07:30. This is may be one of the worst roads in the world. The 70 km distance may take about 5 hrs passing through changing landscape of solidified lava, rock, sand and occasional palm lined oasis. After you pass several small hamlets scattered here and there in this desert land, Dodom is about 9.5km from Erta Ale and it takes about 3 hrs trekking. Early dinner around 17:00 and trek up to Ertale at 20:00 hours. Camels transport all the camping materials and some food (sleeping materials like light mattresses and mat and water) to the rim of the volcano, where we spend the night watching the dramatic action of the boiling lava. Erta Ale ranks one of the most alluring and physically challenging natural attractions anywhere in Ethiopia. It is a shield volcano with a base diameter of 30 km and 1km square caldera at its summit. Erta Ale contains the world’s only permanent lava lake. Overnight on the top of the mountain. Erta Ale is 613 meters, with a lava lake, one of only five in the world, at the summit. It is notable for being the longest existing lava lake, present since the early years of the twentieth century. O/n camping on the mountain",
-      overnight: "camping on the mountain",
+      "In the morning of day 2, we will walk to Geech (ገችች) via the spectacular Jinbar waterfall. The trek will take approximately 5 – 7 hours. After descending down to the Jinbar Wenz (which feeds the waterfall) a short ascent remains to Geech village. A short distance beyond Geech village is the camp site. The camp site has great views of the mountains and is characterized by giant lobelia plants. The nearby Kedadit summit provides one of the best places to see the sun set. The camp site is situated at 3600m ASL.",
+      overnight: "",
     },
     {
       day: 3,
-      title: "Dodem –Hammedele",
+      title: "DAY 3 :Trek-Geech –Ambaras (አንባራስ)",
       content:
-        "Descend from Erta Ale around 9 am Dodom - Hamd Ela. Leave back to Dodom after an early breakfast, if possible at 07:00. You will reach latest at 10:30 am at the camp, time to relax. After drive to reach Hamad Ela, better village with a total population about 500 people. O/n Hamedela",
-      overnight: "Hamedela (camping)",
-    },
-    {
-      day: 4,
-      title: "Hamedela-Mekele",
-      content:
-        "Morning tour Drive to Ragad (Asebo), the place where the localities are mining salt. Look the activity of breaking the salt from the ground, cutting in to rectangular pieces and loading on camels. You drive ahead to Dallol and visit the difference landscape formed by volcanic activity, Dallol + Lake Assal + camel caravans. Excursion to Dallol (116 meter below sea level, one of the lowest places in the world) colorful salts mining, visit Lake Assal, follow up camel caravans and walk with the Afar people.Drive back to Hamedela and proceed to Mekele.",
+      "Today's hike will average about 6-7 hours. Many hikers agree that the route from Geech to Ambaras is the most magnificent hike the simiens have to offer. In route you will pass through Imet Gogo. Here you will have reached an altitude of 3,926m and be able to look out at the amazing landscape from 360 degrees. At this height and view point you can see the canyone below, distant ridges, and view the seemingly never ending valleys. Here you will break for lunch and hike the rest of the way to Ambaras where you will be met by a car to bring you back to Debark/Gondar.",
       overnight: "",
     },
-    {
-      day: 5,
-      title: "Fly Back To Addis",
-      content: "Departure",
-      overnight: "",
-    },
+    
   ]
 
   return (
@@ -74,51 +63,52 @@ const [isBookingOpen, setIsBookingOpen] = useState(false)
       {/* Header */}
       <section className="bg-gradient-to-r from-emerald-600 to-emerald-800 text-white section-padding">
         <div className="container-max">
-          <h1 className="text-4xl lg:text-5xl font-bold mb-4">7 Days Danakil Depression Tour</h1>
+          <h1 className="text-4xl lg:text-5xl font-bold mb-4">3 Days Simien moutains</h1>
           <div className="w-16 h-1 bg-amber-400"></div>
         </div>
       </section>
 
       {/* Scrollable Image Gallery Header */}
-        <section className="bg-white">
-                      <div className="container-max">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                          {/* Main Image */}
-                          <div className="md:col-span-1">
-                            <Image
-                              src={selectedImage || "/placeholder.svg"}
-                              alt="7 Days OMO Valley Gallery"
-                              width={500}
-                              height={300}
-                              className="w-full h-auto object-cover rounded-lg shadow-md"
-                            />
-                          </div>
-              
-                          {/* Scrollable Gallery */}
-                          <div className="md:col-span-1">
-                            <div className="flex overflow-x-auto space-x-4 py-4">
-                              {images.map((image, index) => (
-                                <div
-                                  key={index}
-                                  className={`relative w-24 h-20 rounded-lg overflow-hidden shadow-sm cursor-pointer transition-transform duration-200 transform hover:scale-110 ${
-                                    selectedImage === image ? "ring-2 ring-emerald-500" : ""
-                                  }`}
-                                  onClick={() => setSelectedImage(image)}
-                                >
-                                  <Image
-                                    src={image || "/placeholder.svg"}
-                                    alt={`7 Days OMO Valley Gallery - Thumbnail ${index + 1}`}
-                                    layout="fill"
-                                    objectFit="cover"
-                                    className="rounded-lg"
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </section>
+       <section className="bg-white">
+             <div className="container-max">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                 {/* Main Image */}
+                 <div className="md:col-span-1">
+                   <Image
+                     src={selectedImage || "/placeholder.svg"}
+                     alt="7 Days OMO Valley Gallery"
+                     width={500}
+                     height={300}
+                     className="w-full h-auto object-cover rounded-lg shadow-md"
+                   />
+                 </div>
+     
+                 {/* Scrollable Gallery */}
+                 <div className="md:col-span-1">
+                   <div className="flex overflow-x-auto space-x-4 py-4">
+                     {images.map((image, index) => (
+                       <div
+                         key={index}
+                         className={`relative w-24 h-20 rounded-lg overflow-hidden shadow-sm cursor-pointer transition-transform duration-200 transform hover:scale-110 ${
+                           selectedImage === image ? "ring-2 ring-emerald-500" : ""
+                         }`}
+                         onClick={() => setSelectedImage(image)}
+                       >
+                         <Image
+                           src={image || "/placeholder.svg"}
+                           alt={`7 Days OMO Valley Gallery - Thumbnail ${index + 1}`}
+                           layout="fill"
+                           objectFit="cover"
+                           className="rounded-lg"
+                         />
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+               </div>
+             </div>
+           </section>
+     
 
       {/* Main Content */}
       <section className="section-padding">
@@ -151,11 +141,12 @@ const [isBookingOpen, setIsBookingOpen] = useState(false)
               {/* Tab Content */}
               {activeTab === "overview" && (
                 <div className="bg-white rounded-lg shadow-lg p-8">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-6">Overview</h3>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-6">7 Days Simien Mountains</h3>
                   <div className="w-8 h-1 bg-emerald-600 mb-6"></div>
 
                   <div className="space-y-4 text-gray-700 leading-relaxed">
-                    <p>7 Days Danakil with Semera</p>
+                 <p>Simien Mountains, Simien also spelled Semien or Simēn, mountains in northern Ethiopia, northeast of Gonder. In the range is Ras Dejen (or Dashen), the highest peak in Ethiopia at 14,872 feet (4,533 metres). The region is the site of Simien Mountains National Park, which is home to a number of very rare species that include the walia ibex, found nowhere else in the world. The park was one of the first locations to be recognized by UNESCO as a World Heritage site.</p>
+                   
                   </div>
                 </div>
               )}
@@ -195,10 +186,10 @@ const [isBookingOpen, setIsBookingOpen] = useState(false)
                           <div className="flex items-center space-x-3">
                             <div
                               className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                                item.day === 1 || item.day === 5 ? "bg-gray-900" : "bg-gray-600"
+                                item.day === 1 || item.day === 8 ? "bg-gray-900" : "bg-gray-600"
                               }`}
                             >
-                              {item.day === 1 || item.day === 5 ? (
+                              {item.day === 1 || item.day === 8 ? (
                                 <MapPin className="h-4 w-4 text-white" />
                               ) : (
                                 <div className="w-2 h-2 bg-white rounded-full"></div>

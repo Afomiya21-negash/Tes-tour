@@ -3,13 +3,13 @@
 import { useState } from "react"
 import Image from "next/image"
 import { ChevronDown, ChevronUp, Phone, Mail, MapPin, ChevronLeft, ChevronRight } from "lucide-react"
-
+import BookingPopup from "../../../components/BookingPopup"
 export default function ShortTripPage() {
   const [activeTab, setActiveTab] = useState("overview")
   const [expandedDays, setExpandedDays] = useState<number[]>([])
   const [expandAll, setExpandAll] = useState(false)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
-
+ const [isBookingOpen, setIsBookingOpen] = useState(false)
   // Sample images for the scrollable gallery
   const images = [
  "/images/addis4.jpg",
@@ -336,10 +336,22 @@ Lalibella could be considered as the 8th wonder of the world. A cluster of eleve
 
           {/* Book Now Section */}
           <div className="mt-12 text-center">
-            <button className="btn-primary text-lg px-12 py-4">Book Now</button>
-          </div>
-        </div>
-      </section>
+                      <button 
+                        onClick={() => setIsBookingOpen(true)}
+                        className="btn-primary text-lg px-12 py-4"
+                      >
+                        Book Now
+                      </button>
+                    </div>
+                  </div>
+                </section>
+          
+                {/* Booking Popup */}
+                <BookingPopup
+                  isOpen={isBookingOpen}
+                  onClose={() => setIsBookingOpen(false)}
+                  tourName="Dalol Depression Tour"
+                />
     </div>
   )
 }

@@ -4,21 +4,21 @@ import { useState } from "react"
 import Image from "next/image"
 import { ChevronDown, ChevronUp, Phone, Mail, MapPin, ChevronLeft, ChevronRight } from "lucide-react"
 import BookingPopup from "../../../components/BookingPopup"
-export default function HalfDayTripPAge() {
+export default function TimiketEpiphanyPage() {
   const [activeTab, setActiveTab] = useState("overview")
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+
  const [isBookingOpen, setIsBookingOpen] = useState(false)
-
-
   // Sample images for the scrollable gallery
   const images = [
- "/images/addis1.jpg",
-    "/images/addis2.jpg",
-    "/images/addis3.jpg",
-    "/images/addis4.jpg",
-     "/images/addis5.jpg",
+ "/images/timket1.jpg",
+    "/images/timket2.jpg",
+    "/images/timket3.jpg",
+   
 ]
 
  const [selectedImage, setSelectedImage] = useState(images[0])
+
 
   
 
@@ -27,13 +27,11 @@ export default function HalfDayTripPAge() {
       {/* Header */}
       <section className="bg-gradient-to-r from-emerald-600 to-emerald-800 text-white section-padding">
         <div className="container-max">
-          <h1 className="text-4xl lg:text-5xl font-bold mb-4">Half day trip</h1>
-          
+          <h1 className="text-4xl lg:text-5xl font-bold mb-4">Timiket-Epiphany</h1>
           <div className="w-16 h-1 bg-amber-400"></div>
         </div>
       </section>
-
-      {/* Scrollable Image Gallery Header */}
+  {/* Scrollable Image Gallery Header */}
        <section className="bg-white">
              <div className="container-max">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -41,7 +39,7 @@ export default function HalfDayTripPAge() {
                  <div className="md:col-span-1">
                    <Image
                      src={selectedImage || "/placeholder.svg"}
-                     alt="half day trip"
+                     alt="7 Days OMO Valley Gallery"
                      width={500}
                      height={300}
                      className="w-full h-auto object-cover rounded-lg shadow-md"
@@ -61,7 +59,7 @@ export default function HalfDayTripPAge() {
                        >
                          <Image
                            src={image || "/placeholder.svg"}
-                           alt={`half day trip- Thumbnail ${index + 1}`}
+                           alt={`7 Days OMO Valley Gallery - Thumbnail ${index + 1}`}
                            layout="fill"
                            objectFit="cover"
                            className="rounded-lg"
@@ -73,6 +71,7 @@ export default function HalfDayTripPAge() {
                </div>
              </div>
            </section>
+     
      
 
       {/* Main Content */}
@@ -92,23 +91,19 @@ export default function HalfDayTripPAge() {
                   >
                     Overview
                   </button>
-                
+                 
                 </div>
               </div>
 
               {/* Tab Content */}
               {activeTab === "overview" && (
                 <div className="bg-white rounded-lg shadow-lg p-8">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-6">Program: Addis Ababa City</h3>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-6">Gena</h3>
                   <div className="w-8 h-1 bg-emerald-600 mb-6"></div>
 
                   <div className="space-y-4 text-gray-700 leading-relaxed">
-                    <p className="font-medium">Duration: Half Day</p>
-                    <p className="font-medium">Transportation: Land</p>
-                    <p>
-                      Our tour in Addis includes the following major historical sights: The National Museum of Ethiopia where the 3.5 million year old skeleton of LUCY is kept. 
-                      Baata Mariam church where we find the Mausoleum of Emperor Minilik II. The biggest open market in Africa which is known as "MERKATO". Mount Entoto in the Northern Part of the city that provides a panoramic view of Addis.
-                    </p>
+                <p>Celebrated once a year in January 17-20, this religious holiday commemorates the baptism of Christ. It is the main holiday of the year. It is the most colorful of the Orthodox religion. The whole night is spent in prayers, in the morning, all the Tabots (the replicas of the Arch of Moses) wooden or stone panels consecrated by the bishop, leave the churches, carried in procession to the sound of drums by monks displaying tiaras, multicolored umbrellas and ornate crosses, embroidered copes. The most intense serenity and fervor, the beauty of the liturgical ornaments make this feast, which takes place over two days, an exceptional event. Still according to tradition, Menelik, son of King Solomon and the Queen of Sheba, would have brought back to Ethiopia, the tablets of the law of Moses. So that no one can steal the real tables, every church has a copy. So no one can know where the true tables of the law of Moses are.</p>
+                   
                   </div>
                 </div>
               )}
@@ -163,8 +158,7 @@ export default function HalfDayTripPAge() {
             </div>
           </div>
 
-          {/* Book Now Section */}
-         <div className="mt-12 text-center">
+        <div className="mt-12 text-center">
                     <button 
                       onClick={() => setIsBookingOpen(true)}
                       className="btn-primary text-lg px-12 py-4"

@@ -321,10 +321,22 @@ export default function FiveDaysDanakilDepressionPage() {
 
           {/* Book Now Section */}
           <div className="mt-12 text-center">
-            <button className="btn-primary text-lg px-12 py-4">Book Now</button>
+            <button 
+              onClick={() => setIsBookingOpen(true)}
+              className="btn-primary text-lg px-12 py-4"
+            >
+              Book Now
+            </button>
           </div>
         </div>
       </section>
-    </div>
+
+      {/* Booking Popup */}
+      <BookingPopup
+        isOpen={isBookingOpen}
+        onClose={() => setIsBookingOpen(false)}
+        tourName="5 Days Denakil Depression"
+      />
+        </div>
   )
 }

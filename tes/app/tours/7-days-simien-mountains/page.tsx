@@ -4,17 +4,18 @@ import { useState } from "react"
 import Image from "next/image"
 import { ChevronDown, ChevronUp, Phone, Mail, MapPin, ChevronLeft, ChevronRight } from "lucide-react"
 import BookingPopup from "../../../components/BookingPopup"
-export default function SevenDaysDanakilDepressionPage() {
+export default function SevenDaysSimienMountainsPage() {
   const [activeTab, setActiveTab] = useState("overview")
   const [expandedDays, setExpandedDays] = useState<number[]>([])
   const [expandAll, setExpandAll] = useState(false)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
-const [isBookingOpen, setIsBookingOpen] = useState(false)
+ const [isBookingOpen, setIsBookingOpen] = useState(false)
   // Sample images for the scrollable gallery
-    const images = [
- "/images/5days danki.jpg?height=400&width=800",
-    "/images/dalol3.jpg??height=400&width=800",
-    "/images/dalol2.jpg??height=400&width=800",
+  const images = [
+ "/images/animal.jpg",
+    "/images/animal2.jpg",
+    "/images/simien3.jpg",
+   
 ]
 
  const [selectedImage, setSelectedImage] = useState(images[0])
@@ -35,38 +36,55 @@ const [isBookingOpen, setIsBookingOpen] = useState(false)
   const itineraryData = [
     {
       day: 1,
-      title: "Arrive to Addis",
+      title: "Day 1 : : ADDIS ABABA – BAHAR DAR ( DRIVE ) ",
       content:
-        "In the evening attend a folkloric dinner where you will have a chance to taste several national dishes and watch dances of the various ethnic groups of Ethiopia. The traditional coffee ceremony will also be served. Later you will be transferred to the airport for your departure.",
+        "In morning after breakfast drive to Bahirdar through Debre Libanos monastery and Blue Nile Gorge.",
       overnight: "",
     },
     {
       day: 2,
-      title: "Fly to Mekelle-Drive to Dodom-Volcano",
+      title: "DAY 2 :  EXCURSSION IN BAHIR DAR ( LAKE TANA & BULE NILE FALLS )",
       content:
-        "We drive from Mekele to - Dodom. We start early drive to Dodom (at the base of Erta Ale). Leave after an early breakfast, possible at 07:30. This is may be one of the worst roads in the world. The 70 km distance may take about 5 hrs passing through changing landscape of solidified lava, rock, sand and occasional palm lined oasis. After you pass several small hamlets scattered here and there in this desert land, Dodom is about 9.5km from Erta Ale and it takes about 3 hrs trekking. Early dinner around 17:00 and trek up to Ertale at 20:00 hours. Camels transport all the camping materials and some food (sleeping materials like light mattresses and mat and water) to the rim of the volcano, where we spend the night watching the dramatic action of the boiling lava. Erta Ale ranks one of the most alluring and physically challenging natural attractions anywhere in Ethiopia. It is a shield volcano with a base diameter of 30 km and 1km square caldera at its summit. Erta Ale contains the world’s only permanent lava lake. Overnight on the top of the mountain. Erta Ale is 613 meters, with a lava lake, one of only five in the world, at the summit. It is notable for being the longest existing lava lake, present since the early years of the twentieth century. O/n camping on the mountain",
-      overnight: "camping on the mountain",
+      "In the morning after breakfast make boat trip on Lake Tana to visit isolated monasteries. There is good birding in the lush forest surrounding much of the lake. Then drive to the thundering Blue Nile Falls. Along the walk to the falls, birding is excellent.",
+      overnight: "",
     },
     {
       day: 3,
-      title: "Dodem –Hammedele",
+      title: "DAY 3 : BAHIR DAR – GONADR",
       content:
-        "Descend from Erta Ale around 9 am Dodom - Hamd Ela. Leave back to Dodom after an early breakfast, if possible at 07:00. You will reach latest at 10:30 am at the camp, time to relax. After drive to reach Hamad Ela, better village with a total population about 500 people. O/n Hamedela",
-      overnight: "Hamedela (camping)",
+      "In the morning Transfer to the airport for your flight to Gondar. In the afternoon a city tour of Gondar including a visit to the Royal Compound, where enchanting 17th century castles stand. Also, visit Debre Berhan Selassie Church meaning Trinity at the Mount of Light.",
+      overnight: "",
     },
     {
       day: 4,
-      title: "Hamedela-Mekele",
+      title: "DAY 4 : GONDAR – SIEMEN MTS. NATIONAL PARK – GONDAR",
       content:
-        "Morning tour Drive to Ragad (Asebo), the place where the localities are mining salt. Look the activity of breaking the salt from the ground, cutting in to rectangular pieces and loading on camels. You drive ahead to Dallol and visit the difference landscape formed by volcanic activity, Dallol + Lake Assal + camel caravans. Excursion to Dallol (116 meter below sea level, one of the lowest places in the world) colorful salts mining, visit Lake Assal, follow up camel caravans and walk with the Afar people.Drive back to Hamedela and proceed to Mekele.",
+        "Morning after breakfast drive to the jagged panorama of the Simien Mountains National Park, famed for its exclusive landscape, afro-alpine vegetation and unique wildlife, where you may spot the endemic Wallia Ibex, Gelada Baboon troops, Bushbuck, Klipspringer. Then drive back to Gonder.",
       overnight: "",
     },
     {
       day: 5,
-      title: "Fly Back To Addis",
-      content: "Departure",
+      title: "DAY 5  : GONDAR – LALIBELA ( DRIVE )",
+      content:
+       "In the morning after breakfast drive to Lalibela through Worita also visit the Awramba community village.",
       overnight: "",
     },
+    {
+      day: 6,
+      title: "DAY 6 : LAIBELA VISIT ROCK HWEN CHURCHES",
+      content:
+     "After breakfast visit Lalibela rock hewn churches, famous for its rock-hewn churches dating back 800 years. This is the most important stop on the historical route and from the air the 11 churches, carved into the rugged mountainside, present an awesome spectacle. Afternoon excursion to the most spectacular churches.",
+      overnight: "",
+    },
+    {
+      day: 7,
+      title: "DAY 7 : LALIBELA – ADDIS ABABA",
+      content:
+        "In the morning fly back to Addis Ababa and shopping at souvenir shops. Evening fair well dinner and transfer to air port for departure.",
+      overnight: "",
+    },
+   
+    
   ]
 
   return (
@@ -74,51 +92,52 @@ const [isBookingOpen, setIsBookingOpen] = useState(false)
       {/* Header */}
       <section className="bg-gradient-to-r from-emerald-600 to-emerald-800 text-white section-padding">
         <div className="container-max">
-          <h1 className="text-4xl lg:text-5xl font-bold mb-4">7 Days Danakil Depression Tour</h1>
+          <h1 className="text-4xl lg:text-5xl font-bold mb-4">7 Days Simien moutains</h1>
           <div className="w-16 h-1 bg-amber-400"></div>
         </div>
       </section>
 
       {/* Scrollable Image Gallery Header */}
-        <section className="bg-white">
-                      <div className="container-max">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                          {/* Main Image */}
-                          <div className="md:col-span-1">
-                            <Image
-                              src={selectedImage || "/placeholder.svg"}
-                              alt="7 Days OMO Valley Gallery"
-                              width={500}
-                              height={300}
-                              className="w-full h-auto object-cover rounded-lg shadow-md"
-                            />
-                          </div>
-              
-                          {/* Scrollable Gallery */}
-                          <div className="md:col-span-1">
-                            <div className="flex overflow-x-auto space-x-4 py-4">
-                              {images.map((image, index) => (
-                                <div
-                                  key={index}
-                                  className={`relative w-24 h-20 rounded-lg overflow-hidden shadow-sm cursor-pointer transition-transform duration-200 transform hover:scale-110 ${
-                                    selectedImage === image ? "ring-2 ring-emerald-500" : ""
-                                  }`}
-                                  onClick={() => setSelectedImage(image)}
-                                >
-                                  <Image
-                                    src={image || "/placeholder.svg"}
-                                    alt={`7 Days OMO Valley Gallery - Thumbnail ${index + 1}`}
-                                    layout="fill"
-                                    objectFit="cover"
-                                    className="rounded-lg"
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </section>
+       <section className="bg-white">
+             <div className="container-max">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                 {/* Main Image */}
+                 <div className="md:col-span-1">
+                   <Image
+                     src={selectedImage || "/placeholder.svg"}
+                     alt="7 Days OMO Valley Gallery"
+                     width={500}
+                     height={300}
+                     className="w-full h-auto object-cover rounded-lg shadow-md"
+                   />
+                 </div>
+     
+                 {/* Scrollable Gallery */}
+                 <div className="md:col-span-1">
+                   <div className="flex overflow-x-auto space-x-4 py-4">
+                     {images.map((image, index) => (
+                       <div
+                         key={index}
+                         className={`relative w-24 h-20 rounded-lg overflow-hidden shadow-sm cursor-pointer transition-transform duration-200 transform hover:scale-110 ${
+                           selectedImage === image ? "ring-2 ring-emerald-500" : ""
+                         }`}
+                         onClick={() => setSelectedImage(image)}
+                       >
+                         <Image
+                           src={image || "/placeholder.svg"}
+                           alt={`7 Days OMO Valley Gallery - Thumbnail ${index + 1}`}
+                           layout="fill"
+                           objectFit="cover"
+                           className="rounded-lg"
+                         />
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+               </div>
+             </div>
+           </section>
+     
 
       {/* Main Content */}
       <section className="section-padding">
@@ -151,11 +170,12 @@ const [isBookingOpen, setIsBookingOpen] = useState(false)
               {/* Tab Content */}
               {activeTab === "overview" && (
                 <div className="bg-white rounded-lg shadow-lg p-8">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-6">Overview</h3>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-6">7 Days Simien Mountains</h3>
                   <div className="w-8 h-1 bg-emerald-600 mb-6"></div>
 
                   <div className="space-y-4 text-gray-700 leading-relaxed">
-                    <p>7 Days Danakil with Semera</p>
+                 
+                   
                   </div>
                 </div>
               )}
@@ -195,10 +215,10 @@ const [isBookingOpen, setIsBookingOpen] = useState(false)
                           <div className="flex items-center space-x-3">
                             <div
                               className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                                item.day === 1 || item.day === 5 ? "bg-gray-900" : "bg-gray-600"
+                                item.day === 1 || item.day === 8 ? "bg-gray-900" : "bg-gray-600"
                               }`}
                             >
-                              {item.day === 1 || item.day === 5 ? (
+                              {item.day === 1 || item.day === 8 ? (
                                 <MapPin className="h-4 w-4 text-white" />
                               ) : (
                                 <div className="w-2 h-2 bg-white rounded-full"></div>

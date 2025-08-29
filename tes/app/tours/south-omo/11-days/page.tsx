@@ -2,11 +2,15 @@
 
 import { useState } from "react"
 import { ChevronDown, ChevronUp, Phone, Mail, MapPin } from "lucide-react"
+import BookingPopup from "../../../../components/BookingPopup"
+
 
 export default function ElevenDaysOmoPage() {
   const [activeTab, setActiveTab] = useState("overview")
   const [expandedDays, setExpandedDays] = useState<number[]>([])
   const [expandAll, setExpandAll] = useState(false)
+    const [isBookingOpen, setIsBookingOpen] = useState(false)
+
 
   const toggleDay = (dayNumber: number) => {
     setExpandedDays((prev) => (prev.includes(dayNumber) ? prev.filter((d) => d !== dayNumber) : [...prev, dayNumber]))
@@ -294,11 +298,23 @@ export default function ElevenDaysOmoPage() {
           </div>
 
           {/* Book Now Section */}
-          <div className="mt-12 text-center">
-            <button className="btn-primary text-lg px-12 py-4">Book Now</button>
-          </div>
-        </div>
-      </section>
+           <div className="mt-12 text-center">
+                     <button 
+                       onClick={() => setIsBookingOpen(true)}
+                       className="btn-primary text-lg px-12 py-4"
+                     >
+                       Book Now
+                     </button>
+                   </div>
+                 </div>
+               </section>
+         
+               {/* Booking Popup */}
+               <BookingPopup
+                 isOpen={isBookingOpen}
+                 onClose={() => setIsBookingOpen(false)}
+                 tourName="5 Days Denakil Depression"
+               />
     </div>
   )
 }

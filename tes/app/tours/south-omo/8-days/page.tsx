@@ -3,12 +3,12 @@
 import { useState } from "react"
 import { ChevronDown, ChevronUp, Phone, Mail, MapPin, ChevronLeft, ChevronRight } from "lucide-react"
 import Image from "next/image"
-
+import BookingPopup from "../../../../components/BookingPopup"
 export default function EightDaysOmoPage() {
   const [activeTab, setActiveTab] = useState("overview")
   const [expandedDays, setExpandedDays] = useState<number[]>([])
   const [expandAll, setExpandAll] = useState(false)
-
+ const [isBookingOpen, setIsBookingOpen] = useState(false)
   // Add this state inside the component
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
 
@@ -321,10 +321,22 @@ export default function EightDaysOmoPage() {
 
           {/* Book Now Section */}
           <div className="mt-12 text-center">
-            <button className="btn-primary text-lg px-12 py-4">Book Now</button>
-          </div>
-        </div>
-      </section>
+                               <button 
+                                 onClick={() => setIsBookingOpen(true)}
+                                 className="btn-primary text-lg px-12 py-4"
+                               >
+                                 Book Now
+                               </button>
+                             </div>
+                           </div>
+                         </section>
+                   
+                         {/* Booking Popup */}
+                         <BookingPopup
+                           isOpen={isBookingOpen}
+                           onClose={() => setIsBookingOpen(false)}
+                           tourName="5 Days Denakil Depression"
+                         />
     </div>
   )
 }

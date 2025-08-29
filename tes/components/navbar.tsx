@@ -50,9 +50,9 @@ export default function Navbar() {
       href: "/itinerary/adventure",
       label: "Adventure",
       subItems: [
-        { href: "/tours/9-days-danakil-tigray", label: "9 Days Danakil with Tigray" },
-        { href: "/tours/7-days-danakil-semera", label: "7 Days Danakil with Semera" },
-        { href: "/tours/5-days-danakil-depression", label: "5 Days Denakil Depression" },
+        { href: "/tours/danakil-depression-8-days-via-awash", label: "8 Days Danakil with Tigray" },
+        { href: "/tours/danakil-depression-7-days", label: "7 Days Danakil with Semera" },
+        { href: "/tours/danakil-depression-5-days", label: "5 Days Denakil Depression" },
       ]
     },
     {
