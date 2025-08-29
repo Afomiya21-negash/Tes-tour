@@ -10,16 +10,70 @@ export default function Navbar() {
 
   // Itinerary dropdown items
   const itineraryItems = [
-    { href: "/itinerary/addis-ababa", label: "Addis Ababa and Surrounding" },
-    { href: "/itinerary/historical-cultural", label: "Historical and cultural" },
-    { href: "/itinerary/omo-valley", label: "Tribes of Omo Valley" },
-    { href: "/itinerary/trekking", label: "Trekking" },
-    { href: "/itinerary/adventure", label: "Adventure" },
-    { href: "/itinerary/festival", label: "Festival" },
+    {
+      href: "/itinerary/addis-ababa",
+      label: "Addis Ababa and Surrounding",
+      subItems: [
+        { href: "/tours/half-day-trip", label: "Half Day Trip" },
+        { href: "/tours/full-day-city-tour", label: "Full day city tour of Addis" },
+        { href: "/tours/short-trip-addis", label: "Short trip from Addis" },
+      ]
+    },
+    {
+      href: "/itinerary/historical-cultural",
+      label: "Historical and cultural",
+      subItems: [
+        { href: "/tours/12-days-historic-simien", label: "12 Days Historic with Simien" },
+        { href: "/tours/9-days-historic-route", label: "9 Days Historic Route" },
+        { href: "/tours/7-days-historic-route", label: "7 Days Historic Route" },
+      ]
+    },
+    {
+      href: "/itinerary/omo-valley",
+      label: "Tribes of Omo Valley",
+      subItems: [
+        { href: "/tours/south-omo/7-days", label: "OMO Valley – 7 days" },
+        { href: "/tours/south-omo/8-days", label: "8 days Omo Valley : Dorze and Arba Minch" },
+        { href: "/tours/south-omo/11-days", label: "11 Days Omo valley" },
+      ]
+    },
+    {
+      href: "/itinerary/trekking",
+      label: "Trekking",
+      subItems: [
+        { href: "/tours/7-days-simien-mountains", label: "7 Days Simien Mountains" },
+        { href: "/tours/12-days-historic-simien", label: "12 Days Historic with Simien" },
+        { href: "/tours/3-days-simien-mountains", label: "3 Days Simien Mountains" },
+      ]
+    },
+    {
+      href: "/itinerary/adventure",
+      label: "Adventure",
+      subItems: [
+        { href: "/tours/9-days-danakil-tigray", label: "9 Days Danakil with Tigray" },
+        { href: "/tours/7-days-danakil-semera", label: "7 Days Danakil with Semera" },
+        { href: "/tours/5-days-danakil-depression", label: "5 Days Denakil Depression" },
+      ]
+    },
+    {
+      href: "/itinerary/festival",
+      label: "Festival",
+      subItems: [
+        { href: "/tours/meskel-festival", label: "Meskel Festival" },
+        { href: "/tours/gena-christmas", label: "Gena (Christmas)" },
+        { href: "/tours/timiket-epiphany", label: "Timiket (Epiphany)" },
+      ]
+    },
   ]
 
   // Destination dropdown items
-  const destinationItems = [
+  type DropdownItem = {
+    href: string;
+    label: string;
+    subItems?: { href: string; label: string }[];
+  };
+
+  const destinationItems: DropdownItem[] = [
     { href: "/destination/historic", label: "Historic" },
     { href: "/destination/cultural", label: "Cultural" },
     { href: "/destination/northern-tour", label: "Northern Tour" },
@@ -116,18 +170,41 @@ export default function Navbar() {
 
                     {/* Dropdown menu */}
                     {activeDropdown === item.label && (
-                      <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                      <div className="absolute top-full left-0 mt-1 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
                         <div className="py-2">
                           {item.dropdownItems?.map((dropdownItem) => (
-                            <Link
-                              key={dropdownItem.href}
-                              href={dropdownItem.href}
-                              className="flex items-center justify-between px-4 py-3 text-gray-700 hover:bg-gray-50 hover:text-emerald-600 transition-colors duration-200"
-                              onClick={() => setActiveDropdown(null)}
-                            >
-                              <span>{dropdownItem.label}</span>
-                              <ChevronDown className="h-4 w-4 rotate-[-90deg] text-gray-400" />
-                            </Link>
+                            <div key={dropdownItem.href} className="relative group/sub">
+                              {dropdownItem.subItems ? (
+                                <div className="flex items-center justify-between px-4 py-3 text-gray-700 hover:bg-gray-50 hover:text-emerald-600 transition-colors duration-200 cursor-pointer">
+                                  <span>{dropdownItem.label}</span>
+                                  <ChevronDown className="h-4 w-4 rotate-[-90deg] text-gray-400" />
+                                  
+                                  {/* Sub-dropdown */}
+                                  <div className="absolute left-full top-0 ml-1 w-72 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover/sub:opacity-100 group-hover/sub:visible transition-all duration-200 z-50">
+                                    <div className="py-2">
+                                      {dropdownItem.subItems.map((subItem) => (
+                                        <Link
+                                          key={subItem.href}
+                                          href={subItem.href}
+                                          className="block px-4 py-3 text-gray-700 hover:bg-gray-50 hover:text-emerald-600 transition-colors duration-200"
+                                          onClick={() => setActiveDropdown(null)}
+                                        >
+                                          {subItem.label}
+                                        </Link>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <Link
+                                  href={dropdownItem.href}
+                                  className="flex items-center justify-between px-4 py-3 text-gray-700 hover:bg-gray-50 hover:text-emerald-600 transition-colors duration-200"
+                                  onClick={() => setActiveDropdown(null)}
+                                >
+                                  <span>{dropdownItem.label}</span>
+                                </Link>
+                              )}
+                            </div>
                           ))}
                         </div>
                       </div>
@@ -190,17 +267,41 @@ export default function Navbar() {
                       {activeDropdown === item.label && (
                         <div className="ml-4 mt-2 space-y-2">
                           {item.dropdownItems?.map((dropdownItem) => (
-                            <Link
-                              key={dropdownItem.href}
-                              href={dropdownItem.href}
-                              className="block text-gray-600 hover:text-emerald-600 transition-colors duration-200 py-1"
-                              onClick={() => {
-                                setActiveDropdown(null)
-                                setIsMenuOpen(false)
-                              }}
-                            >
-                              {dropdownItem.label}
-                            </Link>
+                            <div key={dropdownItem.href}>
+                              {dropdownItem.subItems ? (
+                                <div>
+                                  <div className="text-gray-700 font-medium py-1">
+                                    {dropdownItem.label}
+                                  </div>
+                                  <div className="ml-4 space-y-1">
+                                    {dropdownItem.subItems.map((subItem) => (
+                                      <Link
+                                        key={subItem.href}
+                                        href={subItem.href}
+                                        className="block text-gray-600 hover:text-emerald-600 transition-colors duration-200 py-1"
+                                        onClick={() => {
+                                          setActiveDropdown(null)
+                                          setIsMenuOpen(false)
+                                        }}
+                                      >
+                                        {subItem.label}
+                                      </Link>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : (
+                                <Link
+                                  href={dropdownItem.href}
+                                  className="block text-gray-600 hover:text-emerald-600 transition-colors duration-200 py-1"
+                                  onClick={() => {
+                                    setActiveDropdown(null)
+                                    setIsMenuOpen(false)
+                                  }}
+                                >
+                                  {dropdownItem.label}
+                                </Link>
+                              )}
+                            </div>
                           ))}
                         </div>
                       )}

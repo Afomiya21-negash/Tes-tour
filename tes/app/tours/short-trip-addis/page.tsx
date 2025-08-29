@@ -4,7 +4,7 @@ import { useState } from "react"
 import Image from "next/image"
 import { ChevronDown, ChevronUp, Phone, Mail, MapPin, ChevronLeft, ChevronRight } from "lucide-react"
 
-export default function DalolDepressionPage() {
+export default function ShortTripPage() {
   const [activeTab, setActiveTab] = useState("overview")
   const [expandedDays, setExpandedDays] = useState<number[]>([])
   const [expandAll, setExpandAll] = useState(false)
@@ -12,12 +12,14 @@ export default function DalolDepressionPage() {
 
   // Sample images for the scrollable gallery
   const images = [
- "/images/dalol1.jpg",
-    "/images/dalol2.jpg",
-    "/images/dalol3.jpg",
+ "/images/addis4.jpg",
+    "/images/addis7.jpg",
+    "/images/addis1.jpg",
+   
 ]
 
  const [selectedImage, setSelectedImage] = useState(images[0])
+
   const toggleDay = (dayNumber: number) => {
     setExpandedDays((prev) => (prev.includes(dayNumber) ? prev.filter((d) => d !== dayNumber) : [...prev, dayNumber]))
   }
@@ -26,7 +28,7 @@ export default function DalolDepressionPage() {
     if (expandAll) {
       setExpandedDays([])
     } else {
-      setExpandedDays([1, 2, 3, 4, 5, 6, 7, 8, 9])
+      setExpandedDays([1, 2, 3, 4, 5, 6, 7, 8,9,10,11])
     }
     setExpandAll(!expandAll)
   }
@@ -34,64 +36,79 @@ export default function DalolDepressionPage() {
   const itineraryData = [
     {
       day: 1,
-      title: "Arrive Addis Ababa",
+      title: "Day 1 :Option 1: United park",
       content:
-        "Arrive Addis Ababa Bole international airport meet our staff at exit gate and assist to transfer to hotel. Depending on your arrival you can do sight seeing of Addis Ababa.",
-      overnight: "Addis",
+       "Andenet Park(United park) Unity Park located within the National Palace of Ethiopia Addis Ababa , embodies generational legacy of Ethiopia And Ethiopians.",
+      overnight: "",
     },
     {
       day: 2,
-      title: "Addis Ababa",
+      title: "DAY 2: Option 2: National museum",
       content:
-        "AM We exploring Addis Ababa beginning with a visit to the National Museum, one of the most important sub- Saharan museums in all of Africa. The museum is home to the fossilized humanoid Lucy, as well as an amazing collection of artifacts, royal items and art. We then visit the Ethnological Museum, which was the former palace of Haile Selassie. PM we take time in St. George Cathedral, built in 1896 by Emperor Menelik and then continue on to Holy Trinity Cathedral. Holy Trinity Cathedral is the largest Orthodox Church in Ethiopia and has survived through many historical periods, as its interesting architecture can attest to. The Cathedral contains the thrones and the tombs of the emperor and some of the royal family. Visit Merkato, the largest open air market in Africa.",
-      overnight: "Jupiter International hotel",
+      "National museum The museum houses Ethiopia's artistic treasures. It contains many precious local archaeological finds such as the fossilized remains of early hominids, the most famous of which is lucy, the partial skeleton of a specimen of Australopithecus afarensis. Recently added to the basement gallery is a display on Selam, found between 2000 and 2004.",
+      overnight: "",
     },
     {
       day: 3,
-      title: "Drive to Awash",
+      title: "DAY 3: Option 3: Mount Entoto",
       content:
-        "Morning start drive 230km South of Addis Ababa in the rift valley pass the Town Debre Zeith creator Lake and Nazareth town to visit Awash Park with its volcano landscapes and savannah grassland habitat for a variety of bird species. Late afternoon we explore the Awash National park which is home to mammals such as Oryx, Lesser Kudu, Hammadryas Baboon and Olive Baboon, Vervet Monkey, Salts Dick-dick and more.",
-      overnight: "Awash Falls Lodge",
+       "Mount Entoto (Amharic: እንጦጦ) is the highest peak on the Entoto Mountains, which overlooks the city of Addis Ababa, the capital of Ethiopia. It reaches 3,200 meters above sea level.",
+      overnight: "",
     },
     {
       day: 4,
-      title: "Drive to Afdera",
+      title: "DAY 4:Option 4: Merkato",
       content:
-        "Morning after breakfast start drive after passing the town and cross the Awash River bridge outside the town we get to the junction where the road forks, straight ahead for Dire Dawa and Harar, and left for Djibouti and the Red Sea. This day we wonder the Rift valley scenery and Afar people and their village. Have lunch at Samara, process our entrance permission and also from here we will have two Police men and one road guide accompany us for the Afar depression continue to Afdera.",
-      overnight: "camping at side of Lake Afdera or Local hotel",
+        "Merkato is the largest open air market in Africa, covering several square miles and employing an estimated 13,000 people in 7,100 business entities. The primary merchandise passing through the Merkato is locally-grown agricultural products — most notably coffee.Prior to the current Merkato, there was an open market place in Addis Ababa near St. George Church at the site where the City Hall stands now, but it ended with the Italian occupation of the 1930s.",
+      overnight: "",
     },
     {
       day: 5,
-      title: "Drive to Kusrewad and Erta Ale",
+      title: "DAY 5: Option 5: Lake Ziway",
       content:
-        "Drive to kusrewad here where we arrange the camel to ascend our logistics and for those who wish to ride, Local militia and rock guide apart from those who already with us. Late afternoon start walking to Erta eale. Around 5 pm 3 hours trek climb to Erta Ale volcano and overnight on the top of the mountain. Erta Ale is 613 meters tall, with a lava lake, one of only five in the world, at the summit. It is notable for being the longest existing lava lake, present since the early years of the twentieth century.",
-      overnight: "on the Summit",
+       "Early morning, depart south from Addis Ababa to Lake Ziway, one of the chain of lakes found in the Great Rift Valley. Here you will take a boat trip on Lake Ziway to the island of Tullo Gudo. The island hosts the church of Maryam Tsion which, according to tradition, once housed the Ark of the Covenant to hide it from invaders. After the visit, return to shore, enjoying the bountiful birdlife on this lake and possibly some hippos. Return to Addis Ababa late afternoon.",
+      overnight: "",
     },
     {
       day: 6,
-      title: "Drive to Hammed Ela",
+      title: "DAY 6 : Option 6 : Menagesha National Forest",
       content:
-        "Around 9 am we will be at foot base of the volcanic mountain where our cook and cars camp have our breakfast and drive to Hammed Ela via Kusrewad. This day drive will be the most challenging drive of all day which may be happen to stuck in the Sand and inhospitable weather, we should keep rehydrate to you manage the driving. Arrive Hammed Ela.",
-      overnight: "camping at Hammed Ela",
+       "Menagesha National Forest Departing west from Addis Ababa, drive to the Menagesha National Forest for some hiking. Here you will enjoy the wildlife, such as the colobus monkeys and endemic Menelik’s bushbuck, as well as birds, including the endemic Ethiopian oriole and Abyssinian woodpecker. You can also stop at the Gefersa Reservoir, which supplies water to Addis Ababa, and is a nice bird watching and wildlife spot. Return to Addis Ababa in the afternoon.",
+      overnight: "",
     },
     {
       day: 7,
-      title: "Dallol Salphur spring, Lake Assale Salt Bar and camel caravans",
+      title: "DAY 07 :Option 7: Debre Libanos Monastery",
       content:
-        "Excursion to Dallol (116 meter below sea level, one of the lowest places in the world) colorful salts mining, visit Lake Assale, follow up camels caravans and walk with the Afar and people from highland. The traditional way of extracting Salt bar, which once used as local currency, packing on the Camel. You see how they prepare their traditional bread, how they travel, communicate & more. It is another unique experience. Back to Hamed Ela.",
-      overnight: "camping at Hammed Ela",
+        "Debre Libanos Monastery Drive north from Addis Ababa (about 100km) to the Debre Libanos Monastery. This monastery was founded in the 13th century by St. Tekle Haimanot, who, according to legend, prayed for 7 years straight standing on one leg until the other leg fell off. Nearby the monastery is the Portuguese bridge, which was the first bridge in Ethiopia. Around this area, you will hopefully see some endemic gelada baboons. Short hikes are available in the area, with stunning views of the Jemma Valley. Return to Addis Ababa, late afternoon.",
+      overnight: "",
     },
     {
       day: 8,
-      title: "Hammed Ela – Mekele",
+      title: "DAY 8 : Option 8 : Archeological sites",
       content:
-        "Drive to Mekele via the town of Berhale in the River bed Ascend all way to the Tigrian highland with the camel caravans and stop for photo over the depression.",
-      overnight: "Mekelle Axum hotel",
+       "Archeological sites of Tiya, Adadi Maryam and Melka Kunture After breakfast, depart south from Addis Ababa to visit these archeological sites of interest. Tiya is an ancient stellae field, with anthropomorphic statues marking burial grounds. Tiya is a UNESCO World Heritage Site. Adadi Maryam is a rock-hewn church, similar to those in Lalibela. Melka Kunture is a pre-historic tool-making site. Return to Addis Ababa late afternoon.",
+      overnight: "",
     },
-    {
+     {
       day: 9,
-      title: "Fly to Addis Ababa",
-      content: "Morning transfer to the air port and fly back to Addis Ababa. Shopping and evening departure.",
+      title: "DAY 9 :Option 9: Lake Wenchi",
+      content:
+       "Lake Wenchi Early morning departure west from Addis Ababa to Lake Wenchi, a crater lake in a stunning location. There are many options for activities in the area including hiking, horseback riding or a boat trip to the island monastery of Kirkos and the hot spring valley. After the visit, return to Addis Ababa.",
+      overnight: "",
+    },
+     {
+      day: 10,
+      title: "DAY 10 : Option 10 : Debre Zeit",
+      content:
+      "Debre Zeit Depart from Addis for a short drive to Debre Zeit, home to several crater lakes and a popular weekend getaway spot for Addis Ababa residents. You can spend the day visiting the lakes or doing some light hiking (circling Lake Hora takes 1 ½ hours). The area is very popular for birdwatching. There are several lake-side establishments for lunch and even a spa. Return to Addis Ababa, late afternoon.",
+      overnight: "",
+    },
+     {
+      day: 11,
+      title: "DAY 11 : Option 11 : Mt. Zuqualla",
+      content:
+       "Mt. Zuqualla Very near to Debre Zeit is Mt. Zuqualla, an extinct volcano that offers beautiful views of the surrounding areas. Here you can visit the monastery of Mt. Zuqualla Maryam, which may date back as far as the 4th century. The nearby crater-lake is considered holy by the monks of the monastery. Time permitting, you may stop for a rest in Debre Zeit before returning to Addis Ababa in the afternoon.",
       overnight: "",
     },
   ]
@@ -101,52 +118,52 @@ export default function DalolDepressionPage() {
       {/* Header */}
       <section className="bg-gradient-to-r from-emerald-600 to-emerald-800 text-white section-padding">
         <div className="container-max">
-          <h1 className="text-4xl lg:text-5xl font-bold mb-4">5 Days Denakil Depression</h1>
+          <h1 className="text-4xl lg:text-5xl font-bold mb-4">Short trip from addis</h1>
           <div className="w-16 h-1 bg-amber-400"></div>
         </div>
       </section>
 
       {/* Scrollable Image Gallery Header */}
-     <section className="bg-white">
-                    <div className="container-max">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {/* Main Image */}
-                        <div className="md:col-span-1">
-                          <Image
-                            src={selectedImage || "/placeholder.svg"}
-                            alt="7 Days OMO Valley Gallery"
-                            width={500}
-                            height={300}
-                            className="w-full h-auto object-cover rounded-lg shadow-md"
-                          />
-                        </div>
-            
-                        {/* Scrollable Gallery */}
-                        <div className="md:col-span-1">
-                          <div className="flex overflow-x-auto space-x-4 py-4">
-                            {images.map((image, index) => (
-                              <div
-                                key={index}
-                                className={`relative w-24 h-20 rounded-lg overflow-hidden shadow-sm cursor-pointer transition-transform duration-200 transform hover:scale-110 ${
-                                  selectedImage === image ? "ring-2 ring-emerald-500" : ""
-                                }`}
-                                onClick={() => setSelectedImage(image)}
-                              >
-                                <Image
-                                  src={image || "/placeholder.svg"}
-                                  alt={`7 Days OMO Valley Gallery - Thumbnail ${index + 1}`}
-                                  layout="fill"
-                                  objectFit="cover"
-                                  className="rounded-lg"
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </section>
-       
+       <section className="bg-white">
+             <div className="container-max">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                 {/* Main Image */}
+                 <div className="md:col-span-1">
+                   <Image
+                     src={selectedImage || "/placeholder.svg"}
+                     alt="7 Days OMO Valley Gallery"
+                     width={500}
+                     height={300}
+                     className="w-full h-auto object-cover rounded-lg shadow-md"
+                   />
+                 </div>
+     
+                 {/* Scrollable Gallery */}
+                 <div className="md:col-span-1">
+                   <div className="flex overflow-x-auto space-x-4 py-4">
+                     {images.map((image, index) => (
+                       <div
+                         key={index}
+                         className={`relative w-24 h-20 rounded-lg overflow-hidden shadow-sm cursor-pointer transition-transform duration-200 transform hover:scale-110 ${
+                           selectedImage === image ? "ring-2 ring-emerald-500" : ""
+                         }`}
+                         onClick={() => setSelectedImage(image)}
+                       >
+                         <Image
+                           src={image || "/placeholder.svg"}
+                           alt={`7 Days OMO Valley Gallery - Thumbnail ${index + 1}`}
+                           layout="fill"
+                           objectFit="cover"
+                           className="rounded-lg"
+                         />
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+               </div>
+             </div>
+           </section>
+     
 
       {/* Main Content */}
       <section className="section-padding">
@@ -179,19 +196,17 @@ export default function DalolDepressionPage() {
               {/* Tab Content */}
               {activeTab === "overview" && (
                 <div className="bg-white rounded-lg shadow-lg p-8">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-6">Overview</h3>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-6">Adventure</h3>
                   <div className="w-8 h-1 bg-emerald-600 mb-6"></div>
 
                   <div className="space-y-4 text-gray-700 leading-relaxed">
+                   
                     <p>
-                      Tour to the permanent active volcano Erta Ale, the hottest spot on this planet and also the lowest
-                      place on earth.Apart from those highlights you will see and smell Sulphur lakes, watch salt
-                      cutting workers in the desert and camel- caravans plodding in the sand.
-                    </p>
-                    <p>
-                      Experience one of the most extreme and fascinating landscapes on Earth in the Danakil Depression.
-                      This geological wonder offers a unique combination of active volcanism, colorful mineral
-                      formations, and traditional salt mining operations that have continued for centuries.
+                    Ethiopia offers a wealth of attractions for culture buffs, from centuries old rock-hewn churches to atmospheric, historical towns and grand castles.
+
+There are hundreds of rock- hewn churches found in Tigray Region built in the 12th to the 15th century, most of them perched in inaccessible mountain tops. The majority of them are concentrated around Hawzien, Adigrat and wiqro.
+
+Lalibella could be considered as the 8th wonder of the world. A cluster of eleven churches divided in to two groups are all hewn out of solid rocks. These amazing fits of architecher were able to be achieved in the 12th century.
                     </p>
                   </div>
                 </div>
@@ -232,10 +247,10 @@ export default function DalolDepressionPage() {
                           <div className="flex items-center space-x-3">
                             <div
                               className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                                item.day === 1 || item.day === 9 ? "bg-gray-900" : "bg-gray-600"
+                                item.day === 1 || item.day === 8 ? "bg-gray-900" : "bg-gray-600"
                               }`}
                             >
-                              {item.day === 1 || item.day === 9 ? (
+                              {item.day === 1 || item.day === 8 ? (
                                 <MapPin className="h-4 w-4 text-white" />
                               ) : (
                                 <div className="w-2 h-2 bg-white rounded-full"></div>

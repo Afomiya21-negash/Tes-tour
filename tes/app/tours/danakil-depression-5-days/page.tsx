@@ -3,28 +3,24 @@
 import { useState } from "react"
 import Image from "next/image"
 import { ChevronDown, ChevronUp, Phone, Mail, MapPin, ChevronLeft, ChevronRight } from "lucide-react"
+import BookingPopup from "../../../components/BookingPopup"
 
 export default function FiveDaysDanakilDepressionPage() {
   const [activeTab, setActiveTab] = useState("overview")
   const [expandedDays, setExpandedDays] = useState<number[]>([])
   const [expandAll, setExpandAll] = useState(false)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [isBookingOpen, setIsBookingOpen] = useState(false)
 
   // Sample images for the scrollable gallery
-  const galleryImages = [
-    "/images/5days danki.jpg?height=400&width=800",
-    "/images/5days danki1.jpg??height=400&width=800",
-    "/images/dalol2.jpg??height=400&width=800",
-   
-  ]
+ const images = [
+ "/images/5days danki.jpg",
+    "/images/5days danki1.jpg",
+    "/images/dalol2.jpg",
+  
+]
 
-  const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % galleryImages.length)
-  }
-
-  const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + galleryImages.length) % galleryImages.length)
-  }
+ const [selectedImage, setSelectedImage] = useState(images[0])
 
   const toggleDay = (dayNumber: number) => {
     setExpandedDays((prev) => (prev.includes(dayNumber) ? prev.filter((d) => d !== dayNumber) : [...prev, dayNumber]))
@@ -115,50 +111,47 @@ export default function FiveDaysDanakilDepressionPage() {
       </section>
 
       {/* Scrollable Image Gallery Header */}
-      <section className="relative h-100 overflow-hidden">
-        <div className="relative w-full h-full">
-          <Image
-            src={galleryImages[currentImageIndex] || "/placeholder.svg"}
-            alt="5 Days Denakil Depression Gallery"
-            width={1200}
-            height={400}
-            className="w-full h-full object-cover"
-          />
-
-          {/* Navigation Arrows */}
-          <button
-            onClick={prevImage}
-            className="absolute left-4 top-1/2 transform -translate-y-1/2 w-12 h-12 bg-white/80 hover:bg-white rounded-full flex items-center justify-center transition-all duration-200 shadow-lg"
-          >
-            <ChevronLeft className="h-6 w-6 text-gray-800" />
-          </button>
-
-          <button
-            onClick={nextImage}
-            className="absolute right-4 top-1/2 transform -translate-y-1/2 w-12 h-12 bg-white/80 hover:bg-white rounded-full flex items-center justify-center transition-all duration-200 shadow-lg"
-          >
-            <ChevronRight className="h-6 w-6 text-gray-800" />
-          </button>
-
-          {/* Gallery Button */}
-          <button className="absolute bottom-4 right-4 bg-white/90 hover:bg-white px-4 py-2 rounded-lg font-medium text-gray-800 transition-all duration-200 shadow-lg">
-            Gallery
-          </button>
-
-          {/* Image Indicators */}
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-            {galleryImages.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentImageIndex(index)}
-                className={`w-2 h-2 rounded-full transition-all duration-200 ${
-                  index === currentImageIndex ? "bg-white" : "bg-white/50"
-                }`}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
+     <section className="bg-white">
+                    <div className="container-max">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Main Image */}
+                        <div className="md:col-span-1">
+                          <Image
+                            src={selectedImage || "/placeholder.svg"}
+                            alt="7 Days OMO Valley Gallery"
+                            width={500}
+                            height={300}
+                            className="w-full h-auto object-cover rounded-lg shadow-md"
+                          />
+                        </div>
+            
+                        {/* Scrollable Gallery */}
+                        <div className="md:col-span-1">
+                          <div className="flex overflow-x-auto space-x-4 py-4">
+                            {images.map((image, index) => (
+                              <div
+                                key={index}
+                                className={`relative w-24 h-20 rounded-lg overflow-hidden shadow-sm cursor-pointer transition-transform duration-200 transform hover:scale-110 ${
+                                  selectedImage === image ? "ring-2 ring-emerald-500" : ""
+                                }`}
+                                onClick={() => setSelectedImage(image)}
+                              >
+                                <Image
+                                  src={image || "/placeholder.svg"}
+                                  alt={`7 Days OMO Valley Gallery - Thumbnail ${index + 1}`}
+                                  layout="fill"
+                                  objectFit="cover"
+                                  className="rounded-lg"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+       
+    
 
       {/* Main Content */}
       <section className="section-padding">

@@ -4,7 +4,7 @@ import { useState } from "react"
 import Image from "next/image"
 import { ChevronDown, ChevronUp, Phone, Mail, MapPin, ChevronLeft, ChevronRight } from "lucide-react"
 
-export default function DalolDepressionPage() {
+export default function NineDaysHistoricRoutePage() {
   const [activeTab, setActiveTab] = useState("overview")
   const [expandedDays, setExpandedDays] = useState<number[]>([])
   const [expandAll, setExpandAll] = useState(false)
@@ -12,12 +12,14 @@ export default function DalolDepressionPage() {
 
   // Sample images for the scrollable gallery
   const images = [
- "/images/dalol1.jpg",
-    "/images/dalol2.jpg",
-    "/images/dalol3.jpg",
+ "/images/lalibela.jpg",
+    "/images/lalibela2.jpg",
+    "/images/fasil.jpg",
+   
 ]
 
  const [selectedImage, setSelectedImage] = useState(images[0])
+
   const toggleDay = (dayNumber: number) => {
     setExpandedDays((prev) => (prev.includes(dayNumber) ? prev.filter((d) => d !== dayNumber) : [...prev, dayNumber]))
   }
@@ -26,7 +28,7 @@ export default function DalolDepressionPage() {
     if (expandAll) {
       setExpandedDays([])
     } else {
-      setExpandedDays([1, 2, 3, 4, 5, 6, 7, 8, 9])
+      setExpandedDays([1, 2, 3, 4, 5, 6, 7, 8,9])
     }
     setExpandAll(!expandAll)
   }
@@ -34,66 +36,68 @@ export default function DalolDepressionPage() {
   const itineraryData = [
     {
       day: 1,
-      title: "Arrive Addis Ababa",
+      title: "Day 1 : ARRIVAL ADDIS ABABA – SIGHTSEEINGS",
       content:
-        "Arrive Addis Ababa Bole international airport meet our staff at exit gate and assist to transfer to hotel. Depending on your arrival you can do sight seeing of Addis Ababa.",
-      overnight: "Addis",
+       "Arrival Addis Ababa and meet the Yama Ethiopia Tours representative. Then transfer your hotel. Depending on your arrival time make sightseeing in Addis Ababa.",
+      overnight: "",
     },
     {
       day: 2,
-      title: "Addis Ababa",
+      title: "DAY 2: ADDIS ABABA – BAHAR DAR ( DRIVE )",
       content:
-        "AM We exploring Addis Ababa beginning with a visit to the National Museum, one of the most important sub- Saharan museums in all of Africa. The museum is home to the fossilized humanoid Lucy, as well as an amazing collection of artifacts, royal items and art. We then visit the Ethnological Museum, which was the former palace of Haile Selassie. PM we take time in St. George Cathedral, built in 1896 by Emperor Menelik and then continue on to Holy Trinity Cathedral. Holy Trinity Cathedral is the largest Orthodox Church in Ethiopia and has survived through many historical periods, as its interesting architecture can attest to. The Cathedral contains the thrones and the tombs of the emperor and some of the royal family. Visit Merkato, the largest open air market in Africa.",
-      overnight: "Jupiter International hotel",
+      "In morning after breakfast drive to Bahirdar through Debre Libanos monastery.Debre Libanos is an important monastic centre for Ethiopian Orthodox Christianity.",
+      overnight: "",
     },
     {
       day: 3,
-      title: "Drive to Awash",
+      title: "DAY 3: EXCURSION IN BAHIR DAR ( LAKE TANA & BULE NILE FALLS )",
       content:
-        "Morning start drive 230km South of Addis Ababa in the rift valley pass the Town Debre Zeith creator Lake and Nazareth town to visit Awash Park with its volcano landscapes and savannah grassland habitat for a variety of bird species. Late afternoon we explore the Awash National park which is home to mammals such as Oryx, Lesser Kudu, Hammadryas Baboon and Olive Baboon, Vervet Monkey, Salts Dick-dick and more.",
-      overnight: "Awash Falls Lodge",
+      "In the morning after break fast make boat trip on Lake Tana to visit isolated monasteries. There is good birding in the lush forest surrounding much of the lake. Then drive to the thundering Blue Nile Falls. Along the walk to the falls, birding is excellent.",
+      overnight: "",
     },
     {
       day: 4,
-      title: "Drive to Afdera",
+      title: "DAY 4: BAHIR DAR – GONADR",
       content:
-        "Morning after breakfast start drive after passing the town and cross the Awash River bridge outside the town we get to the junction where the road forks, straight ahead for Dire Dawa and Harar, and left for Djibouti and the Red Sea. This day we wonder the Rift valley scenery and Afar people and their village. Have lunch at Samara, process our entrance permission and also from here we will have two Police men and one road guide accompany us for the Afar depression continue to Afdera.",
-      overnight: "camping at side of Lake Afdera or Local hotel",
+        "In the morning drive to Gondar. Then city tour of Gondar including a visit to the Royal Compound, where enchanting 17th century castles stand. Also, visit DebreBerhan Selassie Church meaning Trinity at the Mount of Light.",
+      overnight: "",
     },
     {
       day: 5,
-      title: "Drive to Kusrewad and Erta Ale",
+      title: "DAY 5: GONADR – SIEMEN MTS. NATIONAL PARK",
       content:
-        "Drive to kusrewad here where we arrange the camel to ascend our logistics and for those who wish to ride, Local militia and rock guide apart from those who already with us. Late afternoon start walking to Erta eale. Around 5 pm 3 hours trek climb to Erta Ale volcano and overnight on the top of the mountain. Erta Ale is 613 meters tall, with a lava lake, one of only five in the world, at the summit. It is notable for being the longest existing lava lake, present since the early years of the twentieth century.",
-      overnight: "on the Summit",
+       "Morning after break fast drive to the jagged panorama of the Simien Mountains National Park, famed for its exclusive landscape, afro-alpine vegetation and unique wildlife, where you may spot the endemic Wallia Ibex, Gelada Baboon troops, Bushbuck, Klipspringer.",
+      overnight: "",
     },
     {
       day: 6,
-      title: "Drive to Hammed Ela",
+      title: "DAY 6 :SIEMEN MTS. NATIONAL PARK – AXUM",
       content:
-        "Around 9 am we will be at foot base of the volcanic mountain where our cook and cars camp have our breakfast and drive to Hammed Ela via Kusrewad. This day drive will be the most challenging drive of all day which may be happen to stuck in the Sand and inhospitable weather, we should keep rehydrate to you manage the driving. Arrive Hammed Ela.",
-      overnight: "camping at Hammed Ela",
+       "Drive to Axum Through beautiful escarpment of Siemen Mountains and Tekeze river valley.",
+      overnight: "",
     },
     {
       day: 7,
-      title: "Dallol Salphur spring, Lake Assale Salt Bar and camel caravans",
+      title: "DAY 07 : AXUM – SIGHT SEEINGS",
       content:
-        "Excursion to Dallol (116 meter below sea level, one of the lowest places in the world) colorful salts mining, visit Lake Assale, follow up camels caravans and walk with the Afar and people from highland. The traditional way of extracting Salt bar, which once used as local currency, packing on the Camel. You see how they prepare their traditional bread, how they travel, communicate & more. It is another unique experience. Back to Hamed Ela.",
-      overnight: "camping at Hammed Ela",
+        "Morning after breakfast explore the city of Axum. Visit the interesting museum in stelae field, the impressive Stelae Fields and also the grounds of the 16th-century Cathedral of St. Mary of Zion, home of the original Ark of the Covenant.",
+      overnight: "",
     },
     {
       day: 8,
-      title: "Hammed Ela – Mekele",
+      title: "DAY 8 : AXUM – LALIBELA",
       content:
-        "Drive to Mekele via the town of Berhale in the River bed Ascend all way to the Tigrian highland with the camel caravans and stop for photo over the depression.",
-      overnight: "Mekelle Axum hotel",
-    },
-    {
-      day: 9,
-      title: "Fly to Addis Ababa",
-      content: "Morning transfer to the air port and fly back to Addis Ababa. Shopping and evening departure.",
+       "After breakfast transfer to the airport for your flight to Lalibela, famous for its rock-hewn churches dating back 800 years. This is the most important stop on the historical route and from the air the 11 churches, carved into the rugged mountainside, present an awesome spectacle. Afternoon excursion to the most spectacular churches.",
       overnight: "",
     },
+     {
+      day: 9,
+      title: "DAY 9 :LALIBELA – ADDIS ABABA",
+      content:
+       "In the morning fly back to Addis Ababa and shopping at souvenir shops. Evening fair well dinner and transfer to air port for departure.",
+      overnight: "",
+    },
+    
   ]
 
   return (
@@ -101,52 +105,52 @@ export default function DalolDepressionPage() {
       {/* Header */}
       <section className="bg-gradient-to-r from-emerald-600 to-emerald-800 text-white section-padding">
         <div className="container-max">
-          <h1 className="text-4xl lg:text-5xl font-bold mb-4">5 Days Denakil Depression</h1>
+          <h1 className="text-4xl lg:text-5xl font-bold mb-4">12 Days Historic with Simien</h1>
           <div className="w-16 h-1 bg-amber-400"></div>
         </div>
       </section>
 
       {/* Scrollable Image Gallery Header */}
-     <section className="bg-white">
-                    <div className="container-max">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {/* Main Image */}
-                        <div className="md:col-span-1">
-                          <Image
-                            src={selectedImage || "/placeholder.svg"}
-                            alt="7 Days OMO Valley Gallery"
-                            width={500}
-                            height={300}
-                            className="w-full h-auto object-cover rounded-lg shadow-md"
-                          />
-                        </div>
-            
-                        {/* Scrollable Gallery */}
-                        <div className="md:col-span-1">
-                          <div className="flex overflow-x-auto space-x-4 py-4">
-                            {images.map((image, index) => (
-                              <div
-                                key={index}
-                                className={`relative w-24 h-20 rounded-lg overflow-hidden shadow-sm cursor-pointer transition-transform duration-200 transform hover:scale-110 ${
-                                  selectedImage === image ? "ring-2 ring-emerald-500" : ""
-                                }`}
-                                onClick={() => setSelectedImage(image)}
-                              >
-                                <Image
-                                  src={image || "/placeholder.svg"}
-                                  alt={`7 Days OMO Valley Gallery - Thumbnail ${index + 1}`}
-                                  layout="fill"
-                                  objectFit="cover"
-                                  className="rounded-lg"
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </section>
-       
+       <section className="bg-white">
+             <div className="container-max">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                 {/* Main Image */}
+                 <div className="md:col-span-1">
+                   <Image
+                     src={selectedImage || "/placeholder.svg"}
+                     alt="7 Days OMO Valley Gallery"
+                     width={500}
+                     height={300}
+                     className="w-full h-auto object-cover rounded-lg shadow-md"
+                   />
+                 </div>
+     
+                 {/* Scrollable Gallery */}
+                 <div className="md:col-span-1">
+                   <div className="flex overflow-x-auto space-x-4 py-4">
+                     {images.map((image, index) => (
+                       <div
+                         key={index}
+                         className={`relative w-24 h-20 rounded-lg overflow-hidden shadow-sm cursor-pointer transition-transform duration-200 transform hover:scale-110 ${
+                           selectedImage === image ? "ring-2 ring-emerald-500" : ""
+                         }`}
+                         onClick={() => setSelectedImage(image)}
+                       >
+                         <Image
+                           src={image || "/placeholder.svg"}
+                           alt={`7 Days OMO Valley Gallery - Thumbnail ${index + 1}`}
+                           layout="fill"
+                           objectFit="cover"
+                           className="rounded-lg"
+                         />
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+               </div>
+             </div>
+           </section>
+     
 
       {/* Main Content */}
       <section className="section-padding">
@@ -179,20 +183,14 @@ export default function DalolDepressionPage() {
               {/* Tab Content */}
               {activeTab === "overview" && (
                 <div className="bg-white rounded-lg shadow-lg p-8">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-6">Overview</h3>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-6">Adventure</h3>
                   <div className="w-8 h-1 bg-emerald-600 mb-6"></div>
 
                   <div className="space-y-4 text-gray-700 leading-relaxed">
+                   
                     <p>
-                      Tour to the permanent active volcano Erta Ale, the hottest spot on this planet and also the lowest
-                      place on earth.Apart from those highlights you will see and smell Sulphur lakes, watch salt
-                      cutting workers in the desert and camel- caravans plodding in the sand.
-                    </p>
-                    <p>
-                      Experience one of the most extreme and fascinating landscapes on Earth in the Danakil Depression.
-                      This geological wonder offers a unique combination of active volcanism, colorful mineral
-                      formations, and traditional salt mining operations that have continued for centuries.
-                    </p>
+This historic route is one of our best products and is purchased so many times by differently originated worldwide customers indeed. On this 9 Days and 8 nights specific tour the Siemen Mountains, major historical sites of northern Ethiopia and the Tigray Rock churches will be visited Including Addis Ababa City tour. Not only this, we will also spend one night in the magnificent rock-hewn churches of Lalibela.</p>
+                   
                   </div>
                 </div>
               )}
@@ -232,10 +230,10 @@ export default function DalolDepressionPage() {
                           <div className="flex items-center space-x-3">
                             <div
                               className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                                item.day === 1 || item.day === 9 ? "bg-gray-900" : "bg-gray-600"
+                                item.day === 1 || item.day === 8 ? "bg-gray-900" : "bg-gray-600"
                               }`}
                             >
-                              {item.day === 1 || item.day === 9 ? (
+                              {item.day === 1 || item.day === 8 ? (
                                 <MapPin className="h-4 w-4 text-white" />
                               ) : (
                                 <div className="w-2 h-2 bg-white rounded-full"></div>
