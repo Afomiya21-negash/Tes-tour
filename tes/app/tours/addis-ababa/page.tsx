@@ -68,7 +68,7 @@ export default function AddisAbabaPage() {
     <div className="min-h-screen bg-gray-100 py-12 px-4">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">orthen Tours</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">Addis Ababa Tour</h1>
           
         </div>
         

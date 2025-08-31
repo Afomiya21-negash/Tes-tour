@@ -90,13 +90,8 @@ export default function Navbar() {
       hasDropdown: true,
       dropdownItems: itineraryItems,
     },
-    { href: "/attractions", label: "ATTRACTIONS" },
-    {
-      href: "/destination",
-      label: "DESTINATION",
-      hasDropdown: true,
-      dropdownItems: destinationItems,
-    },
+    { href: "tours/attractions", label: "ATTRACTIONS" },
+   
     { href: "/about", label: "ABOUT US" },
     { href: "/contact", label: "CONTACT" },
   ]
