@@ -49,32 +49,28 @@ export default function Footer() {
             </h3>
             <ul className="space-y-3 text-gray-300">
               <li>
-                <Link href="/destination/cultural" className="hover:text-white transition-colors">
+                <Link href="/tours/cultural" className="hover:text-white transition-colors">
                   Cultural
                 </Link>
               </li>
               <li>
-                <Link href="/itinerary/festival" className="hover:text-white transition-colors">
+                <Link href="/tours/festival" className="hover:text-white transition-colors">
                   Festival
                 </Link>
               </li>
               <li>
-                <Link href="/itinerary/omo-valley" className="hover:text-white transition-colors">
+                <Link href="/tours/southern-tour" className="hover:text-white transition-colors">
                   Tribes of Omo Valley
                 </Link>
               </li>
               <li>
-                <Link href="/destination/northern-tour" className="hover:text-white transition-colors">
+                <Link href="/tours/northern-tour" className="hover:text-white transition-colors">
                   Northern Tour
                 </Link>
               </li>
+            
               <li>
-                <Link href="/destination/southern-tour" className="hover:text-white transition-colors">
-                  Southern Tour
-                </Link>
-              </li>
-              <li>
-                <Link href="/itinerary/addis-ababa" className="hover:text-white transition-colors">
+                <Link href="/tours/addis-ababa" className="hover:text-white transition-colors">
                   Addis Ababa and Surrounding
                 </Link>
               </li>

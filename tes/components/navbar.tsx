@@ -74,11 +74,11 @@ export default function Navbar() {
   };
 
   const destinationItems: DropdownItem[] = [
-    { href: "/destination/historic", label: "Historic" },
-    { href: "/destination/cultural", label: "Cultural" },
-    { href: "/destination/northern-tour", label: "Northern Tour" },
-    { href: "/destination/southern-tour", label: "Southern Tour" },
-    { href: "/destination/adventure", label: "Adventure" },
+    { href: "/tours/historic", label: "Historic" },
+    { href: "/tours/cultural", label: "Cultural" },
+    { href: "/tours/northern-tour", label: "Northern Tour" },
+    { href: "/tours/southern-tour", label: "Southern Tour" },
+    { href: "/tours/adventure", label: "Adventure" },
   ]
 
   // Main navigation items
