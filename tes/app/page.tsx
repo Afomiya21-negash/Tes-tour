@@ -480,7 +480,7 @@ export default function HomePage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button className="bg-white text-amber-600 hover:bg-amber-50 px-8 py-3 rounded-lg font-semibold transition-colors duration-200">
-                View All Deals
+          <Link href="tours/deals">View All Deals</Link>      
               </button>
             </div>
           </div>
