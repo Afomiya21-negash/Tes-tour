@@ -1,0 +1,546 @@
+"use client"
+
+import { useState } from "react"
+import { Star, UserPlus, Users, X, LogOut, BarChart3, Shield } from "lucide-react"
+
+type Employee = {
+  id: number
+  name: string
+  email: string
+  role: "tourguide" | "driver"
+  phone: string
+  hireDate: string
+}
+
+type Customer = {
+  id: number
+  name: string
+  email: string
+  phone: string
+  signupDate: string
+  bookingsCount: number
+}
+
+type Rating = {
+  id: number
+  employeeName: string
+  employeeRole: "tourguide" | "driver"
+  customerName: string
+  rating: number
+  comment: string
+  date: string
+}
+
+export default function AdminDashboard() {
+  const [activeTab, setActiveTab] = useState<"dashboard" | "ratings" | "customers">("dashboard")
+  const [showRegisterModal, setShowRegisterModal] = useState(false)
+
+  // Form states
+  const [employeeName, setEmployeeName] = useState("")
+  const [employeeEmail, setEmployeeEmail] = useState("")
+  const [employeeRole, setEmployeeRole] = useState<"tourguide" | "driver">("tourguide")
+  const [employeePhone, setEmployeePhone] = useState("")
+
+  // Mock data
+  const [employees, setEmployees] = useState<Employee[]>([
+    {
+      id: 1,
+      name: "yedidya birhanu",
+      email: "yedish@gmail.com",
+      role: "tourguide",
+      phone: "+251-911-234567",
+      hireDate: "2024-01-15",
+    },
+    {
+      id: 2,
+      name: "belen Abebe",
+      email: "blu@gmail.com",
+      role: "driver",
+      phone: "+251-911-345678",
+      hireDate: "2024-02-20",
+    },
+     {
+      id: 2,
+      name: "beshadu teferi",
+      email: "blu@gmail.com",
+      role: "driver",
+      phone: "+251-911-345678",
+      hireDate: "2024-02-20",
+    },
+  ])
+
+  const [customers] = useState<Customer[]>([
+    {
+      id: 1,
+      name: "nardos",
+      email: "nardi@gmail.com",
+      phone: "+251-911-456789",
+      signupDate: "2024-03-01",
+      bookingsCount: 3,
+    },
+    {
+      id: 2,
+      name: "yared negassi",
+      email: "yaya@gmail.com",
+      phone: "+251-911-567890",
+      signupDate: "2024-03-15",
+      bookingsCount: 1,
+    },
+    {
+      id: 3,
+      name: "Afomiya mesfin",
+      email: "mai@gmail.com",
+      phone: "+251-911-678901",
+      signupDate: "2024-04-02",
+      bookingsCount: 5,
+    },
+  ])
+
+  const [ratings] = useState<Rating[]>([
+    {
+      id: 1,
+      employeeName: "yedidya birhanu",
+      employeeRole: "tourguide",
+      customerName: "afomiya mesfin",
+      rating: 5,
+      comment: "Excellent tour guide! Very knowledgeable and friendly.",
+      date: "2024-03-10",
+    },
+    {
+      id: 2,
+      employeeName: "belen abebe",
+      employeeRole: "driver",
+      customerName: "nardos",
+      rating: 4,
+      comment: "Safe driver, arrived on time.",
+      date: "2024-03-20",
+    },
+    {
+      id: 3,
+      employeeName: "beshadu teferi",
+      employeeRole: "tourguide",
+      customerName: "yared negassi",
+      rating: 5,
+      comment: "Amazing experience! Highly recommend.",
+      date: "2024-04-05",
+    },
+ 
+  ])
+
+  const handleRegisterEmployee = () => {
+    if (!employeeName || !employeeEmail || !employeePhone) {
+      alert("Please fill in all fields")
+      return
+    }
+
+    const newEmployee: Employee = {
+      id: Date.now(),
+      name: employeeName,
+      email: employeeEmail,
+      role: employeeRole,
+      phone: employeePhone,
+      hireDate: new Date().toISOString().split("T")[0],
+    }
+
+    setEmployees([...employees, newEmployee])
+    setEmployeeName("")
+    setEmployeeEmail("")
+    setEmployeeRole("tourguide")
+    setEmployeePhone("")
+    setShowRegisterModal(false)
+    alert("Employee registered successfully!")
+  }
+
+  const handleDeleteEmployee = (id: number) => {
+    if (confirm("Are you sure you want to delete this employee?")) {
+      setEmployees(employees.filter((emp) => emp.id !== id))
+    }
+  }
+
+  const handleDeleteCustomer = (id: number) => {
+    if (confirm("Are you sure you want to delete this customer?")) {
+      alert("Customer deleted successfully!")
+    }
+  }
+
+  const getAverageRating = (employeeName: string) => {
+    const employeeRatings = ratings.filter((r) => r.employeeName === employeeName)
+    if (employeeRatings.length === 0) return 0
+    return employeeRatings.reduce((sum, r) => sum + r.rating, 0) / employeeRatings.length
+  }
+
+  const tourguideRatings = ratings.filter((r) => r.employeeRole === "tourguide")
+  const driverRatings = ratings.filter((r) => r.employeeRole === "driver")
+
+  return (
+    <div className="min-h-screen bg-white">
+      {/* Header */}
+      <header className="bg-green-600 text-white shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center space-x-3">
+              <Shield className="w-8 h-8" />
+              <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+            </div>
+            <button className="flex items-center space-x-2 bg-green-700 hover:bg-green-800 px-4 py-2 rounded-lg transition-colors">
+              <LogOut className="w-5 h-5" />
+              <span>Logout</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Navigation */}
+      <nav className="bg-green-50 border-b border-green-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex space-x-8">
+            <button
+              onClick={() => setActiveTab("dashboard")}
+              className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === "dashboard"
+                  ? "border-green-600 text-green-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <UserPlus className="w-5 h-5" />
+                <span>Employees</span>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab("ratings")}
+              className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === "ratings"
+                  ? "border-green-600 text-green-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <BarChart3 className="w-5 h-5" />
+                <span>View Ratings</span>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab("customers")}
+              className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === "customers"
+                  ? "border-green-600 text-green-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <Users className="w-5 h-5" />
+                <span>Customers</span>
+              </div>
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Dashboard Tab */}
+        {activeTab === "dashboard" && (
+          <div>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Registered Employees</h2>
+              <button
+                onClick={() => setShowRegisterModal(true)}
+                className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                <UserPlus className="w-5 h-5" />
+                <span>Register Employee</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {employees.map((employee) => (
+                <div
+                  key={`employee-${employee.id}`}
+                  className="bg-white border-2 border-green-200 rounded-lg p-6 hover:shadow-lg transition-shadow"
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                        <span className="text-green-600 font-semibold text-lg">{employee.name.charAt(0)}</span>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900">{employee.name}</h3>
+                        <span
+                          className={`inline-block px-2 py-1 text-xs rounded-full ${
+                            employee.role === "tourguide" ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"
+                          }`}
+                        >
+                          {employee.role === "tourguide" ? "Tour Guide" : "Driver"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2 text-sm text-gray-600">
+                    <p>📧 {employee.email}</p>
+                    <p>📱 {employee.phone}</p>
+                    <p>📅 Hired: {employee.hireDate}</p>
+                    <div className="flex items-center space-x-1">
+                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                      <span className="font-semibold text-gray-900">{getAverageRating(employee.name).toFixed(1)}</span>
+                      <span className="text-gray-500">average rating</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteEmployee(employee.id)}
+                    className="mt-4 w-full bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded-lg transition-colors"
+                  >
+                    Remove Employee
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Ratings Tab */}
+        {activeTab === "ratings" && (
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Employee Ratings</h2>
+
+            <div className="space-y-6">
+              {/* Tour Guides Ratings */}
+              <div>
+                <h3 className="text-xl font-semibold text-green-600 mb-4">Tour Guides</h3>
+                <div className="bg-white border-2 border-green-200 rounded-lg overflow-hidden">
+                  <table className="min-w-full divide-y divide-green-200">
+                    <thead className="bg-green-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                          Tour Guide
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                          Customer
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                          Rating
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                          Comment
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                          Date
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-green-100">
+                      {tourguideRatings.map((rating) => (
+                        <tr key={`tourguide-rating-${rating.id}`} className="hover:bg-green-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {rating.employeeName}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{rating.customerName}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <div className="flex items-center space-x-1">
+                              {[...Array(5)].map((_, starIdx) => (
+                                <Star
+                                  key={`tg-${rating.id}-star-${starIdx}`}
+                                  className={`w-4 h-4 ${
+                                    starIdx < rating.rating
+                                      ? "fill-yellow-400 text-yellow-400"
+                                      : "fill-gray-200 text-gray-200"
+                                  }`}
+                                />
+                              ))}
+                              <span className="ml-2 font-semibold">{rating.rating}/5</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">{rating.comment}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{rating.date}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Drivers Ratings */}
+              <div>
+                <h3 className="text-xl font-semibold text-green-600 mb-4">Drivers</h3>
+                <div className="bg-white border-2 border-green-200 rounded-lg overflow-hidden">
+                  <table className="min-w-full divide-y divide-green-200">
+                    <thead className="bg-green-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                          Driver
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                          Customer
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                          Rating
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                          Comment
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                          Date
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-green-100">
+                      {driverRatings.map((rating) => (
+                        <tr key={`driver-rating-${rating.id}`} className="hover:bg-green-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {rating.employeeName}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{rating.customerName}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <div className="flex items-center space-x-1">
+                              {[...Array(5)].map((_, starIdx) => (
+                                <Star
+                                  key={`dr-${rating.id}-star-${starIdx}`}
+                                  className={`w-4 h-4 ${
+                                    starIdx < rating.rating
+                                      ? "fill-yellow-400 text-yellow-400"
+                                      : "fill-gray-200 text-gray-200"
+                                  }`}
+                                />
+                              ))}
+                              <span className="ml-2 font-semibold">{rating.rating}/5</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">{rating.comment}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{rating.date}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Customers Tab */}
+        {activeTab === "customers" && (
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Registered Customers</h2>
+
+            <div className="bg-white border-2 border-green-200 rounded-lg overflow-hidden">
+              <table className="min-w-full divide-y divide-green-200">
+                <thead className="bg-green-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Email
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Phone
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Signup Date
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Bookings
+                    </th>
+                   
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-green-100">
+                  {customers.map((customer) => (
+                    <tr key={`customer-${customer.id}`} className="hover:bg-green-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{customer.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{customer.email}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{customer.phone}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{customer.signupDate}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-semibold">
+                          {customer.bookingsCount} bookings
+                        </span>
+                      </td>
+                    
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Register Employee Modal */}
+      {showRegisterModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-md">
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+              <h3 className="text-xl font-semibold text-gray-900">Register Employee</h3>
+              <button onClick={() => setShowRegisterModal(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                <input
+                  type="text"
+                  value={employeeName}
+                  onChange={(e) => setEmployeeName(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="Enter employee name"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                <input
+                  type="email"
+                  value={employeeEmail}
+                  onChange={(e) => setEmployeeEmail(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="employee@example.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                <input
+                  type="tel"
+                  value={employeePhone}
+                  onChange={(e) => setEmployeePhone(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="+251-911-234567"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                <select
+                  value={employeeRole}
+                  onChange={(e) => setEmployeeRole(e.target.value as "tourguide" | "driver")}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                >
+                  <option value="tourguide">Tour Guide</option>
+                  <option value="driver">Driver</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex space-x-3 p-6 border-t border-gray-200">
+              <button
+                onClick={handleRegisterEmployee}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-colors"
+              >
+                Register
+              </button>
+              <button
+                onClick={() => setShowRegisterModal(false)}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
