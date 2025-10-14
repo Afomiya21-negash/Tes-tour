@@ -24,23 +24,39 @@ export default function LoginForm() {
 
         <form
   onSubmit={async (e) => {
-    e.preventDefault(); // stop full page reload & query params
-   
+    e.preventDefault();
+    try {
+      setIsLoading(true)
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emailOrUsername: email, password })
+      })
+      if (res.ok) {
+        const data = await res.json()
+        router.push('/')
+      } else {
+        const data = await res.json().catch(() => ({}))
+        alert(data.message || 'Login failed')
+      }
+    } finally {
+      setIsLoading(false)
+    }
   }}
   className="space-y-6"
 >
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-              Email Address
+              Email or Username
             </label>
             <input
-              type="email"
+              type="text"
               id="email"
               name="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002F63] focus:border-transparent transition-colors"
-              placeholder="Enter your email"
+              placeholder="Enter your email or username"
               required
             />
           </div>

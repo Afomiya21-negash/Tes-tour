@@ -64,7 +64,26 @@ export default function SignupForm() {
          
         </div>
 
-        <form  className="space-y-6">
+        <form onSubmit={async (e) => {
+          e.preventDefault()
+          if (passwordErrors.length > 0 || !passwordMatch) return
+          try {
+            setIsLoading(true)
+            const res = await fetch('/api/auth/signup', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username, email, password })
+            })
+            if (res.ok) {
+              router.push('/')
+            } else {
+              const data = await res.json().catch(() => ({}))
+              alert(data.message || 'Signup failed')
+            }
+          } finally {
+            setIsLoading(false)
+          }
+        }} className="space-y-6">
           <div>
             <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
               Username
