@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Star, UserPlus, Users, X, LogOut, BarChart3, Shield } from "lucide-react"
 
 type Employee = {
@@ -40,34 +40,13 @@ export default function AdminDashboard() {
   const [employeeEmail, setEmployeeEmail] = useState("")
   const [employeeRole, setEmployeeRole] = useState<"tourguide" | "driver">("tourguide")
   const [employeePhone, setEmployeePhone] = useState("")
+  const [licenseNo, setLicenseNo] = useState("")
+  const [experience, setExperience] = useState<number | "">("")
+  const [vehicleType, setVehicleType] = useState("")
+  const [specialization, setSpecialization] = useState("")
 
   // Mock data
-  const [employees, setEmployees] = useState<Employee[]>([
-    {
-      id: 1,
-      name: "yedidya birhanu",
-      email: "yedish@gmail.com",
-      role: "tourguide",
-      phone: "+251-911-234567",
-      hireDate: "2024-01-15",
-    },
-    {
-      id: 2,
-      name: "belen Abebe",
-      email: "blu@gmail.com",
-      role: "driver",
-      phone: "+251-911-345678",
-      hireDate: "2024-02-20",
-    },
-     {
-      id: 2,
-      name: "beshadu teferi",
-      email: "blu@gmail.com",
-      role: "driver",
-      phone: "+251-911-345678",
-      hireDate: "2024-02-20",
-    },
-  ])
+  const [employees, setEmployees] = useState<Employee[]>([])
 
   const [customers] = useState<Customer[]>([
     {
@@ -127,33 +106,114 @@ export default function AdminDashboard() {
  
   ])
 
-  const handleRegisterEmployee = () => {
+  const fetchEmployees = async () => {
+    try {
+      const res = await fetch('/api/admin/employees', { credentials: 'include' })
+      if (!res.ok) throw new Error('Failed to load employees')
+      const data = await res.json()
+      setEmployees(Array.isArray(data?.employees) ? data.employees : [])
+    } catch (e) {
+      // keep empty state on failure
+    }
+  }
+
+  useEffect(() => {
+    fetchEmployees()
+  }, [])
+
+  const handleRegisterEmployee = async () => {
     if (!employeeName || !employeeEmail || !employeePhone) {
       alert("Please fill in all fields")
       return
     }
 
-    const newEmployee: Employee = {
-      id: Date.now(),
-      name: employeeName,
-      email: employeeEmail,
-      role: employeeRole,
-      phone: employeePhone,
-      hireDate: new Date().toISOString().split("T")[0],
+    // Role-specific validation
+    if (employeeRole === "driver") {
+      if (!licenseNo) {
+        alert("License number is required for drivers")
+        return
+      }
+    } else if (employeeRole === "tourguide") {
+      if (!licenseNo) {
+        alert("License number is required for tour guides")
+        return
+      }
+      if (experience === "" || Number.isNaN(Number(experience))) {
+        alert("Experience (years) is required for tour guides")
+        return
+      }
     }
 
-    setEmployees([...employees, newEmployee])
-    setEmployeeName("")
-    setEmployeeEmail("")
-    setEmployeeRole("tourguide")
-    setEmployeePhone("")
-    setShowRegisterModal(false)
-    alert("Employee registered successfully!")
+    try {
+      const res = await fetch("/api/admin/register-employee", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          name: employeeName,
+          email: employeeEmail,
+          phoneNo: employeePhone,
+          role: employeeRole,
+          licenseNo,
+          vehicleType: employeeRole === "driver" ? vehicleType || null : undefined,
+          experience: employeeRole === "tourguide" ? Number(experience) : undefined,
+          specialization: employeeRole === "tourguide" ? specialization || null : undefined,
+        }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ message: "Failed to register" }))
+        throw new Error(data?.message || "Failed to register")
+      }
+
+      const data = await res.json()
+
+      const newEmployee: Employee = {
+        id: data.user_id ?? Date.now(),
+        name: employeeName,
+        email: employeeEmail,
+        role: employeeRole,
+        phone: employeePhone,
+        hireDate: new Date().toISOString().split("T")[0],
+      }
+
+      // Optimistic update (append), then refresh from server to ensure consistency
+      setEmployees([...employees, newEmployee])
+      fetchEmployees()
+      // Reset form
+      setEmployeeName("")
+      setEmployeeEmail("")
+      setEmployeeRole("tourguide")
+      setEmployeePhone("")
+      setLicenseNo("")
+      setExperience("")
+      setVehicleType("")
+      setSpecialization("")
+      setShowRegisterModal(false)
+      alert("Employee registered successfully!")
+    } catch (e: any) {
+      alert(e?.message || "Failed to register employee")
+    }
   }
 
-  const handleDeleteEmployee = (id: number) => {
-    if (confirm("Are you sure you want to delete this employee?")) {
-      setEmployees(employees.filter((emp) => emp.id !== id))
+  const handleDeleteEmployee = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this employee?")) return
+
+    try {
+      const res = await fetch(`/api/admin/employees/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ message: 'Failed to delete' }))
+        throw new Error(data?.message || 'Failed to delete employee')
+      }
+      // Optimistically remove then refresh from server
+      setEmployees((prev) => prev.filter((emp) => emp.id !== id))
+      fetchEmployees()
+      alert('Employee removed successfully!')
+    } catch (e: any) {
+      alert(e?.message || 'Failed to remove employee')
     }
   }
 
@@ -182,7 +242,17 @@ export default function AdminDashboard() {
               <Shield className="w-8 h-8" />
               <h1 className="text-2xl font-bold">Admin Dashboard</h1>
             </div>
-            <button className="flex items-center space-x-2 bg-green-700 hover:bg-green-800 px-4 py-2 rounded-lg transition-colors">
+            <button
+              onClick={async () => {
+                try {
+                  const res = await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+                  // Regardless of res.ok, clear UI state by navigating home
+                } finally {
+                  window.location.href = '/'
+                }
+              }}
+              className="flex items-center space-x-2 bg-green-700 hover:bg-green-800 px-4 py-2 rounded-lg transition-colors"
+            >
               <LogOut className="w-5 h-5" />
               <span>Logout</span>
             </button>
@@ -522,6 +592,66 @@ export default function AdminDashboard() {
                   <option value="driver">Driver</option>
                 </select>
               </div>
+
+              {employeeRole === "tourguide" && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">License Number</label>
+                    <input
+                      type="text"
+                      value={licenseNo}
+                      onChange={(e) => setLicenseNo(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder="TG-XXXX-XXXX"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Experience (years)</label>
+                    <input
+                      type="number"
+                      value={experience}
+                      onChange={(e) => setExperience(e.target.value === '' ? '' : Number.parseInt(e.target.value))}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                      min={0}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Specialization (optional)</label>
+                    <input
+                      type="text"
+                      value={specialization}
+                      onChange={(e) => setSpecialization(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder="History, Nature, Culture..."
+                    />
+                  </div>
+                </>
+              )}
+
+              {employeeRole === "driver" && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">License Number</label>
+                    <input
+                      type="text"
+                      value={licenseNo}
+                      onChange={(e) => setLicenseNo(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder="DRV-XXXX-XXXX"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Vehicle Type (optional)</label>
+                    <input
+                      type="text"
+                      value={vehicleType}
+                      onChange={(e) => setVehicleType(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder="SUV, Minivan, Bus..."
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="flex space-x-3 p-6 border-t border-gray-200">

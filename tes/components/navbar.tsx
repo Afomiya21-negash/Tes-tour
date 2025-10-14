@@ -1,12 +1,27 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Menu, X, ChevronDown, Phone } from "lucide-react"
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
+  const [auth, setAuth] = useState<{ authenticated: boolean; user?: { display_name?: string; initial?: string; role?: string } } | null>(null)
+
+  useEffect(() => {
+    const run = async () => {
+      try {
+        const res = await fetch('/api/auth/profile', { credentials: 'include' })
+        if (!res.ok) throw new Error('fail')
+        const data = await res.json()
+        setAuth(data)
+      } catch {
+        setAuth({ authenticated: false })
+      }
+    }
+    run()
+  }, [])
 
   // Itinerary dropdown items
   const itineraryItems = [
@@ -128,14 +143,28 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Login/Signup Buttons */}
+          {/* Login/Signup or Profile */}
           <div className="hidden lg:flex items-center space-x-4">
-            <Link href="/login">
-              <button className="btn-secondary px-4 py-2">Login</button>
-            </Link>
-            <Link href="/signup">
-              <button className="btn-primary px-4 py-2">Sign Up</button>
-            </Link>
+            {auth?.authenticated && auth.user?.role === 'customer' ? (
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-semibold">
+                  {auth.user?.initial || 'U'}
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-medium text-gray-900">{auth.user?.display_name || 'Profile'}</div>
+                  <div className="text-xs text-gray-500 capitalize">{auth.user?.role || ''}</div>
+                </div>
+              </div>
+            ) : (
+              <>
+                <Link href="/login">
+                  <button className="btn-secondary px-4 py-2">Login</button>
+                </Link>
+                <Link href="/signup">
+                  <button className="btn-primary px-4 py-2">Sign Up</button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -231,14 +260,28 @@ export default function Navbar() {
                 </div>
               </div>
 
-              {/* Mobile Login/Signup Buttons */}
+              {/* Mobile Login/Signup or Profile */}
               <div className="flex flex-col space-y-2 px-4">
-                <Link href="/login" onClick={() => setIsMenuOpen(false)}>
-                  <button className="w-full btn-secondary px-4 py-2">Login</button>
-                </Link>
-                <Link href="/signup" onClick={() => setIsMenuOpen(false)}>
-                  <button className="w-full btn-primary px-4 py-2">Sign Up</button>
-                </Link>
+                {auth?.authenticated && auth.user?.role === 'customer' ? (
+                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-semibold">
+                      {auth.user?.initial || 'U'}
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold text-gray-900">{auth.user?.display_name || 'Profile'}</div>
+                      <div className="text-xs text-gray-500 capitalize">{auth.user?.role || ''}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <Link href="/login" onClick={() => setIsMenuOpen(false)}>
+                      <button className="w-full btn-secondary px-4 py-2">Login</button>
+                    </Link>
+                    <Link href="/signup" onClick={() => setIsMenuOpen(false)}>
+                      <button className="w-full btn-primary px-4 py-2">Sign Up</button>
+                    </Link>
+                  </>
+                )}
               </div>
 
               {/* Mobile menu items */}

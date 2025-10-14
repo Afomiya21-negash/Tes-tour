@@ -256,7 +256,16 @@ export default function EmployeeDashboard() {
                 <p className="text-green-100 text-sm">Manage bookings and assignments</p>
               </div>
             </div>
-            <button className="flex items-center space-x-2 bg-green-700 hover:bg-green-800 px-4 py-2 rounded-lg transition-colors">
+            <button
+              onClick={async () => {
+                try {
+                  await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+                } finally {
+                  window.location.href = '/'
+                }
+              }}
+              className="flex items-center space-x-2 bg-green-700 hover:bg-green-800 px-4 py-2 rounded-lg transition-colors"
+            >
               <LogOut className="w-5 h-5" />
               <span>Logout</span>
             </button>

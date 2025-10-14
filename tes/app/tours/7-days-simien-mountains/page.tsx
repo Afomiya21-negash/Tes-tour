@@ -10,6 +10,15 @@ export default function SevenDaysSimienMountainsPage() {
   const [expandAll, setExpandAll] = useState(false)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
  const [isBookingOpen, setIsBookingOpen] = useState(false)
+  const handleBookingClick = () => {
+    fetch('/api/auth/profile', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => {
+        if (d?.authenticated && d?.user?.role === 'customer') setIsBookingOpen(true)
+        else window.location.href = '/login'
+      })
+      .catch(() => { window.location.href = '/login' })
+  }
   // Sample images for the scrollable gallery
   const images = [
  "/images/animal.jpg",
@@ -304,7 +313,7 @@ export default function SevenDaysSimienMountainsPage() {
 
         <div className="mt-12 text-center">
                     <button 
-                      onClick={() => setIsBookingOpen(true)}
+                      onClick={handleBookingClick}
                       className="btn-primary text-lg px-12 py-4"
                     >
                       Book Now

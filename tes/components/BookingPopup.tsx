@@ -12,6 +12,25 @@ interface BookingPopupProps {
 
 export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopupProps) {
   const [currentStep, setCurrentStep] = useState(1)
+  const [authenticated, setAuthenticated] = useState<boolean>(false)
+  useEffect(() => {
+    // Check auth once when opened
+    if (isOpen) {
+      fetch('/api/auth/profile', { credentials: 'include' })
+        .then(r => r.json())
+        .then(d => {
+          const ok = Boolean(d?.authenticated && d?.user?.role === 'customer')
+          setAuthenticated(ok)
+          if (!ok) {
+            window.location.href = '/login'
+          }
+        })
+        .catch(() => {
+          setAuthenticated(false)
+          window.location.href = '/login'
+        })
+    }
+  }, [isOpen])
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -92,6 +111,10 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
   }
 
   const handleNext = () => {
+    if (!authenticated) {
+      window.location.href = '/login'
+      return
+    }
     if (currentStep < 4) {
       setCurrentStep(prev => prev + 1)
     }
