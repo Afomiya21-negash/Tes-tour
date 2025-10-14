@@ -34,7 +34,14 @@ export default function LoginForm() {
       })
       if (res.ok) {
         const data = await res.json()
-        router.push('/')
+        const role = data?.role
+        const dest =
+          role === 'admin' ? '/admin' :
+          role === 'employee' ? '/employee' :
+          role === 'tourguide' ? '/tourguide' :
+          role === 'driver' ? '/driver' :
+          '/'
+        router.push(dest)
       } else {
         const data = await res.json().catch(() => ({}))
         alert(data.message || 'Login failed')

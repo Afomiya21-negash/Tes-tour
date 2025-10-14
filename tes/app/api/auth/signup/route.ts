@@ -1,41 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getPool } from '@/lib/db'
-import { hashPassword, signJwt, getAuthCookieOptions } from '@/lib/auth'
+import { getAuthCookieOptions, signJwt } from '@/lib/auth'
+import { Guest, Validators } from '@/lib/domain'
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { username, email, password, first_name, last_name, phone_number, address } = body || {}
+    const { username, email, password, phoneNo, address, DOB, first_name, last_name } = body || {}
 
     if (!username || !email || !password) {
       return NextResponse.json({ message: 'Missing required fields' }, { status: 400 })
     }
+    if (!Validators.isValidEmail(email)) {
+      return NextResponse.json({ message: 'Invalid email format' }, { status: 400 })
+    }
+    if (!Validators.isStrongPassword(password)) {
+      return NextResponse.json({ message: 'Weak password' }, { status: 400 })
+    }
 
-    const pool = getPool()
-    const conn = await pool.getConnection()
     try {
-      const [existing] = await conn.query(
-        'SELECT user_id FROM Users WHERE email = ? OR username = ? LIMIT 1',
-        [email, username]
-      ) as any
-      if (existing.length > 0) {
-        return NextResponse.json({ message: 'Email or username already exists' }, { status: 409 })
-      }
+      const created = await Guest.guestSignup({
+        username,
+        email,
+        password,
+        phoneNo: phoneNo ?? null,
+        address: address ?? null,
+        DOB: DOB ?? null,
+        firstName: first_name ?? null,
+        lastName: last_name ?? null,
+      })
 
-      const password_hash = await hashPassword(password)
-      const [result] = await conn.query(
-        `INSERT INTO Users (username, email, password_hash, first_name, last_name, phone_number, address, role)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [username, email, password_hash, first_name || '', last_name || '', phone_number || null, address || null, 'customer']
-      ) as any
-
-      const userId = result.insertId
-      const token = signJwt({ user_id: userId, role: 'customer' })
-      const res = NextResponse.json({ user_id: userId, username, email, role: 'customer' }, { status: 201 })
+      const token = signJwt({ user_id: created.user_id, role: 'customer' })
+      const res = NextResponse.json(created, { status: 201 })
       res.cookies.set('auth_token', token, getAuthCookieOptions())
       return res
-    } finally {
-      conn.release()
+    } catch (e: any) {
+      if (e?.code === 'DUPLICATE') {
+        return NextResponse.json({ message: 'Email or username already exists' }, { status: 409 })
+      }
+      throw e
     }
   } catch (e) {
     return NextResponse.json({ message: 'Server error' }, { status: 500 })

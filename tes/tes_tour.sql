@@ -38,6 +38,7 @@ CREATE TABLE `admins` (
 --
 -- Table structure for table `bookings`
 --
+-- NOTE: In the OO model, Booking.status is removed. Kept here to avoid DB migration in this demo.
 
 CREATE TABLE `bookings` (
   `booking_id` int(11) NOT NULL,
@@ -56,6 +57,7 @@ CREATE TABLE `bookings` (
 --
 -- Table structure for table `drivers`
 --
+-- NOTE: In the OO model, Driver has fields picture and name. Not persisted here due to missing columns.
 
 CREATE TABLE `drivers` (
   `driver_id` int(11) NOT NULL,
@@ -82,6 +84,7 @@ CREATE TABLE `employees` (
 --
 -- Table structure for table `payments`
 --
+-- NOTE: Payment schema retained. OO model unaffected.
 
 CREATE TABLE `payments` (
   `payment_id` int(11) NOT NULL,
@@ -112,6 +115,7 @@ CREATE TABLE `tourguides` (
 --
 -- Table structure for table `tours`
 --
+-- NOTE: In the OO model, Trip entity exists separately without status; this DB uses tours + bookings.
 
 CREATE TABLE `tours` (
   `tour_id` int(11) NOT NULL,
