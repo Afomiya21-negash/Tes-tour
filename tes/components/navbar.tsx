@@ -146,13 +146,18 @@ export default function Navbar() {
           {/* Login/Signup or Profile */}
           <div className="hidden lg:flex items-center space-x-4">
             {auth?.authenticated && auth.user?.role === 'customer' ? (
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-semibold">
-                  {auth.user?.initial || 'U'}
-                </div>
-                <div className="text-right">
-                  <div className="text-sm font-medium text-gray-900">{auth.user?.display_name || 'Profile'}</div>
-                  <div className="text-xs text-gray-500 capitalize">{auth.user?.role || ''}</div>
+              <div className="flex items-center space-x-4">
+                <Link href="/dashboard">
+                  <button className="btn-secondary px-4 py-2">My Dashboard</button>
+                </Link>
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-semibold">
+                    {auth.user?.initial || 'U'}
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-medium text-gray-900">{auth.user?.display_name || 'Profile'}</div>
+                    <div className="text-xs text-gray-500 capitalize">{auth.user?.role || ''}</div>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -263,13 +268,18 @@ export default function Navbar() {
               {/* Mobile Login/Signup or Profile */}
               <div className="flex flex-col space-y-2 px-4">
                 {auth?.authenticated && auth.user?.role === 'customer' ? (
-                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-semibold">
-                      {auth.user?.initial || 'U'}
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold text-gray-900">{auth.user?.display_name || 'Profile'}</div>
-                      <div className="text-xs text-gray-500 capitalize">{auth.user?.role || ''}</div>
+                  <div className="space-y-2">
+                    <Link href="/dashboard" onClick={() => setIsMenuOpen(false)}>
+                      <button className="w-full btn-secondary px-4 py-2">My Dashboard</button>
+                    </Link>
+                    <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                      <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-semibold">
+                        {auth.user?.initial || 'U'}
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold text-gray-900">{auth.user?.display_name || 'Profile'}</div>
+                        <div className="text-xs text-gray-500 capitalize">{auth.user?.role || ''}</div>
+                      </div>
                     </div>
                   </div>
                 ) : (

@@ -487,6 +487,98 @@ export class Payment {
   ) {}
 }
 
+// Payment Service for handling payment operations
+export class PaymentService {
+  static async createPayment(input: {
+    bookingId: number
+    amount: number
+    paymentMethod: string
+    transactionId?: string
+  }): Promise<{ payment_id: number }> {
+    const pool = getPool()
+    const conn = await pool.getConnection()
+
+    try {
+      await conn.beginTransaction()
+
+      const { bookingId, amount, paymentMethod, transactionId } = input
+
+      // Check if booking exists and doesn't already have a payment
+      const [bookingRows] = (await conn.query(
+        'SELECT booking_id FROM bookings WHERE booking_id = ? LIMIT 1',
+        [bookingId]
+      )) as any
+
+      if (!bookingRows || bookingRows.length === 0) {
+        throw new Error('Booking not found')
+      }
+
+      const [existingPayment] = (await conn.query(
+        'SELECT payment_id FROM payments WHERE booking_id = ? LIMIT 1',
+        [bookingId]
+      )) as any
+
+      if (existingPayment && existingPayment.length > 0) {
+        throw new Error('Payment already exists for this booking')
+      }
+
+      // Create payment
+      const [result] = (await conn.query(
+        `INSERT INTO payments (booking_id, amount, payment_date, payment_method, transaction_id, status)
+         VALUES (?, ?, NOW(), ?, ?, 'completed')`,
+        [bookingId, amount, paymentMethod, transactionId || null]
+      )) as any
+
+      const paymentId = result.insertId as number
+
+      // Update booking status to confirmed
+      await conn.query(
+        'UPDATE bookings SET status = "confirmed" WHERE booking_id = ?',
+        [bookingId]
+      )
+
+      // Get booking details to check if it has a tour
+      const [bookingDetails] = (await conn.query(
+        'SELECT tour_id FROM bookings WHERE booking_id = ? LIMIT 1',
+        [bookingId]
+      )) as any
+
+      // Create custom itinerary from tour default if tour exists
+      if (bookingDetails && bookingDetails.length > 0 && bookingDetails[0].tour_id) {
+        await ItineraryService.createCustomItineraryFromTour(bookingId, bookingDetails[0].tour_id)
+      }
+
+      await conn.commit()
+      return { payment_id: paymentId }
+    } catch (e) {
+      try { await conn.rollback() } catch {}
+      throw e
+    } finally {
+      conn.release()
+    }
+  }
+
+  static async getPaymentByBookingId(bookingId: number): Promise<any | null> {
+    const pool = getPool()
+    const [rows] = (await pool.query(
+      'SELECT * FROM payments WHERE booking_id = ? LIMIT 1',
+      [bookingId]
+    )) as any
+
+    return rows && rows.length > 0 ? rows[0] : null
+  }
+
+  static async getPaymentById(paymentId: number): Promise<any | null> {
+    const pool = getPool()
+    const [rows] = (await pool.query(
+      'SELECT * FROM payments WHERE payment_id = ? LIMIT 1',
+      [paymentId]
+    )) as any
+
+    return rows && rows.length > 0 ? rows[0] : null
+  }
+}
+
 export class Rating {
   constructor(
     public readonly id: number,
@@ -509,4 +601,434 @@ export class Vehicle {
     public capacity?: number | null,
     public dailyRate?: number | null,
   ) {}
+}
+
+export class Tour {
+  constructor(
+    public readonly id: number,
+    public tourGuideId: number | null,
+    public name: string,
+    public description: string | null,
+    public destination: string,
+    public durationDays: number | null,
+    public price: number,
+    public availability: boolean = true
+  ) {}
+}
+
+// Booking Service for handling booking operations
+export class BookingService {
+  static async createBooking(input: {
+    userId: number
+    tourId?: number | null
+    vehicleId?: number | null
+    startDate: string
+    endDate: string
+    totalPrice: number
+    peopleCount: number
+    specialRequests?: string
+  }): Promise<{ booking_id: number }> {
+    const pool = getPool()
+    const conn = await pool.getConnection()
+
+    try {
+      await conn.beginTransaction()
+
+      const { userId, tourId, vehicleId, startDate, endDate, totalPrice } = input
+
+      // Validate dates
+      const start = new Date(startDate)
+      const end = new Date(endDate)
+      if (start >= end) {
+        throw new Error('End date must be after start date')
+      }
+
+      // Check tour availability if tour is specified
+      if (tourId) {
+        const [tourRows] = (await conn.query(
+          'SELECT availability FROM tours WHERE tour_id = ? LIMIT 1',
+          [tourId]
+        )) as any
+        if (!tourRows || tourRows.length === 0 || !tourRows[0].availability) {
+          throw new Error('Tour is not available')
+        }
+      }
+
+      // Check vehicle availability if vehicle is specified
+      if (vehicleId) {
+        const [vehicleRows] = (await conn.query(
+          'SELECT status FROM vehicles WHERE vehicle_id = ? LIMIT 1',
+          [vehicleId]
+        )) as any
+        if (!vehicleRows || vehicleRows.length === 0 || vehicleRows[0].status !== 'available') {
+          throw new Error('Vehicle is not available')
+        }
+      }
+
+      // Create booking
+      const [result] = (await conn.query(
+        `INSERT INTO bookings (user_id, tour_id, vehicle_id, start_date, end_date, total_price, booking_date, status)
+         VALUES (?, ?, ?, ?, ?, ?, NOW(), 'pending')`,
+        [userId, tourId || null, vehicleId || null, startDate, endDate, totalPrice]
+      )) as any
+
+      const bookingId = result.insertId as number
+
+      await conn.commit()
+      return { booking_id: bookingId }
+    } catch (e) {
+      try { await conn.rollback() } catch {}
+      throw e
+    } finally {
+      conn.release()
+    }
+  }
+
+  static async getUserBookings(userId: number): Promise<any[]> {
+    const pool = getPool()
+    const [rows] = (await pool.query(
+      `SELECT
+        b.booking_id,
+        b.tour_id,
+        b.start_date,
+        b.end_date,
+        b.total_price,
+        b.booking_date,
+        b.status,
+        t.name as tour_name,
+        t.destination,
+        t.duration_days,
+        v.make as vehicle_make,
+        v.model as vehicle_model,
+        v.capacity as vehicle_capacity,
+        p.amount as payment_amount,
+        p.status as payment_status,
+        p.payment_method
+      FROM bookings b
+      LEFT JOIN tours t ON b.tour_id = t.tour_id
+      LEFT JOIN vehicles v ON b.vehicle_id = v.vehicle_id
+      LEFT JOIN payments p ON b.booking_id = p.booking_id
+      WHERE b.user_id = ?
+      ORDER BY b.booking_date DESC`,
+      [userId]
+    )) as any
+
+    return rows || []
+  }
+
+  static async getBookingById(bookingId: number, userId?: number): Promise<any | null> {
+    const pool = getPool()
+    let query = `
+      SELECT
+        b.*,
+        t.name as tour_name,
+        t.destination,
+        t.duration_days,
+        t.description as tour_description,
+        v.make as vehicle_make,
+        v.model as vehicle_model,
+        v.capacity as vehicle_capacity,
+        u.first_name,
+        u.last_name,
+        u.email,
+        u.phone_number
+      FROM bookings b
+      LEFT JOIN tours t ON b.tour_id = t.tour_id
+      LEFT JOIN vehicles v ON b.vehicle_id = v.vehicle_id
+      LEFT JOIN users u ON b.user_id = u.user_id
+      WHERE b.booking_id = ?`
+
+    const params = [bookingId]
+
+    if (userId) {
+      query += ' AND b.user_id = ?'
+      params.push(userId)
+    }
+
+    query += ' LIMIT 1'
+
+    const [rows] = (await pool.query(query, params)) as any
+    return rows && rows.length > 0 ? rows[0] : null
+  }
+}
+
+// Tour Service for handling tour operations
+export class TourService {
+  static async getAllTours(): Promise<Tour[]> {
+    const pool = getPool()
+    const [rows] = (await pool.query(
+      'SELECT tour_id, tour_guide_id, name, description, destination, duration_days, price, availability FROM tours WHERE availability = 1'
+    )) as any
+
+    return (rows || []).map((row: any) => new Tour(
+      row.tour_id,
+      row.tour_guide_id,
+      row.name,
+      row.description,
+      row.destination,
+      row.duration_days,
+      row.price,
+      row.availability
+    ))
+  }
+
+  static async getTourById(tourId: number): Promise<Tour | null> {
+    const pool = getPool()
+    const [rows] = (await pool.query(
+      'SELECT tour_id, tour_guide_id, name, description, destination, duration_days, price, availability FROM tours WHERE tour_id = ? LIMIT 1',
+      [tourId]
+    )) as any
+
+    if (!rows || rows.length === 0) return null
+
+    const row = rows[0]
+    return new Tour(
+      row.tour_id,
+      row.tour_guide_id,
+      row.name,
+      row.description,
+      row.destination,
+      row.duration_days,
+      row.price,
+      row.availability
+    )
+  }
+}
+
+// Vehicle Service for handling vehicle operations
+export class VehicleService {
+  static async getAvailableVehicles(): Promise<Vehicle[]> {
+    const pool = getPool()
+    const [rows] = (await pool.query(
+      'SELECT vehicle_id, driver_id, make, model, year, license_plate, capacity, daily_rate FROM vehicles WHERE status = "available"'
+    )) as any
+
+    return (rows || []).map((row: any) => new Vehicle(
+      row.vehicle_id,
+      row.driver_id,
+      row.make,
+      row.model,
+      row.year,
+      row.license_plate,
+      row.capacity,
+      row.daily_rate
+    ))
+  }
+
+  static async getVehicleById(vehicleId: number): Promise<Vehicle | null> {
+    const pool = getPool()
+    const [rows] = (await pool.query(
+      'SELECT vehicle_id, driver_id, make, model, year, license_plate, capacity, daily_rate FROM vehicles WHERE vehicle_id = ? LIMIT 1',
+      [vehicleId]
+    )) as any
+
+    if (!rows || rows.length === 0) return null
+
+    const row = rows[0]
+    return new Vehicle(
+      row.vehicle_id,
+      row.driver_id,
+      row.make,
+      row.model,
+      row.year,
+      row.license_plate,
+      row.capacity,
+      row.daily_rate
+    )
+  }
+}
+
+// Itinerary domain models and services
+export interface TourItinerary {
+  itinerary_id: number
+  tour_id: number
+  day_number: number
+  title: string
+  description: string
+  location?: string
+  overnight_location?: string
+  activities?: string
+  meals_included?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface CustomItinerary {
+  custom_itinerary_id: number
+  booking_id: number
+  day_number: number
+  title: string
+  description: string
+  location?: string
+  overnight_location?: string
+  activities?: string
+  meals_included?: string
+  special_requests?: string
+  is_approved: boolean
+  approved_by?: number
+  approved_at?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface ItineraryRequest {
+  request_id: number
+  booking_id: number
+  customer_id: number
+  request_type: 'modification' | 'addition' | 'removal'
+  day_number?: number
+  requested_changes: string
+  reason?: string
+  status: 'pending' | 'approved' | 'rejected'
+  admin_response?: string
+  processed_by?: number
+  processed_at?: string
+  created_at: string
+}
+
+export class ItineraryService {
+  // Get default tour itinerary
+  static async getTourItinerary(tourId: number): Promise<TourItinerary[]> {
+    const pool = getPool()
+    const [rows] = await pool.execute(
+      'SELECT * FROM itinerary WHERE tour_id = ? ORDER BY day_number ASC',
+      [tourId]
+    )
+
+    return Array.isArray(rows) ? rows as TourItinerary[] : []
+  }
+
+  // Get custom itinerary for a booking
+  static async getCustomItinerary(bookingId: number): Promise<CustomItinerary[]> {
+    const pool = getPool()
+    const [rows] = await pool.execute(
+      'SELECT * FROM custom_itinerary WHERE booking_id = ? ORDER BY day_number ASC',
+      [bookingId]
+    )
+
+    return Array.isArray(rows) ? rows as CustomItinerary[] : []
+  }
+
+  // Create custom itinerary from tour default
+  static async createCustomItineraryFromTour(bookingId: number, tourId: number): Promise<void> {
+    const pool = getPool()
+    const connection = await pool.getConnection()
+
+    try {
+      await connection.beginTransaction()
+
+      // Get tour itinerary
+      const [tourItinerary] = await connection.execute(
+        'SELECT * FROM itinerary WHERE tour_id = ? ORDER BY day_number ASC',
+        [tourId]
+      )
+
+      if (Array.isArray(tourItinerary) && tourItinerary.length > 0) {
+        // Copy each day to custom itinerary
+        for (const day of tourItinerary) {
+          await connection.execute(
+            `INSERT INTO custom_itinerary
+             (booking_id, day_number, title, description, location, overnight_location, activities, meals_included, is_approved)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+            [
+              bookingId,
+              (day as any).day_number,
+              (day as any).title,
+              (day as any).description,
+              (day as any).location,
+              (day as any).overnight_location,
+              (day as any).activities,
+              (day as any).meals_included
+            ]
+          )
+        }
+      }
+
+      await connection.commit()
+    } catch (error) {
+      await connection.rollback()
+      throw error
+    } finally {
+      connection.release()
+    }
+  }
+
+  // Submit itinerary modification request
+  static async submitItineraryRequest(
+    bookingId: number,
+    customerId: number,
+    requestType: 'modification' | 'addition' | 'removal',
+    requestedChanges: string,
+    dayNumber?: number,
+    reason?: string
+  ): Promise<number> {
+    const pool = getPool()
+    const [result] = await pool.execute(
+      `INSERT INTO itinerary_requests
+       (booking_id, customer_id, request_type, day_number, requested_changes, reason, status)
+       VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
+      [bookingId, customerId, requestType, dayNumber, requestedChanges, reason]
+    )
+
+    return (result as any).insertId
+  }
+
+  // Get itinerary requests for a booking
+  static async getItineraryRequests(bookingId: number): Promise<ItineraryRequest[]> {
+    const pool = getPool()
+    const [rows] = await pool.execute(
+      'SELECT * FROM itinerary_requests WHERE booking_id = ? ORDER BY created_at DESC',
+      [bookingId]
+    )
+
+    return Array.isArray(rows) ? rows as ItineraryRequest[] : []
+  }
+
+  // Update custom itinerary day
+  static async updateCustomItineraryDay(
+    customItineraryId: number,
+    updates: Partial<CustomItinerary>
+  ): Promise<void> {
+    const pool = getPool()
+
+    const fields = []
+    const values = []
+
+    if (updates.title) {
+      fields.push('title = ?')
+      values.push(updates.title)
+    }
+    if (updates.description) {
+      fields.push('description = ?')
+      values.push(updates.description)
+    }
+    if (updates.location) {
+      fields.push('location = ?')
+      values.push(updates.location)
+    }
+    if (updates.overnight_location) {
+      fields.push('overnight_location = ?')
+      values.push(updates.overnight_location)
+    }
+    if (updates.activities) {
+      fields.push('activities = ?')
+      values.push(updates.activities)
+    }
+    if (updates.meals_included) {
+      fields.push('meals_included = ?')
+      values.push(updates.meals_included)
+    }
+    if (updates.special_requests) {
+      fields.push('special_requests = ?')
+      values.push(updates.special_requests)
+    }
+
+    if (fields.length > 0) {
+      values.push(customItineraryId)
+      await pool.execute(
+        `UPDATE custom_itinerary SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE custom_itinerary_id = ?`,
+        values
+      )
+    }
+  }
 }
