@@ -20,6 +20,13 @@ type Booking = {
   vehicle_make: string
   vehicle_model: string
   vehicle_capacity: number
+  number_of_people?: number
+  special_requests?: string
+  tour_guide_first_name?: string | null
+  tour_guide_last_name?: string | null
+  driver_first_name?: string | null
+  driver_last_name?: string | null
+  payment_status?: string | null
 }
 
 type TourGuide = {
@@ -79,6 +86,13 @@ export default function EmployeeDashboard() {
       ])
     } catch (error) {
       console.error('Error fetching data:', error)
+      // If any of the endpoints returned 403 (HR-only), show access denied and redirect
+      if ((error as any)?.status === 403) {
+        setError('Access denied: HR role required to view this dashboard')
+        // Redirect after short delay
+        setTimeout(() => { window.location.href = '/' }, 2500)
+        return
+      }
       setError('Failed to load dashboard data')
     } finally {
       setLoading(false)
@@ -132,8 +146,8 @@ export default function EmployeeDashboard() {
     setEditDate(booking.start_date)
     setEditTime('08:00') // Default time since we don't store time separately
     setEditLocation(booking.destination)
-    setEditNumberOfPeople(booking.number_of_people)
-    setEditSpecialRequests(booking.special_requests || '')
+    setEditNumberOfPeople(booking.number_of_people ?? 1)
+    setEditSpecialRequests(booking.special_requests ?? '')
     setShowEditModal(true)
   }
 
@@ -378,11 +392,11 @@ export default function EmployeeDashboard() {
                       </div>
                       <div className="flex items-center space-x-2">
                         <span>🎯</span>
-                        <span>Tour Guide: {getFullName(booking.tour_guide_first_name, booking.tour_guide_last_name)}</span>
+                          <span>Tour Guide: {getFullName(booking.tour_guide_first_name ?? null, booking.tour_guide_last_name ?? null)}</span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <span>🚗</span>
-                        <span>Driver: {getFullName(booking.driver_first_name, booking.driver_last_name)}</span>
+                        <span>Driver: {getFullName(booking.driver_first_name ?? null, booking.driver_last_name ?? null)}</span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <span>💰</span>
@@ -753,7 +767,7 @@ export default function EmployeeDashboard() {
 
             <div className="p-6">
               <p className="text-sm text-gray-600 mb-4">
-                Select a tour guide for <strong>{selectedBooking.tourName}</strong>
+                Select a tour guide for <strong>{selectedBooking.tour_name}</strong>
               </p>
               <div className="space-y-3">
                 {tourGuides

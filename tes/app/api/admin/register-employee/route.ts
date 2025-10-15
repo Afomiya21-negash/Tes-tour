@@ -45,19 +45,22 @@ export async function POST(req: NextRequest) {
       email,
       phoneNo,
       address,
-      role, // 'driver' | 'tourguide'
+      role, // 'driver' | 'tourguide' | 'employee'
       // driver-specific
       licenseNo,
       vehicleType,
       // tourguide-specific
       experience,
       specialization,
+      // employee-specific
+      position,
+      department,
     } = body || {}
 
     if (!name || !email || !role) {
       return NextResponse.json({ message: 'Missing required fields' }, { status: 400 })
     }
-    if (role !== 'driver' && role !== 'tourguide') {
+    if (role !== 'driver' && role !== 'tourguide' && role !== 'employee') {
       return NextResponse.json({ message: 'Invalid role' }, { status: 400 })
     }
 
@@ -71,11 +74,15 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ message: 'Tour guide experience (years) must be a number' }, { status: 400 })
       }
     }
+    if (role === 'employee') {
+      if (!position) return NextResponse.json({ message: 'Position is required for employees' }, { status: 400 })
+      if (!department) return NextResponse.json({ message: 'Department is required for employees' }, { status: 400 })
+    }
 
     const username = genUsername(name, email)
     const tempPassword = genTempPassword()
 
-    let created: { user_id: number; role: 'driver' | 'tourguide' }
+    let created: { user_id: number; role: string }
 
     if (role === 'driver') {
       created = (await Admin.registerEmployee(adminUserId, {
@@ -90,7 +97,7 @@ export async function POST(req: NextRequest) {
         vehicleType: vehicleType ?? null,
         picture: null,
       } as any)) as any
-    } else {
+    } else if (role === 'tourguide') {
       created = (await Admin.registerEmployee(adminUserId, {
         role: 'tourguide',
         username,
@@ -102,6 +109,19 @@ export async function POST(req: NextRequest) {
         licenseNo,
         experience: Number(experience),
         specialization: specialization ?? null,
+      } as any)) as any
+    } else {
+      // employee
+      created = (await Admin.registerEmployee(adminUserId, {
+        role: 'employee',
+        username,
+        password: tempPassword,
+        email,
+        name,
+        phoneNo: phoneNo ?? null,
+        address: address ?? null,
+        position: position ?? 'Employee',
+        department: department ?? 'General',
       } as any)) as any
     }
 

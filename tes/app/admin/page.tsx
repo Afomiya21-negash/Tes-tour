@@ -44,6 +44,8 @@ export default function AdminDashboard() {
   const [experience, setExperience] = useState<number | "">("")
   const [vehicleType, setVehicleType] = useState("")
   const [specialization, setSpecialization] = useState("")
+  const [position, setPosition] = useState("")
+  const [department, setDepartment] = useState("")
 
   // Mock data
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -142,6 +144,16 @@ export default function AdminDashboard() {
         alert("Experience (years) is required for tour guides")
         return
       }
+    } else if (employeeRole === "employee") {
+      // For general employees, require position and department
+      if (!position) {
+        alert('Please select a position for the employee')
+        return
+      }
+      if (!department) {
+        alert('Please enter a department for the employee')
+        return
+      }
     }
     // Employee role doesn't require additional validation
 
@@ -155,6 +167,8 @@ export default function AdminDashboard() {
           email: employeeEmail,
           phoneNo: employeePhone,
           role: employeeRole,
+          position: employeeRole === 'employee' ? position : (employeeRole === 'tourguide' ? 'Tour Guide' : (employeeRole === 'driver' ? 'Driver' : undefined)),
+          department: employeeRole === 'employee' ? department : undefined,
           licenseNo: employeeRole !== "employee" ? licenseNo : undefined,
           vehicleType: employeeRole === "driver" ? vehicleType || null : undefined,
           experience: employeeRole === "tourguide" ? Number(experience) : undefined,
@@ -202,6 +216,8 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
       setExperience("")
       setVehicleType("")
       setSpecialization("")
+  setPosition("")
+  setDepartment("")
       setShowRegisterModal(false)
       alert(credentialsMessage)
     } catch (e: any) {
@@ -636,6 +652,32 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
                   <option value="employee">Employee</option>
                 </select>
               </div>
+
+              {employeeRole === 'employee' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Position</label>
+                    <input
+                      type="text"
+                      value={position}
+                      onChange={(e) => setPosition(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder="e.g. HR, Finance, Operations"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
+                    <input
+                      type="text"
+                      value={department}
+                      onChange={(e) => setDepartment(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder="e.g. Human Resources"
+                    />
+                  </div>
+                </>
+              )}
 
               {(employeeRole === "tourguide" || employeeRole === "driver") && (
                 <div>

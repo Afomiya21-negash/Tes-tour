@@ -407,7 +407,19 @@ export class Admin {
         }
       }
 
-      return { user_id: userId, role: input.role }
+      // determine position for response
+      let respPosition: string | null = null
+      if (input.role === 'employee') {
+        respPosition = (input as AdminRegisterEmployee).position || 'Employee'
+      } else if (input.role === 'tourguide') {
+        respPosition = 'Tour Guide'
+      } else if (input.role === 'driver') {
+        respPosition = 'Driver'
+      } else if (input.role === 'admin') {
+        respPosition = 'Admin'
+      }
+
+      return { user_id: userId, role: input.role, position: respPosition }
     } catch (e) {
       try { await (conn as any).rollback() } catch {}
       throw e
@@ -422,7 +434,34 @@ export class Employee {
   static async login(emailOrUsername: string, password: string) {
     const res = await AuthService.login(emailOrUsername, password)
     if (!res || res.role !== 'employee') return null
-    return res
+
+    // Fetch employee details (position, department) to allow role-based UI/server checks
+    try {
+      const pool = getPool()
+      const [rows] = (await pool.query('SELECT employee_id, position, department FROM employees WHERE employee_id = ? LIMIT 1', [res.userID])) as any
+      const emp = rows && rows.length > 0 ? rows[0] : null
+      return {
+        ...res,
+        position: emp ? emp.position : null,
+        department: emp ? emp.department : null,
+      }
+    } catch (e) {
+      // If employee row not found or DB error, still return basic auth result
+      return res
+    }
+  }
+
+  static async isHR(userID: number): Promise<boolean> {
+    try {
+      const pool = getPool()
+      const [rows] = (await pool.query('SELECT position FROM employees WHERE employee_id = ? LIMIT 1', [userID])) as any
+      if (!rows || rows.length === 0) return false
+      const pos = (rows[0].position || '').toLowerCase()
+      const hrTitles = ['hr', 'human resources', 'hr manager', 'hr officer', 'hr specialist']
+      return hrTitles.includes(pos)
+    } catch (e) {
+      return false
+    }
   }
 }
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyJwt } from '@/lib/auth'
+import { Employee } from '@/lib/domain'
 import { getPool } from '@/lib/db'
 
 // GET /api/employee/bookings - Get all bookings for employee dashboard
@@ -20,6 +21,12 @@ export async function GET(request: NextRequest) {
         { error: 'Employee access required' },
         { status: 403 }
       )
+    }
+
+    // Require HR position for access to employee dashboard
+    const isHr = await Employee.isHR(Number(decoded.user_id))
+    if (!isHr) {
+      return NextResponse.json({ error: 'HR access required' }, { status: 403 })
     }
     
     const pool = getPool()
