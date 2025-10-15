@@ -1,37 +1,57 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { MapPin, Calendar, Users, Star, LogOut, User, Clock, Navigation } from "lucide-react"
 
 type Tour = {
-  id: number
-  tourName: string
-  customerName: string
-  date: string
-  time: string
-  location: string
-  status: "upcoming" | "in-progress" | "completed"
-  customerPhone: string
-  customerEmail: string
+  booking_id: number
+  tour_name: string
+  customer_first_name: string
+  customer_last_name: string
+  customer_email: string
+  customer_phone: string
+  start_date: string
+  end_date: string
+  destination: string
+  status: string
+  number_of_people: number
+  special_requests: string
+  vehicle_make: string
+  vehicle_model: string
+  driver_first_name: string
+  driver_last_name: string
+  driver_phone: string
 }
 
 type CustomerItinerary = {
-  id: number
-  customerName: string
-  tourName: string
-  date: string
-  destinations: string[]
-  specialRequests: string
-  numberOfPeople: number
+  custom_itinerary_id: number
+  booking_id: number
+  customer_first_name: string
+  customer_last_name: string
+  customer_email: string
+  tour_name: string
+  destination: string
+  start_date: string
+  end_date: string
+  number_of_people: number
+  special_requests: string
+  itinerary_data: any
+  created_at: string
+  updated_at: string
 }
 
 type Review = {
-  id: number
-  customerName: string
-  tourName: string
+  rating_id: number
+  customer_first_name: string
+  customer_last_name: string
+  customer_email: string
+  tour_name: string
+  destination: string
   rating: number
   comment: string
-  date: string
+  created_at: string
+  start_date: string
+  end_date: string
 }
 
 export default function TourGuideDashboard() {
@@ -43,90 +63,106 @@ export default function TourGuideDashboard() {
     lastUpdated: new Date().toLocaleTimeString(),
   })
 
-  // Mock data
-  const [tours] = useState<Tour[]>([
-    {
-      id: 1,
-      tourName: "Historical Lalibela Tour",
-      customerName: "yared negasi",
-      date: "2024-10-15",
-      time: "08:00 AM",
-      location: "Lalibela",
-      status: "upcoming",
-      customerPhone: "+251-911-456789",
-      customerEmail: "yaya@gmail.com",
-    },
-    {
-      id: 2,
-      tourName: "Simien Mountains Trek",
-      customerName: "Saba Negusse",
-      date: "2024-10-12",
-      time: "06:00 AM",
-      location: "Simien Mountains",
-      status: "in-progress",
-      customerPhone: "+251-911-567890",
-      customerEmail: "sabi@gmail.com",
-    },
-    {
-      id: 3,
-      tourName: "Addis City Tour",
-      customerName: "Belen Abebe ",
-      date: "2024-10-10",
-      time: "10:00 AM",
-      location: "Addis Ababa",
-      status: "completed",
-      customerPhone: "+251-911-678901",
-      customerEmail: "blu@gmail.com",
-    },
-  ])
+  // State for real data
+  const [tours, setTours] = useState<Tour[]>([])
+  const [itineraries, setItineraries] = useState<CustomerItinerary[]>([])
+  const [reviews, setReviews] = useState<Review[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const [itineraries] = useState<CustomerItinerary[]>([
-    {
-      id: 1,
-      customerName: "Afomiya Mesfin",
-      tourName: "Historical Lalibela Tour",
-      date: "2024-10-15",
-      destinations: ["Rock-Hewn Churches", "Lalibela Museum", "Local Market"],
-      specialRequests: "Vegetarian meals, early morning start",
-      numberOfPeople: 2,
-    },
-    {
-      id: 2,
-      customerName: "Mariam Negusse",
-      tourName: "Simien Mountains Trek",
-      date: "2024-10-12",
-      destinations: ["Sankaber Camp", "Geech Camp", "Imet Gogo Viewpoint"],
-      specialRequests: "Need extra water bottles, interested in wildlife photography",
-      numberOfPeople: 4,
-    },
-  ])
+  // Fetch data on component mount
+  useEffect(() => {
+    fetchAllData()
+  }, [])
 
-  const [reviews] = useState<Review[]>([
-    {
-      id: 1,
-      customerName: "Nardos",
-      tourName: "Addis City Tour",
-      rating: 5,
-      comment: "Excellent guide! Very knowledgeable about Ethiopian history and culture.",
-      date: "2024-10-10",
-    },
-    {
-      id: 2,
-      customerName: "yosef Zenaw",
-      tourName: "Axum Heritage Tour",
-      rating: 5,
-      comment: "Amazing experience! The guide made the ancient sites come alive with stories.",
-      date: "2024-10-05",
-    },
-    {
-      id: 3,
-      customerName: "Josephine Zenaw",
-      tourName: "Coffee Ceremony Experience",
-      rating: 4,
-      comment: "Very informative and friendly. Would recommend!",
-      date: "2024-09-28",
-    },
-  ])
+  const fetchAllData = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      await Promise.all([
+        fetchTours(),
+        fetchItineraries(),
+        fetchReviews()
+      ])
+    } catch (err) {
+      console.error('Error fetching data:', err)
+      setError('Failed to load dashboard data')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchTours = async () => {
+    try {
+      const response = await fetch('/api/tourguide/tours', { credentials: 'include' })
+      if (response.ok) {
+        const data = await response.json()
+        setTours(data)
+      }
+    } catch (err) {
+      console.error('Error fetching tours:', err)
+    }
+  }
+
+  const fetchItineraries = async () => {
+    try {
+      const response = await fetch('/api/tourguide/itineraries', { credentials: 'include' })
+      if (response.ok) {
+        const data = await response.json()
+        setItineraries(data)
+      }
+    } catch (err) {
+      console.error('Error fetching itineraries:', err)
+    }
+  }
+
+  const fetchReviews = async () => {
+    try {
+      const response = await fetch('/api/tourguide/reviews', { credentials: 'include' })
+      if (response.ok) {
+        const data = await response.json()
+        setReviews(data)
+      }
+    } catch (err) {
+      console.error('Error fetching reviews:', err)
+    }
+  }
+
+  // Helper functions
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
+  }
+
+  const getFullName = (firstName: string | null, lastName: string | null) => {
+    if (!firstName && !lastName) return 'Unknown'
+    return `${firstName || ''} ${lastName || ''}`.trim()
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'upcoming':
+      case 'confirmed':
+        return 'bg-blue-100 text-blue-800'
+      case 'in-progress':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'completed':
+        return 'bg-green-100 text-green-800'
+      case 'cancelled':
+        return 'bg-red-100 text-red-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const getStatusText = (status: string) => {
+    return status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ')
+  }
+
+
 
   const handleUpdateLocation = () => {
     if (navigator.geolocation) {
@@ -153,29 +189,9 @@ export default function TourGuideDashboard() {
     }
   }
 
-  const getStatusColor = (status: Tour["status"]) => {
-    switch (status) {
-      case "upcoming":
-        return "bg-blue-100 text-blue-800"
-      case "in-progress":
-        return "bg-green-100 text-green-800"
-      case "completed":
-        return "bg-gray-100 text-gray-800"
-    }
-  }
 
-  const getStatusText = (status: Tour["status"]) => {
-    switch (status) {
-      case "upcoming":
-        return "Upcoming"
-      case "in-progress":
-        return "In Progress"
-      case "completed":
-        return "Completed"
-    }
-  }
 
-  const averageRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+  const averageRating = reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 0
 
   return (
     <div className="min-h-screen bg-white">
@@ -276,44 +292,80 @@ export default function TourGuideDashboard() {
         {activeTab === "tours" && (
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-6">My Tours</h2>
-            <div className="space-y-4">
-              {tours.map((tour) => (
-                <div
-                  key={`tour-${tour.id}`}
-                  className="bg-white border-2 border-green-200 rounded-lg p-6 hover:shadow-lg transition-shadow"
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-xl font-semibold text-gray-900">{tour.tourName}</h3>
-                      <p className="text-gray-600">Customer: {tour.customerName}</p>
-                    </div>
-                    <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(tour.status)}`}>
-                      {getStatusText(tour.status)}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-                    <div className="flex items-center space-x-2">
-                      <Calendar className="w-4 h-4 text-green-600" />
-                      <span>
-                        {tour.date} at {tour.time}
+            {loading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+                <p className="mt-2 text-gray-600">Loading tours...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-8 text-red-600">
+                <p>{error}</p>
+              </div>
+            ) : tours.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Calendar className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                <p>No tours assigned yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {tours.map((tour) => (
+                  <div
+                    key={`tour-${tour.booking_id}`}
+                    className="bg-white border-2 border-green-200 rounded-lg p-6 hover:shadow-lg transition-shadow"
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="text-xl font-semibold text-gray-900">{tour.tour_name || 'Custom Tour'}</h3>
+                        <p className="text-gray-600">Customer: {getFullName(tour.customer_first_name, tour.customer_last_name)}</p>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(tour.status)}`}>
+                        {getStatusText(tour.status)}
                       </span>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <MapPin className="w-4 h-4 text-green-600" />
-                      <span>{tour.location}</span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600 mb-4">
+                      <div className="flex items-center space-x-2">
+                        <Calendar className="w-4 h-4 text-green-600" />
+                        <span>{formatDate(tour.start_date)} - {formatDate(tour.end_date)}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <MapPin className="w-4 h-4 text-green-600" />
+                        <span>{tour.destination}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Users className="w-4 h-4 text-green-600" />
+                        <span>{tour.number_of_people} people</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span>📱</span>
+                        <span>{tour.customer_phone}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span>📧</span>
+                        <span>{tour.customer_email}</span>
+                      </div>
+                      {tour.vehicle_make && (
+                        <div className="flex items-center space-x-2">
+                          <span>🚗</span>
+                          <span>{tour.vehicle_make} {tour.vehicle_model}</span>
+                        </div>
+                      )}
+                      {tour.driver_first_name && (
+                        <div className="flex items-center space-x-2">
+                          <span>👨‍✈️</span>
+                          <span>Driver: {getFullName(tour.driver_first_name, tour.driver_last_name)} ({tour.driver_phone})</span>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <span>📱</span>
-                      <span>{tour.customerPhone}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <span>📧</span>
-                      <span>{tour.customerEmail}</span>
-                    </div>
+                    {tour.special_requests && (
+                      <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                        <p className="text-sm font-medium text-yellow-800 mb-1">Special Requests:</p>
+                        <p className="text-sm text-yellow-700">{tour.special_requests}</p>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

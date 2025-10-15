@@ -622,6 +622,7 @@ export class BookingService {
     userId: number
     tourId?: number | null
     vehicleId?: number | null
+    driverId?: number | null
     startDate: string
     endDate: string
     totalPrice: number
@@ -634,7 +635,7 @@ export class BookingService {
     try {
       await conn.beginTransaction()
 
-      const { userId, tourId, vehicleId, startDate, endDate, totalPrice } = input
+      const { userId, tourId, vehicleId, driverId, startDate, endDate, totalPrice, peopleCount, specialRequests } = input
 
       // Validate dates
       const start = new Date(startDate)
@@ -665,11 +666,24 @@ export class BookingService {
         }
       }
 
+      // Check driver availability if driver is specified
+      if (driverId) {
+        const [driverRows] = (await conn.query(
+          `SELECT COUNT(*) as active_bookings FROM bookings
+           WHERE driver_id = ? AND status IN ('confirmed', 'in-progress')
+           AND ((start_date <= ? AND end_date >= ?) OR (start_date <= ? AND end_date >= ?))`,
+          [driverId, startDate, startDate, endDate, endDate]
+        )) as any
+        if (driverRows && driverRows[0] && driverRows[0].active_bookings > 0) {
+          throw new Error('Driver is not available for the selected dates')
+        }
+      }
+
       // Create booking
       const [result] = (await conn.query(
-        `INSERT INTO bookings (user_id, tour_id, vehicle_id, start_date, end_date, total_price, booking_date, status)
-         VALUES (?, ?, ?, ?, ?, ?, NOW(), 'pending')`,
-        [userId, tourId || null, vehicleId || null, startDate, endDate, totalPrice]
+        `INSERT INTO bookings (user_id, tour_id, vehicle_id, driver_id, start_date, end_date, total_price, number_of_people, special_requests, booking_date, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'pending')`,
+        [userId, tourId || null, vehicleId || null, driverId || null, startDate, endDate, totalPrice, peopleCount || 1, specialRequests || '']
       )) as any
 
       const bookingId = result.insertId as number
@@ -891,7 +905,7 @@ export class ItineraryService {
   static async getTourItinerary(tourId: number): Promise<TourItinerary[]> {
     const pool = getPool()
     const [rows] = await pool.execute(
-      'SELECT * FROM itinerary WHERE tour_id = ? ORDER BY day_number ASC',
+      'SELECT * FROM itinerary WHERE tour_id = ? ORDER BY itinerary_id ASC',
       [tourId]
     )
 
@@ -902,7 +916,7 @@ export class ItineraryService {
   static async getCustomItinerary(bookingId: number): Promise<CustomItinerary[]> {
     const pool = getPool()
     const [rows] = await pool.execute(
-      'SELECT * FROM custom_itinerary WHERE booking_id = ? ORDER BY day_number ASC',
+      'SELECT * FROM custom_itinerary WHERE booking_id = ? ORDER BY custom_itinerary_id ASC',
       [bookingId]
     )
 
@@ -919,29 +933,27 @@ export class ItineraryService {
 
       // Get tour itinerary
       const [tourItinerary] = await connection.execute(
-        'SELECT * FROM itinerary WHERE tour_id = ? ORDER BY day_number ASC',
+        'SELECT * FROM itinerary WHERE tour_id = ? ORDER BY itinerary_id ASC',
         [tourId]
       )
 
       if (Array.isArray(tourItinerary) && tourItinerary.length > 0) {
         // Copy each day to custom itinerary
-        for (const day of tourItinerary) {
-          await connection.execute(
-            `INSERT INTO custom_itinerary
-             (booking_id, day_number, title, description, location, overnight_location, activities, meals_included, is_approved)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`,
-            [
-              bookingId,
-              (day as any).day_number,
-              (day as any).title,
-              (day as any).description,
-              (day as any).location,
-              (day as any).overnight_location,
-              (day as any).activities,
-              (day as any).meals_included
-            ]
-          )
+        // Create a simple custom itinerary based on tour data
+        const itineraryData = {
+          days: tourItinerary.map((day: any, index: number) => ({
+            day: index + 1,
+            title: day.title || `Day ${index + 1}`,
+            description: day.description || 'Tour activities',
+            location: day.location || 'Various locations'
+          }))
         }
+
+        await connection.execute(
+          `INSERT INTO custom_itinerary (booking_id, itinerary_data, created_at, updated_at)
+           VALUES (?, ?, NOW(), NOW())`,
+          [bookingId, JSON.stringify(itineraryData)]
+        )
       }
 
       await connection.commit()
@@ -959,15 +971,14 @@ export class ItineraryService {
     customerId: number,
     requestType: 'modification' | 'addition' | 'removal',
     requestedChanges: string,
-    dayNumber?: number,
     reason?: string
   ): Promise<number> {
     const pool = getPool()
     const [result] = await pool.execute(
       `INSERT INTO itinerary_requests
-       (booking_id, customer_id, request_type, day_number, requested_changes, reason, status)
-       VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
-      [bookingId, customerId, requestType, dayNumber, requestedChanges, reason]
+       (booking_id, customer_id, request_type, requested_changes, reason, status)
+       VALUES (?, ?, ?, ?, ?, 'pending')`,
+      [bookingId, customerId, requestType, requestedChanges, reason]
     )
 
     return (result as any).insertId

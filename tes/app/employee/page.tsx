@@ -1,39 +1,47 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Star, UserPlus, BarChart3, Calendar, LogOut, Briefcase, Edit, X, Check } from "lucide-react"
 
 type Booking = {
-  id: number
-  customerName: string
-  tourName: string
-  date: string
-  time: string
-  location: string
-  numberOfPeople: number
-  assignedTourGuide: string | null
-  status: "pending" | "confirmed" | "in-progress" | "completed"
-  specialRequests: string
+  booking_id: number
+  customer_first_name: string
+  customer_last_name: string
+  customer_email: string
+  customer_phone: string
+  tour_name: string
+  start_date: string
+  end_date: string
+  total_price: number
+  booking_date: string
+  status: string
+  destination: string
+  duration_days: number
+  vehicle_make: string
+  vehicle_model: string
+  vehicle_capacity: number
 }
 
 type TourGuide = {
-  id: number
-  name: string
+  user_id: number
+  first_name: string
+  last_name: string
   email: string
   phone: string
-  averageRating: number
-  totalTours: number
+  average_rating: number
+  total_tours: number
   availability: "available" | "busy"
 }
 
 type Rating = {
-  id: number
-  employeeName: string
-  employeeRole: "tourguide" | "driver"
-  customerName: string
+  rating_id: number
+  employee_name: string
+  rating_type: "tourguide" | "driver"
+  customer_name: string
   rating: number
   comment: string
-  date: string
+  created_at: string
+  tour_name: string
 }
 
 export default function EmployeeDashboard() {
@@ -41,6 +49,13 @@ export default function EmployeeDashboard() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string>('')
+
+  // Data states
+  const [bookings, setBookings] = useState<Booking[]>([])
+  const [tourGuides, setTourGuides] = useState<TourGuide[]>([])
+  const [ratings, setRatings] = useState<Rating[]>([])
 
   // Edit form states
   const [editDate, setEditDate] = useState("")
@@ -49,145 +64,105 @@ export default function EmployeeDashboard() {
   const [editNumberOfPeople, setEditNumberOfPeople] = useState(0)
   const [editSpecialRequests, setEditSpecialRequests] = useState("")
 
-  // Mock data
-  const [bookings, setBookings] = useState<Booking[]>([
-    {
-      id: 1,
-      customerName: "Afomiya Mesfin",
-      tourName: "Historical Lalibela Tour",
-      date: "2024-10-15",
-      time: "08:00 AM",
-      location: "Lalibela",
-      numberOfPeople: 2,
-      assignedTourGuide: "Yedidiya Birhanu",
-      status: "confirmed",
-      specialRequests: "Vegetarian meals, early morning start",
-    },
-    {
-      id: 2,
-      customerName: "Bele Abebe",
-      tourName: "Simien Mountains Trek",
-      date: "2024-10-20",
-      time: "06:00 AM",
-      location: "Simien Mountains",
-      numberOfPeople: 4,
-      assignedTourGuide: null,
-      status: "pending",
-      specialRequests: "Need extra water bottles",
-    },
-    {
-      id: 3,
-      customerName: "Arsema Teferi",
-      tourName: "Addis City Tour",
-      date: "2024-10-18",
-      time: "10:00 AM",
-      location: "Addis Ababa",
-      numberOfPeople: 3,
-      assignedTourGuide: "Saba Negusse",
-      status: "confirmed",
-      specialRequests: "Interested in museums",
-    },
-  ])
+  // Fetch data on component mount
+  useEffect(() => {
+    fetchAllData()
+  }, [])
 
-  const [tourGuides] = useState<TourGuide[]>([
-    {
-      id: 1,
-      name: "Yedidiya Birhanu",
-      email: "yesih@gmail.com",
-      phone: "+251-911-234567",
-      averageRating: 4.8,
-      totalTours: 45,
-      availability: "busy",
-    },
-    {
-      id: 2,
-      name: "Saba Negusse",
-      email: "saba@gmail.com",
-      phone: "+251-911-345678",
-      averageRating: 4.9,
-      totalTours: 38,
-      availability: "available",
-    },
-    {
-      id: 3,
-      name: "Yared Negassi",
-      email: "yaya@gmail.com",
-      phone: "+251-911-456789",
-      averageRating: 4.7,
-      totalTours: 32,
-      availability: "available",
-    },
-  ])
+  const fetchAllData = async () => {
+    setLoading(true)
+    try {
+      await Promise.all([
+        fetchBookings(),
+        fetchTourGuides(),
+        fetchRatings()
+      ])
+    } catch (error) {
+      console.error('Error fetching data:', error)
+      setError('Failed to load dashboard data')
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  const [ratings] = useState<Rating[]>([
-    {
-      id: 1,
-      employeeName: "Yedidiya Birhanu",
-      employeeRole: "tourguide",
-      customerName: "Afomiya Mesfin",
-      rating: 5,
-      comment: "Excellent tour guide! Very knowledgeable and friendly.",
-      date: "2024-03-10",
-    },
-    {
-      id: 2,
-      employeeName: "Mariam negusse",
-      employeeRole: "driver",
-      customerName: "Belen Abebe",
-      rating: 4,
-      comment: "Safe driver, arrived on time.",
-      date: "2024-03-20",
-    },
-    {
-      id: 3,
-      employeeName: "Saba Negusse",
-      employeeRole: "tourguide",
-      customerName: "Arsema Teferi",
-      rating: 5,
-      comment: "Amazing experience! Highly recommend.",
-      date: "2024-04-05",
-    },
-    {
-      id: 4,
-      employeeName: "Sebel bini",
-      employeeRole: "driver",
-      customerName: "Afomiya Mesfin",
-      rating: 5,
-      comment: "Very professional and courteous driver.",
-      date: "2024-04-08",
-    },
-  ])
+  const fetchBookings = async () => {
+    try {
+      const response = await fetch('/api/employee/bookings', {
+        credentials: 'include'
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setBookings(data)
+      }
+    } catch (error) {
+      console.error('Error fetching bookings:', error)
+    }
+  }
+
+  const fetchTourGuides = async () => {
+    try {
+      const response = await fetch('/api/employee/tourguides', {
+        credentials: 'include'
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setTourGuides(data)
+      }
+    } catch (error) {
+      console.error('Error fetching tour guides:', error)
+    }
+  }
+
+  const fetchRatings = async () => {
+    try {
+      const response = await fetch('/api/employee/ratings', {
+        credentials: 'include'
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setRatings(data)
+      }
+    } catch (error) {
+      console.error('Error fetching ratings:', error)
+    }
+  }
 
   const handleEditBooking = (booking: Booking) => {
     setSelectedBooking(booking)
-    setEditDate(booking.date)
-    setEditTime(booking.time)
-    setEditLocation(booking.location)
-    setEditNumberOfPeople(booking.numberOfPeople)
-    setEditSpecialRequests(booking.specialRequests)
+    setEditDate(booking.start_date)
+    setEditTime('08:00') // Default time since we don't store time separately
+    setEditLocation(booking.destination)
+    setEditNumberOfPeople(booking.number_of_people)
+    setEditSpecialRequests(booking.special_requests || '')
     setShowEditModal(true)
   }
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!selectedBooking) return
 
-    const updatedBookings = bookings.map((booking) =>
-      booking.id === selectedBooking.id
-        ? {
-            ...booking,
-            date: editDate,
-            time: editTime,
-            location: editLocation,
-            numberOfPeople: editNumberOfPeople,
-            specialRequests: editSpecialRequests,
-          }
-        : booking,
-    )
+    try {
+      // Here you would typically make an API call to update the booking
+      // For now, we'll just update the local state
+      const updatedBookings = bookings.map((booking) =>
+        booking.booking_id === selectedBooking.booking_id
+          ? {
+              ...booking,
+              start_date: editDate,
+              destination: editLocation,
+              number_of_people: editNumberOfPeople,
+              special_requests: editSpecialRequests,
+            }
+          : booking,
+      )
 
-    setBookings(updatedBookings)
-    setShowEditModal(false)
-    setSelectedBooking(null)
-    alert("Booking updated successfully!")
+      setBookings(updatedBookings)
+      setShowEditModal(false)
+      setSelectedBooking(null)
+      alert("Booking updated successfully!")
+    } catch (error) {
+      console.error('Error updating booking:', error)
+      alert("Failed to update booking")
+    }
   }
 
   const handleAssignTourGuide = (booking: Booking) => {
@@ -195,23 +170,31 @@ export default function EmployeeDashboard() {
     setShowAssignModal(true)
   }
 
-  const handleConfirmAssignment = (tourGuideName: string) => {
+  const handleConfirmAssignment = async (tourGuideId: number, tourGuideName: string) => {
     if (!selectedBooking) return
 
-    const updatedBookings = bookings.map((booking) =>
-      booking.id === selectedBooking.id
-        ? {
-            ...booking,
-            assignedTourGuide: tourGuideName,
-            status: "confirmed" as const,
-          }
-        : booking,
-    )
+    try {
+      // Here you would typically make an API call to assign the tour guide
+      // For now, we'll just update the local state
+      const updatedBookings = bookings.map((booking) =>
+        booking.booking_id === selectedBooking.booking_id
+          ? {
+              ...booking,
+              tour_guide_first_name: tourGuideName.split(' ')[0],
+              tour_guide_last_name: tourGuideName.split(' ')[1] || '',
+              status: "confirmed" as const,
+            }
+          : booking,
+      )
 
-    setBookings(updatedBookings)
-    setShowAssignModal(false)
-    setSelectedBooking(null)
-    alert(`Tour guide ${tourGuideName} assigned successfully!`)
+      setBookings(updatedBookings)
+      setShowAssignModal(false)
+      setSelectedBooking(null)
+      alert(`Tour guide ${tourGuideName} assigned successfully!`)
+    } catch (error) {
+      console.error('Error assigning tour guide:', error)
+      alert("Failed to assign tour guide")
+    }
   }
 
   const getStatusColor = (status: Booking["status"]) => {
@@ -240,8 +223,29 @@ export default function EmployeeDashboard() {
     }
   }
 
-  const tourguideRatings = ratings.filter((r) => r.employeeRole === "tourguide")
-  const driverRatings = ratings.filter((r) => r.employeeRole === "driver")
+  const tourguideRatings = ratings.filter((r) => r.rating_type === "tourguide")
+  const driverRatings = ratings.filter((r) => r.rating_type === "driver")
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
+  }
+
+  const getFullName = (firstName: string | null, lastName: string | null) => {
+    if (!firstName && !lastName) return 'Not assigned'
+    return `${firstName || ''} ${lastName || ''}`.trim()
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -325,74 +329,96 @@ export default function EmployeeDashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
+            <p className="text-red-600">{error}</p>
+          </div>
+        )}
+
         {/* Manage Bookings Tab */}
         {activeTab === "bookings" && (
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Manage Trip Bookings</h2>
-            <div className="space-y-4">
-              {bookings.map((booking) => (
-                <div
-                  key={`booking-${booking.id}`}
-                  className="bg-white border-2 border-green-200 rounded-lg p-6 hover:shadow-lg transition-shadow"
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-xl font-semibold text-gray-900">{booking.tourName}</h3>
-                      <p className="text-gray-600">Customer: {booking.customerName}</p>
-                    </div>
-                    <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(booking.status)}`}>
-                      {getStatusText(booking.status)}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600 mb-4">
-                    <div className="flex items-center space-x-2">
-                      <Calendar className="w-4 h-4 text-green-600" />
-                      <span>
-                        {booking.date} at {booking.time}
+            {bookings.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Calendar className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                <p>No bookings found.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {bookings.map((booking) => (
+                  <div
+                    key={`booking-${booking.booking_id}`}
+                    className="bg-white border-2 border-green-200 rounded-lg p-6 hover:shadow-lg transition-shadow"
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="text-xl font-semibold text-gray-900">{booking.tour_name || 'Custom Booking'}</h3>
+                        <p className="text-gray-600">Customer: {getFullName(booking.customer_first_name, booking.customer_last_name)}</p>
+                        <p className="text-sm text-gray-500">{booking.customer_email} • {booking.customer_phone}</p>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(booking.status)}`}>
+                        {getStatusText(booking.status)}
                       </span>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <span>📍</span>
-                      <span>{booking.location}</span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600 mb-4">
+                      <div className="flex items-center space-x-2">
+                        <Calendar className="w-4 h-4 text-green-600" />
+                        <span>
+                          {formatDate(booking.start_date)} - {formatDate(booking.end_date)}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span>📍</span>
+                        <span>{booking.destination}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span>👥</span>
+                        <span>{booking.number_of_people} people</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span>🎯</span>
+                        <span>Tour Guide: {getFullName(booking.tour_guide_first_name, booking.tour_guide_last_name)}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span>🚗</span>
+                        <span>Driver: {getFullName(booking.driver_first_name, booking.driver_last_name)}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span>💰</span>
+                        <span>${Number(booking.total_price).toFixed(2)} ({booking.payment_status})</span>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <span>👥</span>
-                      <span>{booking.numberOfPeople} people</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <span>🎯</span>
-                      <span>Tour Guide: {booking.assignedTourGuide || "Not assigned"}</span>
+                    {booking.special_requests && (
+                      <div className="mb-4">
+                        <p className="text-sm font-medium text-gray-700 mb-1">Special Requests:</p>
+                        <p className="text-sm text-gray-600 bg-yellow-50 p-2 rounded border border-yellow-200">
+                          {booking.special_requests}
+                        </p>
+                      </div>
+                    )}
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleEditBooking(booking)}
+                        className="flex-1 flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-colors"
+                      >
+                        <Edit className="w-4 h-4" />
+                        <span>Edit Details</span>
+                      </button>
+                      {!booking.tour_guide_first_name && (
+                        <button
+                          onClick={() => handleAssignTourGuide(booking)}
+                          className="flex-1 flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors"
+                        >
+                          <UserPlus className="w-4 h-4" />
+                          <span>Assign Guide</span>
+                        </button>
+                      )}
                     </div>
                   </div>
-                  {booking.specialRequests && (
-                    <div className="mb-4">
-                      <p className="text-sm font-medium text-gray-700 mb-1">Special Requests:</p>
-                      <p className="text-sm text-gray-600 bg-yellow-50 p-2 rounded border border-yellow-200">
-                        {booking.specialRequests}
-                      </p>
-                    </div>
-                  )}
-                  {/* <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleEditBooking(booking)}
-                      className="flex-1 flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-colors"
-                    >
-                      <Edit className="w-4 h-4" />
-                      <span>Edit Details</span>
-                    </button>
-                    {!booking.assignedTourGuide && (
-                      <button
-                        onClick={() => handleAssignTourGuide(booking)}
-                        className="flex-1 flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors"
-                      >
-                        <UserPlus className="w-4 h-4" />
-                        <span>Assign Guide</span>
-                      </button>
-                    )}
-                  </div> */}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -404,42 +430,55 @@ export default function EmployeeDashboard() {
             {/* Available Tour Guides */}
             <div className="mb-8">
               <h3 className="text-xl font-semibold text-green-600 mb-4">Available Tour Guides</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {tourGuides.map((guide) => (
-                  <div
-                    key={`guide-${guide.id}`}
-                    className="bg-white border-2 border-green-200 rounded-lg p-6 hover:shadow-lg transition-shadow"
-                  >
-                    <div className="flex items-center space-x-3 mb-4">
-                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                        <span className="text-green-600 font-semibold text-lg">{guide.name.charAt(0)}</span>
+              {tourGuides.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <UserPlus className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                  <p>No tour guides found.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {tourGuides.map((guide) => (
+                    <div
+                      key={`guide-${guide.user_id}`}
+                      className="bg-white border-2 border-green-200 rounded-lg p-6 hover:shadow-lg transition-shadow"
+                    >
+                      <div className="flex items-center space-x-3 mb-4">
+                        <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                          <span className="text-green-600 font-semibold text-lg">
+                            {guide.first_name?.charAt(0) || 'T'}
+                          </span>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900">
+                            {getFullName(guide.first_name, guide.last_name)}
+                          </h4>
+                          <span
+                            className={`inline-block px-2 py-1 text-xs rounded-full ${
+                              guide.availability === "available"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {guide.availability === "available" ? "Available" : "Busy"}
+                          </span>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-semibold text-gray-900">{guide.name}</h4>
-                        <span
-                          className={`inline-block px-2 py-1 text-xs rounded-full ${
-                            guide.availability === "available"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {guide.availability === "available" ? "Available" : "Busy"}
-                        </span>
+                      <div className="space-y-2 text-sm text-gray-600">
+                        <p>📧 {guide.email}</p>
+                        <p>📱 {guide.phone}</p>
+                        <p>🎯 {guide.total_tours} tours completed</p>
+                        <div className="flex items-center space-x-1">
+                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                          <span className="font-semibold text-gray-900">
+                            {Number(guide.average_rating).toFixed(1)}
+                          </span>
+                          <span className="text-gray-500">rating</span>
+                        </div>
                       </div>
                     </div>
-                    <div className="space-y-2 text-sm text-gray-600">
-                      <p>📧 {guide.email}</p>
-                      <p>📱 {guide.phone}</p>
-                      <p>🎯 {guide.totalTours} tours completed</p>
-                      <div className="flex items-center space-x-1">
-                        <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                        <span className="font-semibold text-gray-900">{guide.averageRating.toFixed(1)}</span>
-                        <span className="text-gray-500">rating</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Pending Assignments */}
@@ -447,18 +486,18 @@ export default function EmployeeDashboard() {
               <h3 className="text-xl font-semibold text-green-600 mb-4">Bookings Pending Assignment</h3>
               <div className="space-y-4">
                 {bookings
-                  .filter((b) => !b.assignedTourGuide)
+                  .filter((b) => !b.tour_guide_first_name)
                   .map((booking) => (
                     <div
-                      key={`pending-${booking.id}`}
+                      key={`pending-${booking.booking_id}`}
                       className="bg-white border-2 border-yellow-200 rounded-lg p-6 hover:shadow-lg transition-shadow"
                     >
                       <div className="flex justify-between items-start">
                         <div>
-                          <h4 className="text-lg font-semibold text-gray-900">{booking.tourName}</h4>
-                          <p className="text-gray-600">Customer: {booking.customerName}</p>
+                          <h4 className="text-lg font-semibold text-gray-900">{booking.tour_name || 'Custom Booking'}</h4>
+                          <p className="text-gray-600">Customer: {getFullName(booking.customer_first_name, booking.customer_last_name)}</p>
                           <p className="text-sm text-gray-600 mt-2">
-                            {booking.date} at {booking.time} • {booking.location}
+                            {formatDate(booking.start_date)} - {formatDate(booking.end_date)} • {booking.destination}
                           </p>
                         </div>
                         <button
@@ -471,7 +510,7 @@ export default function EmployeeDashboard() {
                       </div>
                     </div>
                   ))}
-                {bookings.filter((b) => !b.assignedTourGuide).length === 0 && (
+                {bookings.filter((b) => !b.tour_guide_first_name).length === 0 && (
                   <div className="text-center py-8 text-gray-500">
                     <Check className="w-12 h-12 mx-auto mb-2 text-green-600" />
                     <p>All bookings have been assigned tour guides!</p>
@@ -513,31 +552,39 @@ export default function EmployeeDashboard() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-green-100">
-                      {tourguideRatings.map((rating) => (
-                        <tr key={`tg-rating-${rating.id}`} className="hover:bg-green-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {rating.employeeName}
+                      {tourguideRatings.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                            No tour guide ratings found.
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{rating.customerName}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            <div className="flex items-center space-x-1">
-                              {[...Array(5)].map((_, starIdx) => (
-                                <Star
-                                  key={`tg-${rating.id}-star-${starIdx}`}
-                                  className={`w-4 h-4 ${
-                                    starIdx < rating.rating
-                                      ? "fill-yellow-400 text-yellow-400"
-                                      : "fill-gray-200 text-gray-200"
-                                  }`}
-                                />
-                              ))}
-                              <span className="ml-2 font-semibold">{rating.rating}/5</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">{rating.comment}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{rating.date}</td>
                         </tr>
-                      ))}
+                      ) : (
+                        tourguideRatings.map((rating) => (
+                          <tr key={`tg-rating-${rating.rating_id}`} className="hover:bg-green-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {rating.employee_name}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{rating.customer_name}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              <div className="flex items-center space-x-1">
+                                {[...Array(5)].map((_, starIdx) => (
+                                  <Star
+                                    key={`tg-${rating.rating_id}-star-${starIdx}`}
+                                    className={`w-4 h-4 ${
+                                      starIdx < rating.rating
+                                        ? "fill-yellow-400 text-yellow-400"
+                                        : "fill-gray-200 text-gray-200"
+                                    }`}
+                                  />
+                                ))}
+                                <span className="ml-2 font-semibold">{rating.rating}/5</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">{rating.comment}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{formatDate(rating.created_at)}</td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -568,31 +615,39 @@ export default function EmployeeDashboard() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-green-100">
-                      {driverRatings.map((rating) => (
-                        <tr key={`dr-rating-${rating.id}`} className="hover:bg-green-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {rating.employeeName}
+                      {driverRatings.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                            No driver ratings found.
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{rating.customerName}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            <div className="flex items-center space-x-1">
-                              {[...Array(5)].map((_, starIdx) => (
-                                <Star
-                                  key={`dr-${rating.id}-star-${starIdx}`}
-                                  className={`w-4 h-4 ${
-                                    starIdx < rating.rating
-                                      ? "fill-yellow-400 text-yellow-400"
-                                      : "fill-gray-200 text-gray-200"
-                                  }`}
-                                />
-                              ))}
-                              <span className="ml-2 font-semibold">{rating.rating}/5</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">{rating.comment}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{rating.date}</td>
                         </tr>
-                      ))}
+                      ) : (
+                        driverRatings.map((rating) => (
+                          <tr key={`dr-rating-${rating.rating_id}`} className="hover:bg-green-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {rating.employee_name}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{rating.customer_name}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              <div className="flex items-center space-x-1">
+                                {[...Array(5)].map((_, starIdx) => (
+                                  <Star
+                                    key={`dr-${rating.rating_id}-star-${starIdx}`}
+                                    className={`w-4 h-4 ${
+                                      starIdx < rating.rating
+                                        ? "fill-yellow-400 text-yellow-400"
+                                        : "fill-gray-200 text-gray-200"
+                                    }`}
+                                  />
+                                ))}
+                                <span className="ml-2 font-semibold">{rating.rating}/5</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">{rating.comment}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{formatDate(rating.created_at)}</td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -705,21 +760,21 @@ export default function EmployeeDashboard() {
                   .filter((guide) => guide.availability === "available")
                   .map((guide) => (
                     <button
-                      key={`assign-guide-${guide.id}`}
-                      onClick={() => handleConfirmAssignment(guide.name)}
+                      key={`assign-guide-${guide.user_id}`}
+                      onClick={() => handleConfirmAssignment(guide.user_id, getFullName(guide.first_name, guide.last_name))}
                       className="w-full p-4 border-2 border-green-200 rounded-lg hover:bg-green-50 transition-colors text-left"
                     >
                       <div className="flex justify-between items-center">
                         <div>
-                          <p className="font-semibold text-gray-900">{guide.name}</p>
+                          <p className="font-semibold text-gray-900">{getFullName(guide.first_name, guide.last_name)}</p>
                           <p className="text-sm text-gray-600">{guide.email}</p>
                         </div>
                         <div className="text-right">
                           <div className="flex items-center space-x-1">
                             <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                            <span className="font-semibold text-gray-900">{guide.averageRating}</span>
+                            <span className="font-semibold text-gray-900">{Number(guide.average_rating).toFixed(1)}</span>
                           </div>
-                          <p className="text-xs text-gray-600">{guide.totalTours} tours</p>
+                          <p className="text-xs text-gray-600">{guide.total_tours} tours</p>
                         </div>
                       </div>
                     </button>

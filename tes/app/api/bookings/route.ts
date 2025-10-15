@@ -13,14 +13,15 @@ export async function POST(req: NextRequest) {
     }
     
     const body = await req.json()
-    const { 
-      tourId, 
-      vehicleId, 
-      startDate, 
-      endDate, 
-      totalPrice, 
-      peopleCount, 
-      specialRequests 
+    const {
+      tourId,
+      vehicleId,
+      driverId,
+      startDate,
+      endDate,
+      totalPrice,
+      peopleCount,
+      specialRequests
     } = body || {}
     
     if (!startDate || !endDate || !totalPrice || !peopleCount) {
@@ -35,6 +36,7 @@ export async function POST(req: NextRequest) {
       userId: payload.user_id,
       tourId: tourId || null,
       vehicleId: vehicleId || null,
+      driverId: driverId || null,
       startDate,
       endDate,
       totalPrice,

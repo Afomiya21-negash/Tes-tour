@@ -72,25 +72,29 @@ export default function HomePage() {
               </Link>
             </div>
 
-            {/* Map Placeholder */}
+            {/* Google Maps Embed */}
             <div className="relative">
-              <div className="bg-gray-200 rounded-lg h-96 flex items-center justify-center border-2 border-dashed border-gray-300">
-                <div className="text-center">
-                  <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 font-medium">Company Location Map</p>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Interactive map will be displayed here
-                    <br />
-                    Addis Ababa, Ethiopia
-                  </p>
-                </div>
+              <div className="bg-gray-200 rounded-lg h-96 overflow-hidden border-2 border-gray-300">
+                <iframe
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3940.6177618935!2d38.7577605!3d9.0054!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x164b85cef5ab402d%3A0x8467b6b037a24d49!2sAddis%20Ababa%2C%20Ethiopia!5e0!3m2!1sen!2set!4v1697000000000!5m2!1sen!2set"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="Tes Tour Company Location - Addis Ababa, Ethiopia"
+                ></iframe>
               </div>
 
               {/* Map overlay info (similar to Google Maps info box) */}
-              <div className="absolute top-4 left-4 bg-white rounded-lg shadow-lg p-4 max-w-xs">
-                <h3 className="font-semibold text-gray-900">Tes Tour</h3>
-                <p className="text-sm text-gray-600">Addis Ababa</p>
-                <div className="flex items-center mt-1">
+              <div className="absolute bottom-4 left-4 bg-white bg-opacity-95 rounded-lg shadow-lg p-4 max-w-xs">
+                <div className="flex items-center space-x-2 mb-2">
+                  <MapPin className="h-5 w-5 text-green-600" />
+                  <h3 className="font-semibold text-gray-900">Tes Tour Company</h3>
+                </div>
+                <p className="text-sm text-gray-600">Addis Ababa, Ethiopia</p>
+                <div className="flex items-center mt-2">
                   <div className="flex text-amber-400">
                     <Star className="h-4 w-4 fill-current" />
                     <Star className="h-4 w-4 fill-current" />
@@ -100,7 +104,14 @@ export default function HomePage() {
                   </div>
                   <span className="text-sm text-gray-600 ml-2">4.0 • 1 review</span>
                 </div>
-                <button className="text-blue-600 text-sm mt-2 hover:underline">View larger map</button>
+                <a
+                  href="https://maps.app.goo.gl/YMHpoxhmGaiB6RSV8"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 text-sm mt-2 hover:underline inline-block"
+                >
+                  View in Google Maps
+                </a>
               </div>
             </div>
           </div>

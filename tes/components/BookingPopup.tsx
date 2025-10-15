@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { X, Upload, ChevronRight, ChevronLeft, Car, CreditCard } from "lucide-react"
+import { X, Upload, ChevronRight, ChevronLeft, Car, CreditCard, User, Star } from "lucide-react"
 import Image from "next/image"
 
 interface BookingPopupProps {
@@ -30,6 +30,7 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
   const [authenticated, setAuthenticated] = useState<boolean>(false)
   const [loading, setLoading] = useState(false)
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [drivers, setDrivers] = useState<any[]>([])
   const [selectedTour, setSelectedTour] = useState<Tour | null>(null)
   const [bookingSuccess, setBookingSuccess] = useState(false)
   const [error, setError] = useState<string>('')
@@ -53,10 +54,11 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
     }
   }, [isOpen])
 
-  // Fetch vehicles when component opens
+  // Fetch vehicles and drivers when component opens
   useEffect(() => {
     if (isOpen && authenticated) {
       fetchVehicles()
+      fetchDrivers()
       fetchTourByName()
     }
   }, [isOpen, authenticated, tourName])
@@ -70,6 +72,18 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
       }
     } catch (e) {
       console.error('Error fetching vehicles:', e)
+    }
+  }
+
+  const fetchDrivers = async () => {
+    try {
+      const response = await fetch('/api/drivers', { credentials: 'include' })
+      if (response.ok) {
+        const data = await response.json()
+        setDrivers(data)
+      }
+    } catch (e) {
+      console.error('Error fetching drivers:', e)
     }
   }
 
@@ -91,6 +105,7 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
     phone: "",
     peopleCount: 1,
     selectedVehicle: "",
+    selectedDriver: "",
     selectedBank: "",
     startDate: "",
     endDate: "",
@@ -141,6 +156,21 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
       return
     }
 
+    // Validation for each step
+    if (currentStep === 1) {
+      if (!formData.name || !formData.phone || !formData.startDate || !formData.endDate) {
+        setError('Please fill in all required fields')
+        return
+      }
+    } else if (currentStep === 3) {
+      if (!formData.selectedVehicle || !formData.selectedDriver) {
+        setError('Please select both a vehicle and a driver')
+        return
+      }
+    }
+
+    setError('') // Clear any previous errors
+
     if (currentStep < 4) {
       setCurrentStep(prev => prev + 1)
     } else {
@@ -156,6 +186,7 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
     try {
       // Calculate total price
       const selectedVehicleData = vehicles.find(v => v.id.toString() === formData.selectedVehicle)
+      const selectedDriverData = drivers.find(d => d.user_id.toString() === formData.selectedDriver)
       const vehiclePrice = selectedVehicleData?.dailyRate || 0
       const tourPrice = selectedTour?.price || 0
       const days = selectedTour?.durationDays || 1
@@ -169,6 +200,7 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
         body: JSON.stringify({
           tourId: selectedTour?.id || null,
           vehicleId: selectedVehicleData?.id || null,
+          driverId: selectedDriverData?.user_id || null,
           startDate: formData.startDate,
           endDate: formData.endDate,
           totalPrice,
@@ -457,42 +489,97 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
             </div>
           )}
 
-              {/* Step 3: Vehicle Selection */}
+              {/* Step 3: Vehicle & Driver Selection */}
               {currentStep === 3 && (
-                <div className="space-y-6">
-                  <h3 className="text-xl font-semibold text-gray-900">Available Vehicles</h3>
-                  <p className="text-gray-600">Select your preferred vehicle</p>
+                <div className="space-y-8">
+                  {/* Vehicle Selection */}
+                  <div className="space-y-4">
+                    <h3 className="text-xl font-semibold text-gray-900">Available Vehicles</h3>
+                    <p className="text-gray-600">Select your preferred vehicle</p>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {vehicles.map((vehicle) => (
-                      <div
-                        key={vehicle.id}
-                        onClick={() => handleInputChange("selectedVehicle", vehicle.id.toString())}
-                        className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${
-                          formData.selectedVehicle === vehicle.id.toString()
-                            ? "border-emerald-500 bg-emerald-50"
-                            : "border-gray-200 hover:border-gray-300"
-                        }`}
-                      >
-                        <div className="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center mb-3">
-                          <Car className="h-12 w-12 text-gray-400" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {vehicles.map((vehicle) => (
+                        <div
+                          key={vehicle.id}
+                          onClick={() => handleInputChange("selectedVehicle", vehicle.id.toString())}
+                          className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${
+                            formData.selectedVehicle === vehicle.id.toString()
+                              ? "border-emerald-500 bg-emerald-50"
+                              : "border-gray-200 hover:border-gray-300"
+                          }`}
+                        >
+                          <div className="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center mb-3">
+                            <Car className="h-12 w-12 text-gray-400" />
+                          </div>
+                          <h4 className="font-semibold text-gray-900">{vehicle.make} {vehicle.model}</h4>
+                          <p className="text-sm text-gray-600">
+                            {vehicle.capacity ? `${vehicle.capacity} passengers` : 'Capacity not specified'}
+                          </p>
+                          <p className="text-sm font-medium text-emerald-600">
+                            ${vehicle.dailyRate || 0}/day
+                          </p>
                         </div>
-                        <h4 className="font-semibold text-gray-900">{vehicle.make} {vehicle.model}</h4>
-                        <p className="text-sm text-gray-600">
-                          {vehicle.capacity ? `${vehicle.capacity} passengers` : 'Capacity not specified'}
-                        </p>
-                        <p className="text-sm font-medium text-emerald-600">
-                          ${vehicle.dailyRate || 0}/day
-                        </p>
+                      ))}
+                    </div>
+
+                    {vehicles.length === 0 && (
+                      <div className="text-center py-4">
+                        <p className="text-gray-500">No vehicles available at the moment.</p>
                       </div>
-                    ))}
+                    )}
                   </div>
 
-                  {vehicles.length === 0 && (
-                    <div className="text-center py-8">
-                      <p className="text-gray-500">No vehicles available at the moment.</p>
+                  {/* Driver Selection */}
+                  <div className="space-y-4">
+                    <h3 className="text-xl font-semibold text-gray-900">Available Drivers</h3>
+                    <p className="text-gray-600">Select your preferred driver</p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {drivers.map((driver) => (
+                        <div
+                          key={driver.user_id}
+                          onClick={() => handleInputChange("selectedDriver", driver.user_id.toString())}
+                          className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${
+                            formData.selectedDriver === driver.user_id.toString()
+                              ? "border-emerald-500 bg-emerald-50"
+                              : "border-gray-200 hover:border-gray-300"
+                          }`}
+                        >
+                          <div className="flex items-center space-x-3 mb-3">
+                            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                              <User className="h-6 w-6 text-gray-400" />
+                            </div>
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-gray-900">
+                                {driver.first_name} {driver.last_name}
+                              </h4>
+                              <div className="flex items-center space-x-1">
+                                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                                <span className="text-sm text-gray-600">
+                                  {Number(driver.average_rating).toFixed(1)} ({driver.total_trips} trips)
+                                </span>
+                              </div>
+                            </div>
+                            <span className={`px-2 py-1 text-xs rounded-full ${
+                              driver.availability === 'available'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {driver.availability}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600">{driver.email}</p>
+                          <p className="text-sm text-gray-600">{driver.phone}</p>
+                        </div>
+                      ))}
                     </div>
-                  )}
+
+                    {drivers.length === 0 && (
+                      <div className="text-center py-4">
+                        <p className="text-gray-500">No drivers available at the moment.</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
