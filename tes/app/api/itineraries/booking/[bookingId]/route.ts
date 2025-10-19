@@ -9,7 +9,7 @@ export async function GET(
 ) {
   try {
     // Verify authentication
-    const token = request.cookies.get('token')?.value
+    const token = request.cookies.get('auth_token')?.value || request.cookies.get('token')?.value
     if (!token) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -58,7 +58,7 @@ export async function POST(
 ) {
   try {
     // Verify authentication
-    const token = request.cookies.get('token')?.value
+    const token = request.cookies.get('auth_token')?.value || request.cookies.get('token')?.value
     if (!token) {
       return NextResponse.json(
         { error: 'Authentication required' },

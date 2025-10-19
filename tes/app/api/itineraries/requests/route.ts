@@ -6,7 +6,7 @@ import { verifyJwt } from '@/lib/auth'
 export async function POST(request: NextRequest) {
   try {
     // Verify authentication
-    const token = request.cookies.get('token')?.value
+    const token = request.cookies.get('auth_token')?.value || request.cookies.get('token')?.value
     if (!token) {
       return NextResponse.json(
         { error: 'Authentication required' },

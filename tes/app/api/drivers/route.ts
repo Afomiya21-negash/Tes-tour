@@ -6,26 +6,43 @@ export async function GET(request: NextRequest) {
   try {
     const pool = getPool()
     
-    // Get drivers with their average ratings and total trips
+    // Get drivers with robust aggregates using subqueries to avoid JOIN multiplication
     const [rows] = await pool.execute(
       `SELECT 
         u.user_id,
         u.first_name,
         u.last_name,
         u.email,
-        u.phone,
-        COUNT(DISTINCT b.booking_id) as total_trips,
-        COALESCE(AVG(r.rating), 0) as average_rating,
+        u.phone_number AS phone,
+        (
+          SELECT COUNT(DISTINCT b.booking_id)
+          FROM Bookings b
+          JOIN Vehicles vv ON b.vehicle_id = vv.vehicle_id
+          WHERE vv.driver_id = u.user_id
+            AND b.status IN ('confirmed', 'completed', 'in-progress')
+        ) AS total_trips,
+        COALESCE(
+          (
+            SELECT AVG(r.rating)
+            FROM ratings r
+            WHERE r.rated_user_id = u.user_id AND LOWER(r.rating_type) = 'driver'
+          ),
+          (
+            SELECT d.rating FROM Drivers d WHERE d.driver_id = u.user_id LIMIT 1
+          ),
+          0
+        ) AS average_rating,
         CASE 
-          WHEN COUNT(CASE WHEN b.status IN ('confirmed', 'in-progress') AND b.start_date <= CURDATE() AND b.end_date >= CURDATE() THEN 1 END) > 0 
-          THEN 'busy' 
-          ELSE 'available' 
-        END as availability
-      FROM users u
-      LEFT JOIN bookings b ON u.user_id = b.driver_id AND b.status IN ('confirmed', 'completed', 'in-progress')
-      LEFT JOIN ratings r ON u.user_id = r.rated_user_id AND r.rating_type = 'driver'
+          WHEN (
+            SELECT COUNT(1)
+            FROM Bookings b2
+            JOIN Vehicles v2 ON b2.vehicle_id = v2.vehicle_id
+            WHERE v2.driver_id = u.user_id
+              AND b2.status IN ('confirmed', 'in-progress')
+              AND b2.start_date <= CURDATE() AND b2.end_date >= CURDATE()
+          ) > 0 THEN 'busy' ELSE 'available' END AS availability
+      FROM Users u
       WHERE u.role = 'driver'
-      GROUP BY u.user_id, u.first_name, u.last_name, u.email, u.phone
       ORDER BY average_rating DESC, total_trips DESC`
     )
     

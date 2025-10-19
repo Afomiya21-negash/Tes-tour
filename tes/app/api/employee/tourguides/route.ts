@@ -7,7 +7,7 @@ import { getPool } from '@/lib/db'
 export async function GET(request: NextRequest) {
   try {
     // Verify authentication
-    const token = request.cookies.get('token')?.value
+    const token = request.cookies.get('auth_token')?.value || request.cookies.get('token')?.value
     if (!token) {
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
         u.first_name,
         u.last_name,
         u.email,
-        u.phone,
+        u.phone_number as phone,
         COUNT(DISTINCT b.booking_id) as total_tours,
         COALESCE(AVG(r.rating), 0) as average_rating,
         CASE 
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
       LEFT JOIN bookings b ON u.user_id = b.tour_guide_id AND b.status IN ('confirmed', 'completed', 'in-progress')
       LEFT JOIN ratings r ON u.user_id = r.rated_user_id AND r.rating_type = 'tourguide'
       WHERE u.role = 'tourguide'
-      GROUP BY u.user_id, u.first_name, u.last_name, u.email, u.phone
+      GROUP BY u.user_id, u.first_name, u.last_name, u.email, u.phone_number
       ORDER BY average_rating DESC, total_tours DESC`
     )
     

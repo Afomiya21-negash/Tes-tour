@@ -705,12 +705,15 @@ export class BookingService {
         }
       }
 
-      // Check driver availability if driver is specified
+      // Check driver availability if driver is specified (via vehicles assigned to the driver)
       if (driverId) {
         const [driverRows] = (await conn.query(
-          `SELECT COUNT(*) as active_bookings FROM bookings
-           WHERE driver_id = ? AND status IN ('confirmed', 'in-progress')
-           AND ((start_date <= ? AND end_date >= ?) OR (start_date <= ? AND end_date >= ?))`,
+          `SELECT COUNT(*) as active_bookings
+           FROM bookings b
+           JOIN vehicles v ON b.vehicle_id = v.vehicle_id
+           WHERE v.driver_id = ?
+             AND b.status IN ('confirmed', 'in-progress')
+             AND ((b.start_date <= ? AND b.end_date >= ?) OR (b.start_date <= ? AND b.end_date >= ?))`,
           [driverId, startDate, startDate, endDate, endDate]
         )) as any
         if (driverRows && driverRows[0] && driverRows[0].active_bookings > 0) {
@@ -718,12 +721,33 @@ export class BookingService {
         }
       }
 
-      // Create booking
-      const [result] = (await conn.query(
-        `INSERT INTO bookings (user_id, tour_id, vehicle_id, driver_id, start_date, end_date, total_price, number_of_people, special_requests, booking_date, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'pending')`,
-        [userId, tourId || null, vehicleId || null, driverId || null, startDate, endDate, totalPrice, peopleCount || 1, specialRequests || '']
-      )) as any
+      // Create booking (be compatible across schemas): try with number_of_people only; fallback to minimal columns
+      let result: any
+      try {
+        ;[result] = (await conn.query(
+          `INSERT INTO bookings (user_id, tour_id, vehicle_id, start_date, end_date, total_price, number_of_people, booking_date, status)
+           VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), 'pending')`,
+          [userId, tourId || null, vehicleId || null, startDate, endDate, totalPrice, peopleCount || 1]
+        )) as any
+      } catch (e: any) {
+        const msg = String(e?.message || '')
+        if (msg.includes("Unknown column 'number_of_people'")) {
+          ;[result] = (await conn.query(
+            `INSERT INTO bookings (user_id, tour_id, vehicle_id, start_date, end_date, total_price, booking_date, status)
+             VALUES (?, ?, ?, ?, ?, ?, NOW(), 'pending')`,
+            [userId, tourId || null, vehicleId || null, startDate, endDate, totalPrice]
+          )) as any
+        } else if (msg.includes("Unknown column 'special_requests'")) {
+          // In case upstream still attempts with special_requests in some migration state, fall back to number_of_people only path
+          ;[result] = (await conn.query(
+            `INSERT INTO bookings (user_id, tour_id, vehicle_id, start_date, end_date, total_price, number_of_people, booking_date, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), 'pending')`,
+            [userId, tourId || null, vehicleId || null, startDate, endDate, totalPrice, peopleCount || 1]
+          )) as any
+        } else {
+          throw e
+        }
+      }
 
       const bookingId = result.insertId as number
 
