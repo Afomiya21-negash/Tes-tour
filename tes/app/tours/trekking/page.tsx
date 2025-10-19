@@ -319,6 +319,7 @@ export default function TrekkingPage() {
           </div>
         </div>
       </section>
+      
     </div>
   )
 }

@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
         d.last_name as driver_last_name,
         d.phone as driver_phone
       FROM bookings b
-      LEFT JOIN users u ON b.customer_id = u.user_id
+      LEFT JOIN users u ON b.user_id = u.user_id
       LEFT JOIN tours t ON b.tour_id = t.tour_id
       LEFT JOIN vehicles v ON b.vehicle_id = v.vehicle_id
       LEFT JOIN users d ON b.driver_id = d.user_id

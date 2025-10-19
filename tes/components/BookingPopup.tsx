@@ -216,23 +216,11 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
 
       const booking = await bookingResponse.json()
 
-      // Create payment
-      const paymentResponse = await fetch('/api/payments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          bookingId: booking.booking_id,
-          amount: totalPrice,
-          paymentMethod: formData.selectedBank,
-          transactionId: `TXN_${Date.now()}_${booking.booking_id}`
-        })
-      })
-
-      if (!paymentResponse.ok) {
-        const errorData = await paymentResponse.json()
-        throw new Error(errorData.message || 'Failed to process payment')
-      }
+      // For now, skip payment integration and just mark booking as confirmed
+      // In the future, this is where payment processing would happen
+      console.log('Booking created successfully:', booking)
+      console.log('Payment method selected:', formData.selectedBank)
+      console.log('Total amount:', totalPrice)
 
       setBookingSuccess(true)
     } catch (e: any) {
@@ -343,7 +331,7 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
                 </svg>
               </div>
               <h3 className="text-xl font-semibold text-gray-900">Booking Confirmed!</h3>
-              <p className="text-gray-600">Your booking has been successfully created and payment processed.</p>
+              <p className="text-gray-600">Your booking has been successfully created. Payment integration will be available soon.</p>
               <button
                 onClick={handleClose}
                 className="bg-emerald-600 text-white px-6 py-2 rounded-md hover:bg-emerald-700 transition-colors"

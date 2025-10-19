@@ -47,11 +47,19 @@ export async function GET(request: NextRequest) {
         t.duration_days,
         v.make as vehicle_make,
         v.model as vehicle_model,
-        v.capacity as vehicle_capacity
+        v.capacity as vehicle_capacity,
+        tg.first_name as tour_guide_first_name,
+        tg.last_name as tour_guide_last_name,
+        d.first_name as driver_first_name,
+        d.last_name as driver_last_name,
+        p.status as payment_status
       FROM bookings b
       LEFT JOIN users u ON b.user_id = u.user_id
       LEFT JOIN tours t ON b.tour_id = t.tour_id
       LEFT JOIN vehicles v ON b.vehicle_id = v.vehicle_id
+      LEFT JOIN users tg ON b.tour_guide_id = tg.user_id
+      LEFT JOIN users d ON b.driver_id = d.user_id
+      LEFT JOIN payments p ON b.booking_id = p.booking_id
       ORDER BY b.booking_date DESC`
     )
     
