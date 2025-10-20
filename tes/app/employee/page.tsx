@@ -79,6 +79,17 @@ export default function EmployeeDashboard() {
   const fetchAllData = async () => {
     setLoading(true)
     try {
+      // First test employee access
+      const testResponse = await fetch('/api/employee/test', { credentials: 'include' })
+      const testData = await testResponse.json()
+      console.log('Employee test result:', testData)
+      
+      if (!testData.isHr) {
+        setError('Access denied: HR role required to view this dashboard')
+        setTimeout(() => { window.location.href = '/' }, 2500)
+        return
+      }
+      
       await Promise.all([
         fetchBookings(),
         fetchTourGuides(),
@@ -101,15 +112,27 @@ export default function EmployeeDashboard() {
 
   const fetchBookings = async () => {
     try {
+      console.log('Fetching bookings...')
       const response = await fetch('/api/employee/bookings', {
         credentials: 'include'
       })
+      console.log('Bookings response status:', response.status)
+      
       if (response.ok) {
         const data = await response.json()
+        console.log('Bookings data:', data)
         setBookings(data)
+      } else {
+        const errorData = await response.json()
+        console.error('Bookings error response:', errorData)
+        if (response.status === 403) {
+          throw { status: 403, message: errorData.error }
+        }
+        throw new Error(`Failed to fetch bookings: ${errorData.error || 'Unknown error'}`)
       }
     } catch (error) {
       console.error('Error fetching bookings:', error)
+      throw error
     }
   }
 
@@ -121,9 +144,16 @@ export default function EmployeeDashboard() {
       if (response.ok) {
         const data = await response.json()
         setTourGuides(data)
+      } else {
+        const errorData = await response.json()
+        if (response.status === 403) {
+          throw { status: 403, message: errorData.error }
+        }
+        throw new Error('Failed to fetch tour guides')
       }
     } catch (error) {
       console.error('Error fetching tour guides:', error)
+      throw error
     }
   }
 
@@ -184,31 +214,47 @@ export default function EmployeeDashboard() {
     setShowAssignModal(true)
   }
 
-  const handleConfirmAssignment = async (tourGuideId: number, tourGuideName: string) => {
+  const handleSaveTourGuideAssignment = async (tourGuideId: number) => {
     if (!selectedBooking) return
 
     try {
-      // Here you would typically make an API call to assign the tour guide
-      // For now, we'll just update the local state
-      const updatedBookings = bookings.map((booking) =>
-        booking.booking_id === selectedBooking.booking_id
-          ? {
-              ...booking,
-              tour_guide_first_name: tourGuideName.split(' ')[0],
-              tour_guide_last_name: tourGuideName.split(' ')[1] || '',
-              status: "confirmed" as const,
-            }
-          : booking,
-      )
+      const response = await fetch('/api/employee/assign-tourguide', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          bookingId: selectedBooking.booking_id,
+          tourGuideId: tourGuideId
+        })
+      })
 
-      setBookings(updatedBookings)
-      setShowAssignModal(false)
-      setSelectedBooking(null)
-      alert(`Tour guide ${tourGuideName} assigned successfully!`)
+      if (response.ok) {
+        // Update the booking with the assigned tour guide
+        const updatedBookings = bookings.map((booking) =>
+          booking.booking_id === selectedBooking.booking_id
+            ? {
+                ...booking,
+                tour_guide_first_name: tourGuides.find(tg => tg.user_id === tourGuideId)?.first_name,
+                tour_guide_last_name: tourGuides.find(tg => tg.user_id === tourGuideId)?.last_name,
+              }
+            : booking,
+        )
+        setBookings(updatedBookings)
+        setShowAssignModal(false)
+        setSelectedBooking(null)
+        alert("Tour guide assigned successfully!")
+      } else {
+        const errorData = await response.json()
+        alert(`Failed to assign tour guide: ${errorData.error}`)
+      }
     } catch (error) {
       console.error('Error assigning tour guide:', error)
       alert("Failed to assign tour guide")
     }
+  }
+
+  const handleConfirmAssignment = async (tourGuideId: number, tourGuideName: string) => {
+    await handleSaveTourGuideAssignment(tourGuideId)
   }
 
   const getStatusColor = (status: Booking["status"]) => {

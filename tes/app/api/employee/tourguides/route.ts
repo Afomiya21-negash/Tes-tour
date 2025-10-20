@@ -39,18 +39,34 @@ export async function GET(request: NextRequest) {
         u.last_name,
         u.email,
         u.phone_number as phone,
-        COUNT(DISTINCT b.booking_id) as total_tours,
-        COALESCE(AVG(r.rating), 0) as average_rating,
+        (
+          SELECT COUNT(DISTINCT b.booking_id)
+          FROM bookings b
+          JOIN tours t ON b.tour_id = t.tour_id
+          WHERE t.tour_guide_id = u.user_id
+            AND b.status IN ('confirmed', 'completed', 'in-progress')
+        ) as total_tours,
+        COALESCE(
+          (
+            SELECT AVG(r.rating)
+            FROM ratings r
+            WHERE r.rated_user_id = u.user_id AND LOWER(r.rating_type) = 'tourguide'
+          ),
+          (
+            SELECT tg.rating FROM tourguides tg WHERE tg.tour_guide_id = u.user_id LIMIT 1
+          ),
+          0
+        ) as average_rating,
         CASE 
-          WHEN COUNT(CASE WHEN b.status IN ('confirmed', 'in-progress') THEN 1 END) > 0 
-          THEN 'busy' 
-          ELSE 'available' 
-        END as availability
+          WHEN (
+            SELECT COUNT(1)
+            FROM bookings b2
+            JOIN tours t2 ON b2.tour_id = t2.tour_id
+            WHERE t2.tour_guide_id = u.user_id
+              AND b2.status IN ('confirmed', 'in-progress')
+          ) > 0 THEN 'busy' ELSE 'available' END as availability
       FROM users u
-      LEFT JOIN bookings b ON u.user_id = b.tour_guide_id AND b.status IN ('confirmed', 'completed', 'in-progress')
-      LEFT JOIN ratings r ON u.user_id = r.rated_user_id AND r.rating_type = 'tourguide'
       WHERE u.role = 'tourguide'
-      GROUP BY u.user_id, u.first_name, u.last_name, u.email, u.phone_number
       ORDER BY average_rating DESC, total_tours DESC`
     )
     

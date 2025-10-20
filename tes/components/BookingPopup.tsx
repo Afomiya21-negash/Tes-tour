@@ -174,12 +174,15 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
     if (currentStep < 4) {
       setCurrentStep(prev => prev + 1)
     } else {
-      // Final step - submit booking
-      await submitBooking()
+      // Final step - submit booking (prevent double submission)
+      if (!loading) {
+        await submitBooking()
+      }
     }
   }
 
   const submitBooking = async () => {
+    if (loading) return // Prevent double submission
     setLoading(true)
     setError('')
 
