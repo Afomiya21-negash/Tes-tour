@@ -32,6 +32,7 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [drivers, setDrivers] = useState<any[]>([])
   const [selectedTour, setSelectedTour] = useState<Tour | null>(null)
+  const [availableTours, setAvailableTours] = useState<Tour[]>([])
   const [bookingSuccess, setBookingSuccess] = useState(false)
   const [error, setError] = useState<string>('')
 
@@ -92,8 +93,31 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
       const response = await fetch('/api/tours', { credentials: 'include' })
       if (response.ok) {
         const tours = await response.json()
-        const tour = tours.find((t: Tour) => t.name === tourName)
-        setSelectedTour(tour || null)
+        console.log('Available tours:', tours)
+        console.log('Looking for tour name:', tourName)
+        
+        setAvailableTours(tours)
+        
+        const tour = tours.find((t: Tour) => t.name.toLowerCase() === tourName.toLowerCase())
+        console.log('Selected tour:', tour)
+        
+        if (!tour) {
+          console.warn(`Tour not found: "${tourName}". Available tours:`, tours.map(t => t.name))
+          // If no exact match, try to find a similar tour or use the first available tour
+          const similarTour = tours.find((t: Tour) => 
+            t.name.toLowerCase().includes(tourName.toLowerCase()) || 
+            tourName.toLowerCase().includes(t.name.toLowerCase())
+          )
+          if (similarTour) {
+            console.log('Using similar tour:', similarTour)
+            setSelectedTour(similarTour)
+          } else if (tours.length > 0) {
+            console.log('Using first available tour:', tours[0])
+            setSelectedTour(tours[0])
+          }
+        } else {
+          setSelectedTour(tour)
+        }
       }
     } catch (e) {
       console.error('Error fetching tours:', e)
@@ -158,6 +182,10 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
 
     // Validation for each step
     if (currentStep === 1) {
+      if (!selectedTour) {
+        setError('Please select a tour to continue')
+        return
+      }
       if (!formData.name || !formData.phone || !formData.startDate || !formData.endDate) {
         setError('Please fill in all required fields')
         return
@@ -196,6 +224,9 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
       const totalPrice = (tourPrice + (vehiclePrice * days)) * formData.peopleCount
 
       // Create booking
+      console.log('Submitting booking with tourId:', selectedTour?.id)
+      console.log('Selected tour details:', selectedTour)
+      
       const bookingResponse = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -426,6 +457,38 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
                       <h4 className="font-semibold text-gray-900">Selected Tour</h4>
                       <p className="text-gray-600">{selectedTour.name}</p>
                       <p className="text-emerald-600 font-medium">${selectedTour.price} per person</p>
+                    </div>
+                  )}
+                  
+                  {!selectedTour && availableTours.length > 0 && (
+                    <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                      <p className="text-yellow-800 text-sm">
+                        <strong>Note:</strong> The requested tour "{tourName}" was not found. Please select from available tours below.
+                      </p>
+                    </div>
+                  )}
+                  
+                  {availableTours.length > 0 && (
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        {selectedTour ? 'Change Tour' : 'Select Tour'}
+                      </label>
+                      <select
+                        value={selectedTour?.id || ''}
+                        onChange={(e) => {
+                          const tourId = parseInt(e.target.value)
+                          const tour = availableTours.find(t => t.id === tourId)
+                          setSelectedTour(tour || null)
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      >
+                        <option value="">Select a tour...</option>
+                        {availableTours.map((tour) => (
+                          <option key={tour.id} value={tour.id}>
+                            {tour.name} - ${tour.price}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   )}
                 </div>

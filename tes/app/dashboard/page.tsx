@@ -18,9 +18,19 @@ interface Booking {
   vehicle_make?: string
   vehicle_model?: string
   vehicle_capacity?: number
+  tour_guide_first_name?: string
+  tour_guide_last_name?: string
+  tour_guide_email?: string
+  tour_guide_phone?: string
+  driver_first_name?: string
+  driver_last_name?: string
+  driver_email?: string
+  driver_phone?: string
   payment_amount?: number
   payment_status?: string
   payment_method?: string
+  number_of_people?: number
+  special_requests?: string
 }
 
 export default function CustomerDashboard() {
@@ -243,6 +253,39 @@ export default function CustomerDashboard() {
                           ${Number(booking.total_price).toFixed(2)}
                         </div>
                       </div>
+                      
+                      {/* Tour Guide and Driver Information */}
+                      {(booking.tour_guide_first_name || booking.driver_first_name) && (
+                        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {booking.tour_guide_first_name && (
+                            <div className="bg-blue-50 p-3 rounded-lg">
+                              <h4 className="font-medium text-blue-900 mb-1">Tour Guide</h4>
+                              <p className="text-sm text-blue-700">
+                                {booking.tour_guide_first_name} {booking.tour_guide_last_name}
+                              </p>
+                              {booking.tour_guide_phone && (
+                                <p className="text-xs text-blue-600 mt-1">
+                                  📞 {booking.tour_guide_phone}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                          
+                          {booking.driver_first_name && (
+                            <div className="bg-green-50 p-3 rounded-lg">
+                              <h4 className="font-medium text-green-900 mb-1">Driver</h4>
+                              <p className="text-sm text-green-700">
+                                {booking.driver_first_name} {booking.driver_last_name}
+                              </p>
+                              {booking.driver_phone && (
+                                <p className="text-xs text-green-600 mt-1">
+                                  📞 {booking.driver_phone}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
                       
                       {booking.payment_status && (
                         <div className="mt-2 text-sm">
