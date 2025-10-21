@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Oct 16, 2025 at 11:58 AM
+-- Generation Time: Oct 21, 2025 at 03:48 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -48,8 +48,22 @@ CREATE TABLE `bookings` (
   `end_date` date NOT NULL,
   `total_price` decimal(10,2) NOT NULL,
   `booking_date` datetime DEFAULT current_timestamp(),
-  `status` varchar(20) DEFAULT 'pending'
+  `status` varchar(20) DEFAULT 'pending',
+  `number_of_people` int(11) DEFAULT NULL,
+  `driver_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `bookings`
+--
+
+INSERT INTO `bookings` (`booking_id`, `user_id`, `tour_id`, `vehicle_id`, `start_date`, `end_date`, `total_price`, `booking_date`, `status`, `number_of_people`, `driver_id`) VALUES
+(1, 2, 7, 1, '2025-10-17', '2025-10-25', 1440.02, '2025-10-16 03:53:44', 'pending', 2, NULL),
+(2, 2, 7, 1, '2025-10-22', '2025-10-29', 720.01, '2025-10-19 23:57:20', 'pending', 1, NULL),
+(3, 2, 7, 3, '2025-10-22', '2025-11-03', 1440.00, '2025-10-20 01:22:26', 'pending', 2, NULL),
+(4, 2, NULL, 1, '2025-10-21', '2025-10-29', 10000.00, '2025-10-20 01:26:37', 'pending', 4, NULL),
+(5, 2, 7, 3, '2025-10-21', '2025-10-22', 1440.00, '2025-10-20 01:43:22', 'pending', 2, NULL),
+(6, 2, 1, 3, '2025-10-22', '2025-11-06', 7596.02, '2025-10-20 01:58:24', 'pending', 4, NULL);
 
 -- --------------------------------------------------------
 
@@ -107,7 +121,9 @@ CREATE TABLE `employees` (
 
 INSERT INTO `employees` (`employee_id`, `position`, `department`, `hire_date`) VALUES
 (9, 'Driver', 'Transport', NULL),
-(10, 'Driver', 'Transport', NULL);
+(10, 'Driver', 'Transport', NULL),
+(13, 'HR', 'HR', NULL),
+(14, 'Tour Guide', 'Guides', NULL);
 
 -- --------------------------------------------------------
 
@@ -170,6 +186,13 @@ CREATE TABLE `tourguides` (
   `rating` decimal(2,1) DEFAULT 0.0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `tourguides`
+--
+
+INSERT INTO `tourguides` (`tour_guide_id`, `license_number`, `experience_years`, `specialization`, `rating`) VALUES
+(14, '567544', 3, 'history', 0.0);
+
 -- --------------------------------------------------------
 
 --
@@ -192,13 +215,13 @@ CREATE TABLE `tours` (
 --
 
 INSERT INTO `tours` (`tour_id`, `tour_guide_id`, `name`, `description`, `destination`, `duration_days`, `price`, `availability`) VALUES
-(1, NULL, '12 Days Historic with Simien', 'Itinerary: Day 1: Arrival in Addis Ababa, city highlights (National Museum, Entoto). Day 2: Fly/Drive to Bahir Dar. Lake Tana boat trip to island monasteries. Day 3: Blue Nile Falls and Bahir Dar city tour. Day 4: Drive to Gondar. Visit Royal Enclosure and Debre Berhan Selassie. Day 5: Simien Mountains National Park day trip from Gondar; stunning viewpoints and wildlife. Day 6: Drive to Axum. En route scenic viewpoints. Day 7: Axum city tour: stelae field, Queen of Sheba\'s bath, churches. Day 8: Fly/Drive to Lalibela. First cluster of rock-hewn churches. Day 9: Lalibela second cluster; optional Asheton Maryam. Day 10: Fly/Drive to Addis Ababa. Leisure and shopping. Day 11: Optional Addis surrounds (Adadi Mariam, Tiya). Day 12: Departure.', 'Historic Circuit (North Ethiopia)', 12, 1899.00, 1),
+(1, 14, '12 Days Historic with Simien', 'Itinerary: Day 1: Arrival in Addis Ababa, city highlights (National Museum, Entoto). Day 2: Fly/Drive to Bahir Dar. Lake Tana boat trip to island monasteries. Day 3: Blue Nile Falls and Bahir Dar city tour. Day 4: Drive to Gondar. Visit Royal Enclosure and Debre Berhan Selassie. Day 5: Simien Mountains National Park day trip from Gondar; stunning viewpoints and wildlife. Day 6: Drive to Axum. En route scenic viewpoints. Day 7: Axum city tour: stelae field, Queen of Sheba\'s bath, churches. Day 8: Fly/Drive to Lalibela. First cluster of rock-hewn churches. Day 9: Lalibela second cluster; optional Asheton Maryam. Day 10: Fly/Drive to Addis Ababa. Leisure and shopping. Day 11: Optional Addis surrounds (Adadi Mariam, Tiya). Day 12: Departure.', 'Historic Circuit (North Ethiopia)', 12, 1899.00, 1),
 (2, NULL, '9 Days Historic Route', 'Itinerary: Day 1: Addis Ababa city tour. Day 2: Fly/Drive to Bahir Dar; Lake Tana monasteries. Day 3: Blue Nile Falls; transfer to Gondar. Day 4: Gondar castles and church; afternoon to Debark or rest. Day 5: Simien Mountains National Park day hike. Day 6: Fly/Drive to Lalibela; first cluster of churches. Day 7: Lalibela second cluster; local village experience. Day 8: Return to Addis Ababa; leisure. Day 9: Departure.', 'Historic Circuit (North Ethiopia)', 9, 1499.00, 1),
 (3, NULL, '7 Days Historic Route', 'Itinerary: Day 1: Addis Ababa highlights. Day 2: Fly/Drive to Bahir Dar; Lake Tana. Day 3: Blue Nile Falls; transfer to Gondar. Day 4: Gondar castles and church. Day 5: Fly/Drive to Lalibela; first cluster of churches. Day 6: Lalibela second cluster; optional trek. Day 7: Return to Addis Ababa and departure.', 'Historic Circuit (North Ethiopia)', 7, 1199.00, 1),
 (4, NULL, '7 Days Simien Mountains', 'Itinerary: Day 1: Addis Ababa – Bahir Dar (via Debre Libanos and Blue Nile Gorge). Day 2: Bahir Dar: Lake Tana boat trip and Blue Nile Falls. Day 3: Bahir Dar – Gondar; castles and Debre Berhan Selassie. Day 4: Gondar – Simien Mountains NP – Gondar (day excursion). Day 5: Gondar – Lalibela (Drive); visit Awramba community if time permits. Day 6: Lalibela rock-hewn churches (two clusters). Day 7: Lalibela – Addis Ababa; shopping and departure.', 'Simien Mountains + North Highlights', 7, 1090.00, 1),
 (5, NULL, '6 Days Northern Tour', 'Itinerary: Day 1: Addis Ababa city tour (Museum, Mercato, Entoto). Day 2: Fly/Drive to Bahir Dar. Lake Tana monasteries. Day 3: Blue Nile Falls; transfer to Gondar. Day 4: Gondar castles and church; afternoon rest. Day 5: Fly/Drive to Lalibela. First cluster of churches. Day 6: Second cluster and return to Addis Ababa.', 'Northern Tour (Bahir Dar, Gondar, Lalibela)', 6, 999.00, 1),
 (6, NULL, '3 Days Simien Mountains', 'Itinerary: Day 1: Gondar to Debark, enter Simien NP; hike Sankaber area. Day 2: Trek Geech–Imet Gogo (or Sankaber–Geech) for panoramic views and Gelada baboons. Day 3: Morning hike; drive back to Gondar.', 'Simien Mountains', 3, 550.00, 1),
-(7, NULL, 'Dalol Depression Tour', 'Itinerary: Day 1: Fly/Drive to Semera; permits and briefing. Continue to Hamed Ela via Lake Afdera (salt lake swim). Day 2: Dallol hydrothermal fields (colorful sulfur springs), salt flats at Lake Asale, camel caravans; sunset photography. Day 3: Return via Semera to Addis Ababa.', 'Danakil Depression (Dallol)', 3, 720.00, 1),
+(7, 14, 'Dalol Depression Tour', 'Itinerary: Day 1: Fly/Drive to Semera; permits and briefing. Continue to Hamed Ela via Lake Afdera (salt lake swim). Day 2: Dallol hydrothermal fields (colorful sulfur springs), salt flats at Lake Asale, camel caravans; sunset photography. Day 3: Return via Semera to Addis Ababa.', 'Danakil Depression (Dallol)', 3, 720.00, 1),
 (8, NULL, '5 Days Danakil Depression', 'Itinerary: Day 1: Addis Ababa – Semera (permits). Day 2: Lake Afdera; drive to Erta Ale base; night trek. Day 3: Sunrise at crater; descend; drive to Hamed Ela. Day 4: Dallol hydrothermal fields and Lake Asale; camel caravans. Day 5: Return to Addis Ababa.', 'Danakil Depression', 5, 890.00, 1),
 (9, NULL, '7 Days Danakil Depression', 'Itinerary: Day 1: Addis Ababa – Semera (permits). Day 2: Lake Afdera; drive to Erta Ale base. Day 3: Trek and overnight at Erta Ale crater. Day 4: Descend to base; proceed to Hamed Ela. Day 5: Dallol hydrothermal fields; salt extraction sites. Day 6: Salt flats at Lake Asale; sunset photography. Day 7: Return to Addis Ababa.', 'Danakil Depression', 7, 1250.00, 1),
 (10, NULL, '8 Days Danakil Depression via Awash', 'Itinerary: Day 1: Addis Ababa – Awash NP (game drive, waterfalls). Day 2: Awash – Semera (permits, Danakil briefing). Day 3: Semera – Lake Afdera – Erta Ale base. Day 4: Trek to Erta Ale summit; lava lake visit. Day 5: Descend and drive to Hamed Ela. Day 6: Dallol (sulfur springs), salt flats, camel caravans. Day 7: Return to Semera/drive towards Mille. Day 8: Return to Addis Ababa and departure.', 'Danakil Depression (via Awash)', 8, 1390.00, 1),
@@ -246,7 +269,9 @@ INSERT INTO `users` (`user_id`, `username`, `email`, `password_hash`, `first_nam
 (7, 'hanna_t', 'hanna@example.com', 'password123', 'Hanna', 'Tesfaye', '0911223347', NULL, '2025-10-16 00:46:30', 'driver'),
 (8, 'kebede_a', 'kebede@example.com', 'password123', 'Kebede', 'Alemu', '0911223348', NULL, '2025-10-16 00:46:30', 'driver'),
 (9, 'hana.wvh2', 'hana@gmail.com', '$2a$10$LbJNzrOwqA.nP7xNHGazfOiJMUuZqCNDpD8EuV9Ubum2eDGNNbrBm', 'hana', '', '+2519875643', NULL, '2025-10-16 01:28:54', 'driver'),
-(10, 'blu.2h6d', 'blu@gmail.com', '$2a$10$m21YxJvBft7NI7toQmPWZOIunjpzy095dukGUvWv/MarHng4gCYfq', 'blu', '', '+2519805643', NULL, '2025-10-16 02:48:09', 'driver');
+(10, 'blu.2h6d', 'blu@gmail.com', '$2a$10$m21YxJvBft7NI7toQmPWZOIunjpzy095dukGUvWv/MarHng4gCYfq', 'blu', '', '+2519805643', NULL, '2025-10-16 02:48:09', 'driver'),
+(13, 'danu.v1zk', 'danu@gmail.com', '$2a$10$S7VvsCi34CyQGGA4ZUp1DO9V17oh0neWcTF1q8kO2DunW4FbgpFMK', 'danu', '', '0987654334', NULL, '2025-10-20 00:20:57', 'employee'),
+(14, 'londa.boyr', 'londa@gmail.com', '$2a$10$Edri2fTLUEdhwKTyr/HEqemV7dws.mpXZXXvQzbXCYw7ySar8t17y', 'londa', '', '098765656', NULL, '2025-10-20 00:59:20', 'tourguide');
 
 -- --------------------------------------------------------
 
@@ -294,7 +319,8 @@ ALTER TABLE `bookings`
   ADD PRIMARY KEY (`booking_id`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `tour_id` (`tour_id`),
-  ADD KEY `vehicle_id` (`vehicle_id`);
+  ADD KEY `vehicle_id` (`vehicle_id`),
+  ADD KEY `fk_booking_driver` (`driver_id`);
 
 --
 -- Indexes for table `customer`
@@ -379,19 +405,19 @@ ALTER TABLE `vehicles`
 -- AUTO_INCREMENT for table `bookings`
 --
 ALTER TABLE `bookings`
-  MODIFY `booking_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `booking_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `payments`
 --
 ALTER TABLE `payments`
-  MODIFY `payment_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `payment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `ratings`
 --
 ALTER TABLE `ratings`
-  MODIFY `rating_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `rating_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `tours`
@@ -403,7 +429,7 @@ ALTER TABLE `tours`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT for table `vehicles`
@@ -427,7 +453,8 @@ ALTER TABLE `admins`
 ALTER TABLE `bookings`
   ADD CONSTRAINT `bookings_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `bookings_ibfk_2` FOREIGN KEY (`tour_id`) REFERENCES `tours` (`tour_id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `bookings_ibfk_3` FOREIGN KEY (`vehicle_id`) REFERENCES `vehicles` (`vehicle_id`) ON DELETE SET NULL;
+  ADD CONSTRAINT `bookings_ibfk_3` FOREIGN KEY (`vehicle_id`) REFERENCES `vehicles` (`vehicle_id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_booking_driver` FOREIGN KEY (`driver_id`) REFERENCES `drivers` (`driver_id`);
 
 --
 -- Constraints for table `drivers`
