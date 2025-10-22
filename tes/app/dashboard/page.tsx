@@ -144,12 +144,26 @@ export default function CustomerDashboard() {
               <h1 className="text-3xl font-bold text-gray-900">My Dashboard</h1>
               <p className="text-gray-600">Welcome back, {user?.first_name || user?.username}!</p>
             </div>
-            <button
-              onClick={() => window.location.href = '/'}
-              className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 transition-colors"
-            >
-              Browse Tours
-            </button>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => window.location.href = '/'}
+                className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 transition-colors"
+              >
+                Browse Tours
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+                  } finally {
+                    window.location.href = '/'
+                  }
+                }}
+                className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -16,6 +16,7 @@ interface Vehicle {
   model: string
   capacity: number | null
   dailyRate: number | null
+  imageUrl?: string | null
 }
 
 interface Tour {
@@ -32,7 +33,6 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [drivers, setDrivers] = useState<any[]>([])
   const [selectedTour, setSelectedTour] = useState<Tour | null>(null)
-  const [availableTours, setAvailableTours] = useState<Tour[]>([])
   const [bookingSuccess, setBookingSuccess] = useState(false)
   const [error, setError] = useState<string>('')
 
@@ -95,25 +95,23 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
         const tours = await response.json()
         console.log('Available tours:', tours)
         console.log('Looking for tour name:', tourName)
-        
-        setAvailableTours(tours)
-        
+
+        // Find the exact tour by name and set it directly
         const tour = tours.find((t: Tour) => t.name.toLowerCase() === tourName.toLowerCase())
         console.log('Selected tour:', tour)
-        
+
         if (!tour) {
           console.warn(`Tour not found: "${tourName}". Available tours:`, tours.map(t => t.name))
-          // If no exact match, try to find a similar tour or use the first available tour
-          const similarTour = tours.find((t: Tour) => 
-            t.name.toLowerCase().includes(tourName.toLowerCase()) || 
+          // If no exact match, try to find a similar tour
+          const similarTour = tours.find((t: Tour) =>
+            t.name.toLowerCase().includes(tourName.toLowerCase()) ||
             tourName.toLowerCase().includes(t.name.toLowerCase())
           )
           if (similarTour) {
             console.log('Using similar tour:', similarTour)
             setSelectedTour(similarTour)
-          } else if (tours.length > 0) {
-            console.log('Using first available tour:', tours[0])
-            setSelectedTour(tours[0])
+          } else {
+            setError(`Tour "${tourName}" not found in database`)
           }
         } else {
           setSelectedTour(tour)
@@ -121,6 +119,7 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
       }
     } catch (e) {
       console.error('Error fetching tours:', e)
+      setError('Failed to load tour information')
     }
   }
 
@@ -239,7 +238,9 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
           endDate: formData.endDate,
           totalPrice,
           peopleCount: formData.peopleCount,
-          specialRequests: ''
+          specialRequests: '',
+          customerName: formData.name,
+          customerPhone: formData.phone
         })
       })
 
@@ -460,35 +461,33 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
                     </div>
                   )}
                   
-                  {!selectedTour && availableTours.length > 0 && (
+                  {!selectedTour && (
                     <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
                       <p className="text-yellow-800 text-sm">
-                        <strong>Note:</strong> The requested tour "{tourName}" was not found. Please select from available tours below.
+                        <strong>Note:</strong> The requested tour "{tourName}" was not found. Please try again or contact support.
                       </p>
                     </div>
                   )}
                   
-                  {availableTours.length > 0 && (
+                  {selectedTour && (
                     <div className="mt-4">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        {selectedTour ? 'Change Tour' : 'Select Tour'}
+                        Selected Tour
                       </label>
-                      <select
-                        value={selectedTour?.id || ''}
-                        onChange={(e) => {
-                          const tourId = parseInt(e.target.value)
-                          const tour = availableTours.find(t => t.id === tourId)
-                          setSelectedTour(tour || null)
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      >
-                        <option value="">Select a tour...</option>
-                        {availableTours.map((tour) => (
-                          <option key={tour.id} value={tour.id}>
-                            {tour.name} - ${tour.price}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="w-full px-4 py-3 border border-emerald-200 rounded-md bg-emerald-50">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <h4 className="font-semibold text-emerald-900">{selectedTour.name}</h4>
+                            <p className="text-sm text-emerald-700">
+                              Duration: {selectedTour.durationDays} days
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-bold text-emerald-900">${selectedTour.price}</p>
+                            <p className="text-xs text-emerald-600">per person</p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -562,8 +561,26 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
                               : "border-gray-200 hover:border-gray-300"
                           }`}
                         >
-                          <div className="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center mb-3">
-                            <Car className="h-12 w-12 text-gray-400" />
+                          <div className="w-full h-32 bg-gray-100 rounded-lg overflow-hidden mb-3">
+                            {vehicle.imageUrl ? (
+                              <Image
+                                src={vehicle.imageUrl}
+                                alt={`${vehicle.make} ${vehicle.model}`}
+                                width={300}
+                                height={128}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  // Fallback to icon if image fails to load
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                  target.parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center"><svg class="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0M15 17a2 2 0 104 0"></path></svg></div>';
+                                }}
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Car className="h-12 w-12 text-gray-400" />
+                              </div>
+                            )}
                           </div>
                           <h4 className="font-semibold text-gray-900">{vehicle.make} {vehicle.model}</h4>
                           <p className="text-sm text-gray-600">

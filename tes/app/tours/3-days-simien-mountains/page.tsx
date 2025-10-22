@@ -288,7 +288,7 @@ export default function ThreeDaysSimienMoutainPage() {
               <BookingPopup
                 isOpen={isBookingOpen}
                 onClose={() => setIsBookingOpen(false)}
-                tourName="Dalol Depression Tour"
+                tourName="3 Days Simien Mountains"
               />
     </div>
   )

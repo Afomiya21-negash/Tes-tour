@@ -335,7 +335,7 @@ This historic route is one of our best products and is purchased so many times b
               <BookingPopup
                 isOpen={isBookingOpen}
                 onClose={() => setIsBookingOpen(false)}
-                tourName="Dalol Depression Tour"
+                tourName="9 Days Historic Route"
               />
     </div>
   )

@@ -178,7 +178,7 @@ export default function FullDayTripPAge() {
              <BookingPopup
                isOpen={isBookingOpen}
                onClose={() => setIsBookingOpen(false)}
-               tourName="Dalol Depression Tour"
+               tourName="Full Day Addis Ababa City Tour"
              />
     </div>
   )

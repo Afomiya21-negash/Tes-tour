@@ -297,7 +297,7 @@ const [isBookingOpen, setIsBookingOpen] = useState(false)
               <BookingPopup
                 isOpen={isBookingOpen}
                 onClose={() => setIsBookingOpen(false)}
-                tourName="Dalol Depression Tour"
+                tourName="7 Days Danakil Depression"
               />
     </div>
   )

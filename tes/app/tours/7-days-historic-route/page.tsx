@@ -320,7 +320,7 @@ export default function SevenDaysHistoricRoutePage() {
               <BookingPopup
                 isOpen={isBookingOpen}
                 onClose={() => setIsBookingOpen(false)}
-                tourName="Dalol Depression Tour"
+                tourName="7 Days Historic Route"
               />
     </div>
   )

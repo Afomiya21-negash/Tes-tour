@@ -357,7 +357,7 @@ Although many of Gondar’s churches were destroyed during the Mahdist invasion 
                 <BookingPopup
                   isOpen={isBookingOpen}
                   onClose={() => setIsBookingOpen(false)}
-                  tourName="Dalol Depression Tour"
+                  tourName="12 Days Historic with Simien"
                 />
     </div>
   )

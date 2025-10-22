@@ -4,7 +4,7 @@ import { getPool } from '@/lib/db'
 
 export async function GET(req: NextRequest) {
   try {
-    const token = req.cookies.get('auth_token')?.value
+    const token = req.cookies.get('auth_token')?.value || req.cookies.get('token')?.value
     if (!token) return NextResponse.json({ authenticated: false }, { status: 200 })
 
     const payload = verifyJwt(token)

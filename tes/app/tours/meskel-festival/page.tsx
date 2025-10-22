@@ -275,7 +275,7 @@ export default function MeskelFestivalPage() {
               <BookingPopup
                 isOpen={isBookingOpen}
                 onClose={() => setIsBookingOpen(false)}
-                tourName="Dalol Depression Tour"
+                tourName="Meskel Festival"
               />
     </div>
   )

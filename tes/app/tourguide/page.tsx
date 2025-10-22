@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { MapPin, Calendar, Users, Star, LogOut, User, Clock, Navigation } from "lucide-react"
+import { MapPin, Calendar, Users, Star, LogOut, User, Clock, Navigation, Lock } from "lucide-react"
 
 type Tour = {
   booking_id: number
@@ -206,19 +206,28 @@ export default function TourGuideDashboard() {
                 <p className="text-green-100 text-sm">Welcome back, Nina</p>
               </div>
             </div>
-            <button
-              onClick={async () => {
-                try {
-                  await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
-                } finally {
-                  window.location.href = '/'
-                }
-              }}
-              className="flex items-center space-x-2 bg-green-700 hover:bg-green-800 px-4 py-2 rounded-lg transition-colors"
-            >
-              <LogOut className="w-5 h-5" />
-              <span>Logout</span>
-            </button>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => window.location.href = '/change-password'}
+                className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors text-white"
+              >
+                <Lock className="w-5 h-5" />
+                <span>Change Password</span>
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+                  } finally {
+                    window.location.href = '/'
+                  }
+                }}
+                className="flex items-center space-x-2 bg-green-700 hover:bg-green-800 px-4 py-2 rounded-lg transition-colors"
+              >
+                <LogOut className="w-5 h-5" />
+                <span>Logout</span>
+              </button>
+            </div>
           </div>
         </div>
       </header>

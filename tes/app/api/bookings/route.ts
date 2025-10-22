@@ -21,7 +21,9 @@ export async function POST(req: NextRequest) {
       endDate,
       totalPrice,
       peopleCount,
-      specialRequests
+      specialRequests,
+      customerName,
+      customerPhone
     } = body || {}
     
     if (!startDate || !endDate || !totalPrice || !peopleCount) {
@@ -41,7 +43,9 @@ export async function POST(req: NextRequest) {
       endDate,
       totalPrice,
       peopleCount,
-      specialRequests
+      specialRequests,
+      customerName,
+      customerPhone
     })
     
     return NextResponse.json(booking, { status: 201 })

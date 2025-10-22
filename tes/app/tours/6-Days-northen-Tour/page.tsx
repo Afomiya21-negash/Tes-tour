@@ -314,7 +314,7 @@ export default function SixDaysNorthenTourPage() {
               <BookingPopup
                 isOpen={isBookingOpen}
                 onClose={() => setIsBookingOpen(false)}
-                tourName="Dalol Depression Tour"
+                tourName="6 Days Northern Tour"
               />
     </div>
   )

@@ -177,7 +177,7 @@ After mass, the fast is broken so the clergy and crowd alike disperse to their h
               <BookingPopup
                 isOpen={isBookingOpen}
                 onClose={() => setIsBookingOpen(false)}
-                tourName="Dalol Depression Tour"
+                tourName="Gena (Christmas)"
               />
     </div>
   )

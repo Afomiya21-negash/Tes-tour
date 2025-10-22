@@ -173,7 +173,7 @@ export default function TimiketEpiphanyPage() {
               <BookingPopup
                 isOpen={isBookingOpen}
                 onClose={() => setIsBookingOpen(false)}
-                tourName="Dalol Depression Tour"
+                tourName="Timiket (Epiphany)"
               />
     </div>
   )

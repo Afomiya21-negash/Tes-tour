@@ -639,6 +639,7 @@ export class Vehicle {
     public licensePlate: string,
     public capacity?: number | null,
     public dailyRate?: number | null,
+    public imageUrl?: string | null,
   ) {}
 }
 
@@ -667,6 +668,8 @@ export class BookingService {
     totalPrice: number
     peopleCount: number
     specialRequests?: string
+    customerName?: string
+    customerPhone?: string
   }): Promise<{ booking_id: number }> {
     const pool = getPool()
     const conn = await pool.getConnection()
@@ -674,7 +677,7 @@ export class BookingService {
     try {
       await conn.beginTransaction()
 
-      const { userId, tourId, vehicleId, driverId, startDate, endDate, totalPrice, peopleCount, specialRequests } = input
+      const { userId, tourId, vehicleId, driverId, startDate, endDate, totalPrice, peopleCount, specialRequests, customerName, customerPhone } = input
 
       // Validate dates
       const start = new Date(startDate)
@@ -700,20 +703,18 @@ export class BookingService {
           'SELECT status FROM vehicles WHERE vehicle_id = ? LIMIT 1',
           [vehicleId]
         )) as any
-        if (!vehicleRows || vehicleRows.length === 0 || vehicleRows[0].status !== 'available') {
+        const vehicleStatus = (vehicleRows && vehicleRows[0] ? String(vehicleRows[0].status || '') : '').toLowerCase()
+        if (!vehicleRows || vehicleRows.length === 0 || vehicleStatus !== 'available') {
           throw new Error('Vehicle is not available')
         }
       }
 
-      // Check driver availability if driver is specified (via vehicles assigned to the driver)
+      // Check driver availability if driver is specified
       if (driverId) {
         const [driverRows] = (await conn.query(
-          `SELECT COUNT(*) as active_bookings
-           FROM bookings b
-           JOIN vehicles v ON b.vehicle_id = v.vehicle_id
-           WHERE v.driver_id = ?
-             AND b.status IN ('confirmed', 'in-progress')
-             AND ((b.start_date <= ? AND b.end_date >= ?) OR (b.start_date <= ? AND b.end_date >= ?))`,
+          `SELECT COUNT(*) as active_bookings FROM bookings
+           WHERE driver_id = ? AND status IN ('confirmed', 'in-progress')
+           AND ((start_date <= ? AND end_date >= ?) OR (start_date <= ? AND end_date >= ?))`,
           [driverId, startDate, startDate, endDate, endDate]
         )) as any
         if (driverRows && driverRows[0] && driverRows[0].active_bookings > 0) {
@@ -721,33 +722,37 @@ export class BookingService {
         }
       }
 
-      // Create booking (be compatible across schemas): try with number_of_people only; fallback to minimal columns
-      let result: any
-      try {
-        ;[result] = (await conn.query(
-          `INSERT INTO bookings (user_id, tour_id, vehicle_id, start_date, end_date, total_price, number_of_people, booking_date, status)
-           VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), 'pending')`,
-          [userId, tourId || null, vehicleId || null, startDate, endDate, totalPrice, peopleCount || 1]
-        )) as any
-      } catch (e: any) {
-        const msg = String(e?.message || '')
-        if (msg.includes("Unknown column 'number_of_people'")) {
-          ;[result] = (await conn.query(
-            `INSERT INTO bookings (user_id, tour_id, vehicle_id, start_date, end_date, total_price, booking_date, status)
-             VALUES (?, ?, ?, ?, ?, ?, NOW(), 'pending')`,
-            [userId, tourId || null, vehicleId || null, startDate, endDate, totalPrice]
-          )) as any
-        } else if (msg.includes("Unknown column 'special_requests'")) {
-          // In case upstream still attempts with special_requests in some migration state, fall back to number_of_people only path
-          ;[result] = (await conn.query(
-            `INSERT INTO bookings (user_id, tour_id, vehicle_id, start_date, end_date, total_price, number_of_people, booking_date, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), 'pending')`,
-            [userId, tourId || null, vehicleId || null, startDate, endDate, totalPrice, peopleCount || 1]
-          )) as any
-        } else {
-          throw e
+      // Update user information if provided
+      if (customerName || customerPhone) {
+        const updateFields = []
+        const updateValues = []
+        
+        if (customerName) {
+          const { first, last } = AuthService.splitName(customerName)
+          updateFields.push('first_name = ?, last_name = ?')
+          updateValues.push(first, last)
+        }
+        
+        if (customerPhone) {
+          updateFields.push('phone_number = ?')
+          updateValues.push(customerPhone)
+        }
+        
+        if (updateFields.length > 0) {
+          updateValues.push(userId)
+          await conn.query(
+            `UPDATE users SET ${updateFields.join(', ')} WHERE user_id = ?`,
+            updateValues
+          )
         }
       }
+
+      // Create booking (match existing schema - no special_requests column)
+      const [result] = (await conn.query(
+        `INSERT INTO bookings (user_id, tour_id, vehicle_id, driver_id, start_date, end_date, total_price, number_of_people, booking_date, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'pending')`,
+        [userId, tourId || null, vehicleId || null, driverId || null, startDate, endDate, totalPrice, peopleCount || 1]
+      )) as any
 
       const bookingId = result.insertId as number
 
@@ -763,91 +768,32 @@ export class BookingService {
 
   static async getUserBookings(userId: number): Promise<any[]> {
     const pool = getPool()
-    
-    // Try with all columns first, fallback if columns don't exist
-    let rows: any
-    try {
-      [rows] = (await pool.query(
-        `SELECT
-          b.booking_id,
-          b.tour_id,
-          b.start_date,
-          b.end_date,
-          b.total_price,
-          b.booking_date,
-          b.status,
-          b.number_of_people,
-          b.special_requests,
-          t.name as tour_name,
-          t.destination,
-          t.duration_days,
-          tg.first_name as tour_guide_first_name,
-          tg.last_name as tour_guide_last_name,
-          tg.email as tour_guide_email,
-          tg.phone_number as tour_guide_phone,
-          v.make as vehicle_make,
-          v.model as vehicle_model,
-          v.capacity as vehicle_capacity,
-          d.first_name as driver_first_name,
-          d.last_name as driver_last_name,
-          d.email as driver_email,
-          d.phone_number as driver_phone,
-          p.amount as payment_amount,
-          p.status as payment_status,
-          p.payment_method
-        FROM bookings b
-        LEFT JOIN tours t ON b.tour_id = t.tour_id
-        LEFT JOIN users tg ON t.tour_guide_id = tg.user_id
-        LEFT JOIN vehicles v ON b.vehicle_id = v.vehicle_id
-        LEFT JOIN users d ON v.driver_id = d.user_id
-        LEFT JOIN payments p ON b.booking_id = p.booking_id
-        WHERE b.user_id = ?
-        ORDER BY b.booking_date DESC`,
-        [userId]
-      )) as any
-    } catch (e: any) {
-      // Fallback query without optional columns
-      if (e.message?.includes('number_of_people') || e.message?.includes('special_requests')) {
-        [rows] = (await pool.query(
-          `SELECT
-            b.booking_id,
-            b.tour_id,
-            b.start_date,
-            b.end_date,
-            b.total_price,
-            b.booking_date,
-            b.status,
-            t.name as tour_name,
-            t.destination,
-            t.duration_days,
-            tg.first_name as tour_guide_first_name,
-            tg.last_name as tour_guide_last_name,
-            tg.email as tour_guide_email,
-            tg.phone_number as tour_guide_phone,
-            v.make as vehicle_make,
-            v.model as vehicle_model,
-            v.capacity as vehicle_capacity,
-            d.first_name as driver_first_name,
-            d.last_name as driver_last_name,
-            d.email as driver_email,
-            d.phone_number as driver_phone,
-            p.amount as payment_amount,
-            p.status as payment_status,
-            p.payment_method
-          FROM bookings b
-          LEFT JOIN tours t ON b.tour_id = t.tour_id
-          LEFT JOIN users tg ON t.tour_guide_id = tg.user_id
-          LEFT JOIN vehicles v ON b.vehicle_id = v.vehicle_id
-          LEFT JOIN users d ON v.driver_id = d.user_id
-          LEFT JOIN payments p ON b.booking_id = p.booking_id
-          WHERE b.user_id = ?
-          ORDER BY b.booking_date DESC`,
-          [userId]
-        )) as any
-      } else {
-        throw e
-      }
-    }
+    const [rows] = (await pool.query(
+      `SELECT
+        b.booking_id,
+        b.tour_id,
+        b.start_date,
+        b.end_date,
+        b.total_price,
+        b.booking_date,
+        b.status,
+        t.name as tour_name,
+        t.destination,
+        t.duration_days,
+        v.make as vehicle_make,
+        v.model as vehicle_model,
+        v.capacity as vehicle_capacity,
+        p.amount as payment_amount,
+        p.status as payment_status,
+        p.payment_method
+      FROM bookings b
+      LEFT JOIN tours t ON b.tour_id = t.tour_id
+      LEFT JOIN vehicles v ON b.vehicle_id = v.vehicle_id
+      LEFT JOIN payments p ON b.booking_id = p.booking_id
+      WHERE b.user_id = ?
+      ORDER BY b.booking_date DESC`,
+      [userId]
+    )) as any
 
     return rows || []
   }
@@ -936,31 +882,55 @@ export class VehicleService {
   static async getAvailableVehicles(): Promise<Vehicle[]> {
     const pool = getPool()
     const [rows] = (await pool.query(
-      'SELECT vehicle_id, driver_id, make, model, year, license_plate, capacity, daily_rate FROM vehicles WHERE status = "available"'
+      'SELECT vehicle_id, driver_id, make, model, year, license_plate, capacity, daily_rate, picture FROM vehicles WHERE status IN ("available", "Available")'
     )) as any
 
-    return (rows || []).map((row: any) => new Vehicle(
-      row.vehicle_id,
-      row.driver_id,
-      row.make,
-      row.model,
-      row.year,
-      row.license_plate,
-      row.capacity,
-      row.daily_rate
-    ))
+    return (rows || []).map((row: any) => {
+      // Fix image path - remove 'tes' prefix and ensure it starts with '/'
+      let imageUrl = row.picture
+      if (imageUrl && imageUrl.startsWith('tes/public/images/')) {
+        imageUrl = imageUrl.replace('tes/public/images/', '/images/')
+      } else if (imageUrl && imageUrl.startsWith('tespublicimages')) {
+        imageUrl = imageUrl.replace('tespublicimages', '/images/')
+      } else if (imageUrl && !imageUrl.startsWith('/')) {
+        imageUrl = '/images/' + imageUrl
+      }
+
+      return new Vehicle(
+        row.vehicle_id,
+        row.driver_id,
+        row.make,
+        row.model,
+        row.year,
+        row.license_plate,
+        row.capacity,
+        row.daily_rate,
+        imageUrl
+      )
+    })
   }
 
   static async getVehicleById(vehicleId: number): Promise<Vehicle | null> {
     const pool = getPool()
     const [rows] = (await pool.query(
-      'SELECT vehicle_id, driver_id, make, model, year, license_plate, capacity, daily_rate FROM vehicles WHERE vehicle_id = ? LIMIT 1',
+      'SELECT vehicle_id, driver_id, make, model, year, license_plate, capacity, daily_rate, picture FROM vehicles WHERE vehicle_id = ? LIMIT 1',
       [vehicleId]
     )) as any
 
     if (!rows || rows.length === 0) return null
 
     const row = rows[0]
+    
+    // Fix image path - remove 'tes' prefix and ensure it starts with '/'
+    let imageUrl = row.picture
+    if (imageUrl && imageUrl.startsWith('tes/public/images/')) {
+      imageUrl = imageUrl.replace('tes/public/images/', '/images/')
+    } else if (imageUrl && imageUrl.startsWith('tespublicimages')) {
+      imageUrl = imageUrl.replace('tespublicimages', '/images/')
+    } else if (imageUrl && !imageUrl.startsWith('/')) {
+      imageUrl = '/images/' + imageUrl
+    }
+
     return new Vehicle(
       row.vehicle_id,
       row.driver_id,
@@ -969,7 +939,8 @@ export class VehicleService {
       row.year,
       row.license_plate,
       row.capacity,
-      row.daily_rate
+      row.daily_rate,
+      imageUrl
     )
   }
 }
@@ -1053,41 +1024,35 @@ export class ItineraryService {
     try {
       await connection.beginTransaction()
 
-      // Get tour itinerary - using the actual database schema
+      // Get tour itinerary
       const [tourItinerary] = await connection.execute(
-        'SELECT * FROM itinerary WHERE tour_id = ? ORDER BY itineraryid ASC',
+        'SELECT * FROM itinerary WHERE tour_id = ? ORDER BY itinerary_id ASC',
         [tourId]
       )
 
       if (Array.isArray(tourItinerary) && tourItinerary.length > 0) {
+        // Copy each day to custom itinerary
         // Create a simple custom itinerary based on tour data
         const itineraryData = {
           days: tourItinerary.map((day: any, index: number) => ({
             day: index + 1,
-            title: `Day ${index + 1}`,
-            description: day.descr || 'Tour activities',
-            location: 'Various locations'
+            title: day.title || `Day ${index + 1}`,
+            description: day.description || 'Tour activities',
+            location: day.location || 'Various locations'
           }))
         }
 
-        // Check if custom_itinerary table exists, if not create a simple record
-        try {
-          await connection.execute(
-            `INSERT INTO custom_itinerary (booking_id, itinerary_data, created_at, updated_at)
-             VALUES (?, ?, NOW(), NOW())`,
-            [bookingId, JSON.stringify(itineraryData)]
-          )
-        } catch (tableError) {
-          // If custom_itinerary table doesn't exist, just log and continue
-          console.log('Custom itinerary table not found, skipping itinerary creation')
-        }
+        await connection.execute(
+          `INSERT INTO custom_itinerary (booking_id, itinerary_data, created_at, updated_at)
+           VALUES (?, ?, NOW(), NOW())`,
+          [bookingId, JSON.stringify(itineraryData)]
+        )
       }
 
       await connection.commit()
     } catch (error) {
       await connection.rollback()
-      // Don't throw error for itinerary creation failure, just log it
-      console.log('Failed to create custom itinerary:', error)
+      throw error
     } finally {
       connection.release()
     }

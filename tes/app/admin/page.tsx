@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Star, UserPlus, Users, X, LogOut, BarChart3, Shield } from "lucide-react"
+import { Star, UserPlus, Users, X, LogOut, BarChart3, Shield, Lock } from "lucide-react"
 
 type Employee = {
   id: number
@@ -271,20 +271,29 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
               <Shield className="w-8 h-8" />
               <h1 className="text-2xl font-bold">Admin Dashboard</h1>
             </div>
-            <button
-              onClick={async () => {
-                try {
-                  const res = await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
-                  // Regardless of res.ok, clear UI state by navigating home
-                } finally {
-                  window.location.href = '/'
-                }
-              }}
-              className="flex items-center space-x-2 bg-green-700 hover:bg-green-800 px-4 py-2 rounded-lg transition-colors"
-            >
-              <LogOut className="w-5 h-5" />
-              <span>Logout</span>
-            </button>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => window.location.href = '/change-password'}
+                className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors text-white"
+              >
+                <Lock className="w-5 h-5" />
+                <span>Change Password</span>
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+                    // Regardless of res.ok, clear UI state by navigating home
+                  } finally {
+                    window.location.href = '/'
+                  }
+                }}
+                className="flex items-center space-x-2 bg-green-700 hover:bg-green-800 px-4 py-2 rounded-lg transition-colors"
+              >
+                <LogOut className="w-5 h-5" />
+                <span>Logout</span>
+              </button>
+            </div>
           </div>
         </div>
       </header>

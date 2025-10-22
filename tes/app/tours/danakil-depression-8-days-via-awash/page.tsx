@@ -320,7 +320,7 @@ export default function EightDaysDanakilViaAwashPage() {
                 <BookingPopup
                   isOpen={isBookingOpen}
                   onClose={() => setIsBookingOpen(false)}
-                  tourName="Dalol Depression Tour"
+                  tourName="8 Days Danakil Depression via Awash"
                 />
     </div>
   )

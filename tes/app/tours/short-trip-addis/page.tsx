@@ -350,7 +350,7 @@ Lalibella could be considered as the 8th wonder of the world. A cluster of eleve
                 <BookingPopup
                   isOpen={isBookingOpen}
                   onClose={() => setIsBookingOpen(false)}
-                  tourName="Dalol Depression Tour"
+                  tourName="Short Trip from Addis"
                 />
     </div>
   )

@@ -150,6 +150,18 @@ export default function Navbar() {
                 <Link href="/dashboard">
                   <button className="btn-secondary px-4 py-2">My Dashboard</button>
                 </Link>
+                <button
+                  onClick={async () => {
+                    try {
+                      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+                    } finally {
+                      window.location.href = '/'
+                    }
+                  }}
+                  className="btn-secondary px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white"
+                >
+                  Logout
+                </button>
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-semibold">
                     {auth.user?.initial || 'U'}
@@ -272,6 +284,18 @@ export default function Navbar() {
                     <Link href="/dashboard" onClick={() => setIsMenuOpen(false)}>
                       <button className="w-full btn-secondary px-4 py-2">My Dashboard</button>
                     </Link>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+                        } finally {
+                          window.location.href = '/'
+                        }
+                      }}
+                      className="w-full btn-secondary px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white"
+                    >
+                      Logout
+                    </button>
                     <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                       <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-semibold">
                         {auth.user?.initial || 'U'}
