@@ -2,10 +2,10 @@
 -- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
--- Host: 127.0.0.1
--- Generation Time: Oct 21, 2025 at 03:48 PM
--- Server version: 10.4.32-MariaDB
--- PHP Version: 8.2.12
+-- Host: localhost
+-- Generation Time: Oct 23, 2025 at 11:32 AM
+-- Server version: 8.0.39
+-- PHP Version: 8.2.27
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -28,8 +28,8 @@ SET time_zone = "+00:00";
 --
 
 CREATE TABLE `admins` (
-  `admin_id` int(11) NOT NULL,
-  `admin_level` varchar(50) NOT NULL,
+  `admin_id` int NOT NULL,
+  `admin_level` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
   `hire_date` date DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -40,30 +40,34 @@ CREATE TABLE `admins` (
 --
 
 CREATE TABLE `bookings` (
-  `booking_id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
-  `tour_id` int(11) DEFAULT NULL,
-  `vehicle_id` int(11) DEFAULT NULL,
+  `booking_id` int NOT NULL,
+  `user_id` int NOT NULL,
+  `tour_id` int DEFAULT NULL,
+  `vehicle_id` int DEFAULT NULL,
   `start_date` date NOT NULL,
   `end_date` date NOT NULL,
   `total_price` decimal(10,2) NOT NULL,
-  `booking_date` datetime DEFAULT current_timestamp(),
-  `status` varchar(20) DEFAULT 'pending',
-  `number_of_people` int(11) DEFAULT NULL,
-  `driver_id` int(11) DEFAULT NULL
+  `booking_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  `status` varchar(20) COLLATE utf8mb4_general_ci DEFAULT 'pending',
+  `number_of_people` int DEFAULT NULL,
+  `driver_id` int DEFAULT NULL,
+  `tour_guide_id` int DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `bookings`
 --
 
-INSERT INTO `bookings` (`booking_id`, `user_id`, `tour_id`, `vehicle_id`, `start_date`, `end_date`, `total_price`, `booking_date`, `status`, `number_of_people`, `driver_id`) VALUES
-(1, 2, 7, 1, '2025-10-17', '2025-10-25', 1440.02, '2025-10-16 03:53:44', 'pending', 2, NULL),
-(2, 2, 7, 1, '2025-10-22', '2025-10-29', 720.01, '2025-10-19 23:57:20', 'pending', 1, NULL),
-(3, 2, 7, 3, '2025-10-22', '2025-11-03', 1440.00, '2025-10-20 01:22:26', 'pending', 2, NULL),
-(4, 2, NULL, 1, '2025-10-21', '2025-10-29', 10000.00, '2025-10-20 01:26:37', 'pending', 4, NULL),
-(5, 2, 7, 3, '2025-10-21', '2025-10-22', 1440.00, '2025-10-20 01:43:22', 'pending', 2, NULL),
-(6, 2, 1, 3, '2025-10-22', '2025-11-06', 7596.02, '2025-10-20 01:58:24', 'pending', 4, NULL);
+INSERT INTO `bookings` (`booking_id`, `user_id`, `tour_id`, `vehicle_id`, `start_date`, `end_date`, `total_price`, `booking_date`, `status`, `number_of_people`, `driver_id`, `tour_guide_id`) VALUES
+(1, 2, 7, NULL, '2025-10-17', '2025-10-25', 1440.02, '2025-10-16 03:53:44', 'pending', 2, NULL, 14),
+(2, 2, 7, NULL, '2025-10-22', '2025-10-29', 720.01, '2025-10-19 23:57:20', 'pending', 1, NULL, 14),
+(3, 2, 7, NULL, '2025-10-22', '2025-11-03', 1440.00, '2025-10-20 01:22:26', 'pending', 2, NULL, 14),
+(4, 2, NULL, NULL, '2025-10-21', '2025-10-29', 10000.00, '2025-10-20 01:26:37', 'pending', 4, NULL, NULL),
+(5, 2, 7, NULL, '2025-10-21', '2025-10-22', 1440.00, '2025-10-20 01:43:22', 'pending', 2, NULL, 14),
+(6, 2, 1, NULL, '2025-10-22', '2025-11-06', 7596.02, '2025-10-20 01:58:24', 'pending', 4, NULL, 14),
+(7, 15, 1, NULL, '2025-10-23', '2025-11-06', 5697.01, '2025-10-22 10:02:53', 'pending', 3, NULL, 14),
+(8, 15, 5, NULL, '2025-10-31', '2025-11-05', 2997.01, '2025-10-22 10:13:02', 'pending', 3, NULL, 14),
+(9, 15, 2, 10, '2025-10-30', '2025-11-08', 1499.00, '2025-10-22 16:20:57', 'pending', 1, 6, NULL);
 
 -- --------------------------------------------------------
 
@@ -72,7 +76,7 @@ INSERT INTO `bookings` (`booking_id`, `user_id`, `tour_id`, `vehicle_id`, `start
 --
 
 CREATE TABLE `customer` (
-  `custrid` int(11) NOT NULL,
+  `custrid` int NOT NULL,
   `birthdate` date DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -83,10 +87,10 @@ CREATE TABLE `customer` (
 --
 
 CREATE TABLE `drivers` (
-  `driver_id` int(11) NOT NULL,
-  `license_number` varchar(50) NOT NULL,
-  `vehicle_type` varchar(50) DEFAULT NULL,
-  `rating` decimal(2,1) DEFAULT 0.0
+  `driver_id` int NOT NULL,
+  `license_number` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `vehicle_type` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `rating` decimal(2,1) DEFAULT '0.0'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -99,8 +103,11 @@ INSERT INTO `drivers` (`driver_id`, `license_number`, `vehicle_type`, `rating`) 
 (3, 'DL12347', 'Pickup', 4.7),
 (4, 'DL12348', 'Hatchback', 4.5),
 (5, 'DL12349', 'Truck', 4.9),
-(9, '1223445667', 'suv', 0.0),
-(10, 'edfghjkjhgf', 'suv', 0.0);
+(6, 'DL12350', 'SUV', 4.3),
+(7, 'DL12351', 'Sedan', 4.7),
+(8, 'DL12352', 'Van', 4.4),
+(9, '1223445667', 'suv', 4.2),
+(10, 'edfghjkjhgf', 'suv', 4.1);
 
 -- --------------------------------------------------------
 
@@ -109,9 +116,9 @@ INSERT INTO `drivers` (`driver_id`, `license_number`, `vehicle_type`, `rating`) 
 --
 
 CREATE TABLE `employees` (
-  `employee_id` int(11) NOT NULL,
-  `position` varchar(100) DEFAULT NULL,
-  `department` varchar(100) DEFAULT NULL,
+  `employee_id` int NOT NULL,
+  `position` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `department` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `hire_date` date DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -123,7 +130,9 @@ INSERT INTO `employees` (`employee_id`, `position`, `department`, `hire_date`) V
 (9, 'Driver', 'Transport', NULL),
 (10, 'Driver', 'Transport', NULL),
 (13, 'HR', 'HR', NULL),
-(14, 'Tour Guide', 'Guides', NULL);
+(14, 'Tour Guide', 'Guides', NULL),
+(16, 'HR', 'HR', NULL),
+(17, 'Tour Guide', 'Guides', NULL);
 
 -- --------------------------------------------------------
 
@@ -132,10 +141,10 @@ INSERT INTO `employees` (`employee_id`, `position`, `department`, `hire_date`) V
 --
 
 CREATE TABLE `itinerary` (
-  `itineraryid` int(11) NOT NULL,
-  `custrid` int(11) DEFAULT NULL,
-  `tour_id` int(11) DEFAULT NULL,
-  `descr` varchar(255) DEFAULT NULL
+  `itineraryid` int NOT NULL,
+  `custrid` int DEFAULT NULL,
+  `tour_id` int DEFAULT NULL,
+  `descr` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -145,13 +154,13 @@ CREATE TABLE `itinerary` (
 --
 
 CREATE TABLE `payments` (
-  `payment_id` int(11) NOT NULL,
-  `booking_id` int(11) NOT NULL,
+  `payment_id` int NOT NULL,
+  `booking_id` int NOT NULL,
   `amount` decimal(10,2) NOT NULL,
-  `payment_date` datetime DEFAULT current_timestamp(),
-  `payment_method` varchar(50) DEFAULT NULL,
-  `transaction_id` varchar(100) DEFAULT NULL,
-  `status` varchar(20) DEFAULT 'completed'
+  `payment_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  `payment_method` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `transaction_id` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `status` varchar(20) COLLATE utf8mb4_general_ci DEFAULT 'completed'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -161,16 +170,16 @@ CREATE TABLE `payments` (
 --
 
 CREATE TABLE `ratings` (
-  `rating_id` int(11) NOT NULL,
-  `booking_id` int(11) NOT NULL,
-  `customer_id` int(11) NOT NULL,
-  `rated_user_id` int(11) NOT NULL,
-  `rating_type` enum('tourguide','driver') NOT NULL,
-  `rating` int(1) NOT NULL CHECK (`rating` >= 1 and `rating` <= 5),
-  `comment` text DEFAULT NULL,
-  `created_at` datetime DEFAULT current_timestamp(),
-  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `rating_id` int NOT NULL,
+  `booking_id` int NOT NULL,
+  `customer_id` int NOT NULL,
+  `rated_user_id` int NOT NULL,
+  `rating_type` enum('tourguide','driver') COLLATE utf8mb4_general_ci NOT NULL,
+  `rating` int NOT NULL,
+  `comment` text COLLATE utf8mb4_general_ci,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ;
 
 -- --------------------------------------------------------
 
@@ -179,11 +188,11 @@ CREATE TABLE `ratings` (
 --
 
 CREATE TABLE `tourguides` (
-  `tour_guide_id` int(11) NOT NULL,
-  `license_number` varchar(50) NOT NULL,
-  `experience_years` int(11) DEFAULT NULL,
-  `specialization` varchar(100) DEFAULT NULL,
-  `rating` decimal(2,1) DEFAULT 0.0
+  `tour_guide_id` int NOT NULL,
+  `license_number` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `experience_years` int DEFAULT NULL,
+  `specialization` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `rating` decimal(2,1) DEFAULT '0.0'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -191,7 +200,8 @@ CREATE TABLE `tourguides` (
 --
 
 INSERT INTO `tourguides` (`tour_guide_id`, `license_number`, `experience_years`, `specialization`, `rating`) VALUES
-(14, '567544', 3, 'history', 0.0);
+(14, '567544', 3, 'history', 4.8),
+(17, '12345', 4, 'nature', 0.0);
 
 -- --------------------------------------------------------
 
@@ -200,14 +210,14 @@ INSERT INTO `tourguides` (`tour_guide_id`, `license_number`, `experience_years`,
 --
 
 CREATE TABLE `tours` (
-  `tour_id` int(11) NOT NULL,
-  `tour_guide_id` int(11) DEFAULT NULL,
-  `name` varchar(100) NOT NULL,
-  `description` text DEFAULT NULL,
-  `destination` varchar(100) NOT NULL,
-  `duration_days` int(11) DEFAULT NULL,
+  `tour_id` int NOT NULL,
+  `tour_guide_id` int DEFAULT NULL,
+  `name` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `description` text COLLATE utf8mb4_general_ci,
+  `destination` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `duration_days` int DEFAULT NULL,
   `price` decimal(10,2) NOT NULL,
-  `availability` tinyint(1) DEFAULT 1
+  `availability` tinyint(1) DEFAULT '1'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -219,7 +229,7 @@ INSERT INTO `tours` (`tour_id`, `tour_guide_id`, `name`, `description`, `destina
 (2, NULL, '9 Days Historic Route', 'Itinerary: Day 1: Addis Ababa city tour. Day 2: Fly/Drive to Bahir Dar; Lake Tana monasteries. Day 3: Blue Nile Falls; transfer to Gondar. Day 4: Gondar castles and church; afternoon to Debark or rest. Day 5: Simien Mountains National Park day hike. Day 6: Fly/Drive to Lalibela; first cluster of churches. Day 7: Lalibela second cluster; local village experience. Day 8: Return to Addis Ababa; leisure. Day 9: Departure.', 'Historic Circuit (North Ethiopia)', 9, 1499.00, 1),
 (3, NULL, '7 Days Historic Route', 'Itinerary: Day 1: Addis Ababa highlights. Day 2: Fly/Drive to Bahir Dar; Lake Tana. Day 3: Blue Nile Falls; transfer to Gondar. Day 4: Gondar castles and church. Day 5: Fly/Drive to Lalibela; first cluster of churches. Day 6: Lalibela second cluster; optional trek. Day 7: Return to Addis Ababa and departure.', 'Historic Circuit (North Ethiopia)', 7, 1199.00, 1),
 (4, NULL, '7 Days Simien Mountains', 'Itinerary: Day 1: Addis Ababa – Bahir Dar (via Debre Libanos and Blue Nile Gorge). Day 2: Bahir Dar: Lake Tana boat trip and Blue Nile Falls. Day 3: Bahir Dar – Gondar; castles and Debre Berhan Selassie. Day 4: Gondar – Simien Mountains NP – Gondar (day excursion). Day 5: Gondar – Lalibela (Drive); visit Awramba community if time permits. Day 6: Lalibela rock-hewn churches (two clusters). Day 7: Lalibela – Addis Ababa; shopping and departure.', 'Simien Mountains + North Highlights', 7, 1090.00, 1),
-(5, NULL, '6 Days Northern Tour', 'Itinerary: Day 1: Addis Ababa city tour (Museum, Mercato, Entoto). Day 2: Fly/Drive to Bahir Dar. Lake Tana monasteries. Day 3: Blue Nile Falls; transfer to Gondar. Day 4: Gondar castles and church; afternoon rest. Day 5: Fly/Drive to Lalibela. First cluster of churches. Day 6: Second cluster and return to Addis Ababa.', 'Northern Tour (Bahir Dar, Gondar, Lalibela)', 6, 999.00, 1),
+(5, 14, '6 Days Northern Tour', 'Itinerary: Day 1: Addis Ababa city tour (Museum, Mercato, Entoto). Day 2: Fly/Drive to Bahir Dar. Lake Tana monasteries. Day 3: Blue Nile Falls; transfer to Gondar. Day 4: Gondar castles and church; afternoon rest. Day 5: Fly/Drive to Lalibela. First cluster of churches. Day 6: Second cluster and return to Addis Ababa.', 'Northern Tour (Bahir Dar, Gondar, Lalibela)', 6, 999.00, 1),
 (6, NULL, '3 Days Simien Mountains', 'Itinerary: Day 1: Gondar to Debark, enter Simien NP; hike Sankaber area. Day 2: Trek Geech–Imet Gogo (or Sankaber–Geech) for panoramic views and Gelada baboons. Day 3: Morning hike; drive back to Gondar.', 'Simien Mountains', 3, 550.00, 1),
 (7, 14, 'Dalol Depression Tour', 'Itinerary: Day 1: Fly/Drive to Semera; permits and briefing. Continue to Hamed Ela via Lake Afdera (salt lake swim). Day 2: Dallol hydrothermal fields (colorful sulfur springs), salt flats at Lake Asale, camel caravans; sunset photography. Day 3: Return via Semera to Addis Ababa.', 'Danakil Depression (Dallol)', 3, 720.00, 1),
 (8, NULL, '5 Days Danakil Depression', 'Itinerary: Day 1: Addis Ababa – Semera (permits). Day 2: Lake Afdera; drive to Erta Ale base; night trek. Day 3: Sunrise at crater; descend; drive to Hamed Ela. Day 4: Dallol hydrothermal fields and Lake Asale; camel caravans. Day 5: Return to Addis Ababa.', 'Danakil Depression', 5, 890.00, 1),
@@ -243,16 +253,16 @@ INSERT INTO `tours` (`tour_id`, `tour_guide_id`, `name`, `description`, `destina
 --
 
 CREATE TABLE `users` (
-  `user_id` int(11) NOT NULL,
-  `username` varchar(50) NOT NULL,
-  `email` varchar(100) NOT NULL,
-  `password_hash` varchar(255) NOT NULL,
-  `first_name` varchar(50) NOT NULL,
-  `last_name` varchar(50) NOT NULL,
-  `phone_number` varchar(20) DEFAULT NULL,
-  `address` varchar(255) DEFAULT NULL,
-  `registration_date` datetime DEFAULT current_timestamp(),
-  `role` varchar(20) NOT NULL
+  `user_id` int NOT NULL,
+  `username` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `email` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+  `password_hash` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `first_name` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `last_name` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `phone_number` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `address` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `registration_date` datetime DEFAULT CURRENT_TIMESTAMP,
+  `role` varchar(20) COLLATE utf8mb4_general_ci NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -270,8 +280,11 @@ INSERT INTO `users` (`user_id`, `username`, `email`, `password_hash`, `first_nam
 (8, 'kebede_a', 'kebede@example.com', 'password123', 'Kebede', 'Alemu', '0911223348', NULL, '2025-10-16 00:46:30', 'driver'),
 (9, 'hana.wvh2', 'hana@gmail.com', '$2a$10$LbJNzrOwqA.nP7xNHGazfOiJMUuZqCNDpD8EuV9Ubum2eDGNNbrBm', 'hana', '', '+2519875643', NULL, '2025-10-16 01:28:54', 'driver'),
 (10, 'blu.2h6d', 'blu@gmail.com', '$2a$10$m21YxJvBft7NI7toQmPWZOIunjpzy095dukGUvWv/MarHng4gCYfq', 'blu', '', '+2519805643', NULL, '2025-10-16 02:48:09', 'driver'),
-(13, 'danu.v1zk', 'danu@gmail.com', '$2a$10$S7VvsCi34CyQGGA4ZUp1DO9V17oh0neWcTF1q8kO2DunW4FbgpFMK', 'danu', '', '0987654334', NULL, '2025-10-20 00:20:57', 'employee'),
-(14, 'londa.boyr', 'londa@gmail.com', '$2a$10$Edri2fTLUEdhwKTyr/HEqemV7dws.mpXZXXvQzbXCYw7ySar8t17y', 'londa', '', '098765656', NULL, '2025-10-20 00:59:20', 'tourguide');
+(13, 'danu.v1zk', 'danu@gmail.com', '$2a$10$Ma9jXJ3jRsV5w5TbInO8AO4rzAQFDosMCpcX/j/FMEYbpEVLoucNW', 'danu', '', '0987654334', NULL, '2025-10-20 00:20:57', 'employee'),
+(14, 'londa.boyr', 'londa@gmail.com', '$2a$10$Edri2fTLUEdhwKTyr/HEqemV7dws.mpXZXXvQzbXCYw7ySar8t17y', 'londa', '', '098765656', NULL, '2025-10-20 00:59:20', 'tourguide'),
+(15, 'arsema', 'arsemateferi79@gmail.com', '$2a$10$1L2.3kFC9v8R17/R1cPyG.eJBu3Tmc.bxo/O3sAZdhahXpcD1AU26', 'arsema', 'teferi', '09876543', NULL, '2025-10-22 09:59:52', 'customer'),
+(16, 'selam.iao4', 'selam@gmail.com', '$2a$10$hyWpGOroj/WvyJ7xFSq22.on27ltkfywjLcj8xsUZLMFI7eVzlue.', 'selam', '', '0954455445', NULL, '2025-10-22 12:47:03', 'employee'),
+(17, 'solomon.l1xz', 'sol@gmial.com', '$2a$10$RP35F82INoCfYgTsTAVQHOFv426KPnXyBVMACl1PYQOruALit2Rqa', 'solomon', '', '0987788787', NULL, '2025-10-22 12:49:27', 'tourguide');
 
 -- --------------------------------------------------------
 
@@ -280,27 +293,31 @@ INSERT INTO `users` (`user_id`, `username`, `email`, `password_hash`, `first_nam
 --
 
 CREATE TABLE `vehicles` (
-  `vehicle_id` int(11) NOT NULL,
-  `driver_id` int(11) DEFAULT NULL,
-  `make` varchar(50) NOT NULL,
-  `model` varchar(50) NOT NULL,
-  `year` int(11) NOT NULL,
-  `license_plate` varchar(20) NOT NULL,
-  `capacity` int(11) DEFAULT NULL,
-  `daily_rate` decimal(10,2) NOT NULL,
-  `status` varchar(20) DEFAULT 'available'
+  `vehicle_id` int NOT NULL,
+  `driver_id` int DEFAULT NULL,
+  `make` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `model` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+  `year` int NOT NULL,
+  `license_plate` varchar(20) COLLATE utf8mb4_general_ci NOT NULL,
+  `capacity` int DEFAULT NULL,
+  `status` varchar(20) COLLATE utf8mb4_general_ci DEFAULT 'available',
+  `picture` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `image_url` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `vehicles`
 --
 
-INSERT INTO `vehicles` (`vehicle_id`, `driver_id`, `make`, `model`, `year`, `license_plate`, `capacity`, `daily_rate`, `status`) VALUES
-(1, 1, 'Toyota', 'Corolla', 2018, 'AB123CD', 4, 2500.00, 'available'),
-(2, 2, 'Hyundai', 'H1', 2020, 'EF456GH', 8, 4000.00, 'in_service'),
-(3, 3, 'Ford', 'Ranger', 2022, 'IJ789KL', 5, 3500.00, 'available'),
-(4, 4, 'Suzuki', 'Swift', 2019, 'MN012OP', 4, 2300.00, 'maintenance'),
-(5, 5, 'Isuzu', 'D-Max', 2021, 'QR345ST', 2, 3800.00, 'available');
+INSERT INTO `vehicles` (`vehicle_id`, `driver_id`, `make`, `model`, `year`, `license_plate`, `capacity`, `status`, `picture`, `image_url`) VALUES
+(10, NULL, 'Hyundai', 'Elantra', 2017, 'EF7890', 5, 'Available', '/images/hyundai.webp', NULL),
+(11, NULL, 'Ford', 'Pickup', 2019, 'FG2345', 2, 'Available', '/images/ford pickup.webp', NULL),
+(18, NULL, 'Toyota', 'Mark 2', 2012, 'AB1234', 5, 'Available', '/images/mark2.webp', NULL),
+(19, NULL, 'Toyota', 'Coaster Bus', 2018, 'BC5678', 28, 'Available', '/images/coaster bus.webp', NULL),
+(20, NULL, 'Toyota', 'V8', 2020, 'CD9012', 7, 'Available', '/images/toyota v8.webp', NULL),
+(21, NULL, 'Suzuki', 'Swift', 2015, 'DE3456', 5, 'Available', 'tes/public/images/suzuki.webp', NULL),
+(22, NULL, 'Hyundai', 'Elantra', 2017, 'EF7891', 5, 'Available', 'tes/public/images/hyundai.webp', NULL),
+(23, NULL, 'Ford', 'Pickup', 2019, 'FG2346', 2, 'Available', 'tes/public/images/ford pickup.webp', NULL);
 
 --
 -- Indexes for dumped tables
@@ -320,7 +337,8 @@ ALTER TABLE `bookings`
   ADD KEY `user_id` (`user_id`),
   ADD KEY `tour_id` (`tour_id`),
   ADD KEY `vehicle_id` (`vehicle_id`),
-  ADD KEY `fk_booking_driver` (`driver_id`);
+  ADD KEY `fk_booking_driver` (`driver_id`),
+  ADD KEY `fk_booking_tourguide` (`tour_guide_id`);
 
 --
 -- Indexes for table `customer`
@@ -405,37 +423,37 @@ ALTER TABLE `vehicles`
 -- AUTO_INCREMENT for table `bookings`
 --
 ALTER TABLE `bookings`
-  MODIFY `booking_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `booking_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `payments`
 --
 ALTER TABLE `payments`
-  MODIFY `payment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `payment_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `ratings`
 --
 ALTER TABLE `ratings`
-  MODIFY `rating_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `rating_id` int NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `tours`
 --
 ALTER TABLE `tours`
-  MODIFY `tour_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+  MODIFY `tour_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `user_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- AUTO_INCREMENT for table `vehicles`
 --
 ALTER TABLE `vehicles`
-  MODIFY `vehicle_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `vehicle_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
 
 --
 -- Constraints for dumped tables
@@ -454,7 +472,8 @@ ALTER TABLE `bookings`
   ADD CONSTRAINT `bookings_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `bookings_ibfk_2` FOREIGN KEY (`tour_id`) REFERENCES `tours` (`tour_id`) ON DELETE SET NULL,
   ADD CONSTRAINT `bookings_ibfk_3` FOREIGN KEY (`vehicle_id`) REFERENCES `vehicles` (`vehicle_id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `fk_booking_driver` FOREIGN KEY (`driver_id`) REFERENCES `drivers` (`driver_id`);
+  ADD CONSTRAINT `fk_booking_driver` FOREIGN KEY (`driver_id`) REFERENCES `drivers` (`driver_id`),
+  ADD CONSTRAINT `fk_booking_tourguide` FOREIGN KEY (`tour_guide_id`) REFERENCES `users` (`user_id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `drivers`
