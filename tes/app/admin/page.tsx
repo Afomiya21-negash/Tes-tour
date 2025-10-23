@@ -50,63 +50,11 @@ export default function AdminDashboard() {
   // Mock data
   const [employees, setEmployees] = useState<Employee[]>([])
 
-  const [customers] = useState<Customer[]>([
-    {
-      id: 1,
-      name: "nardos",
-      email: "nardi@gmail.com",
-      phone: "+251-911-456789",
-      signupDate: "2024-03-01",
-      bookingsCount: 3,
-    },
-    {
-      id: 2,
-      name: "yared negassi",
-      email: "yaya@gmail.com",
-      phone: "+251-911-567890",
-      signupDate: "2024-03-15",
-      bookingsCount: 1,
-    },
-    {
-      id: 3,
-      name: "Afomiya mesfin",
-      email: "mai@gmail.com",
-      phone: "+251-911-678901",
-      signupDate: "2024-04-02",
-      bookingsCount: 5,
-    },
-  ])
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [loadingCustomers, setLoadingCustomers] = useState(false)
 
-  const [ratings] = useState<Rating[]>([
-    {
-      id: 1,
-      employeeName: "yedidya birhanu",
-      employeeRole: "tourguide",
-      customerName: "afomiya mesfin",
-      rating: 5,
-      comment: "Excellent tour guide! Very knowledgeable and friendly.",
-      date: "2024-03-10",
-    },
-    {
-      id: 2,
-      employeeName: "belen abebe",
-      employeeRole: "driver",
-      customerName: "nardos",
-      rating: 4,
-      comment: "Safe driver, arrived on time.",
-      date: "2024-03-20",
-    },
-    {
-      id: 3,
-      employeeName: "beshadu teferi",
-      employeeRole: "tourguide",
-      customerName: "yared negassi",
-      rating: 5,
-      comment: "Amazing experience! Highly recommend.",
-      date: "2024-04-05",
-    },
- 
-  ])
+  const [ratings, setRatings] = useState<Rating[]>([])
+  const [loadingRatings, setLoadingRatings] = useState(false)
 
   const fetchEmployees = async () => {
     try {
@@ -119,8 +67,64 @@ export default function AdminDashboard() {
     }
   }
 
+  const fetchRatings = async () => {
+    setLoadingRatings(true)
+    try {
+      const res = await fetch('/api/test-employee-ratings', { credentials: 'include' })
+      if (!res.ok) throw new Error('Failed to load ratings')
+      const data = await res.json()
+
+      // Transform the API data to match the Rating interface
+      const transformedRatings: Rating[] = data.ratings.map((rating: any, index: number) => ({
+        id: index + 1,
+        employeeName: rating.employee_name,
+        employeeRole: rating.rating_type as "tourguide" | "driver" | "employee",
+        customerName: rating.customer_name,
+        rating: Number(rating.rating),
+        comment: rating.comment,
+        date: rating.created_at ? new Date(rating.created_at).toISOString().split('T')[0] : 'N/A'
+      }))
+
+      setRatings(transformedRatings)
+    } catch (e) {
+      console.error('Failed to fetch ratings:', e)
+      setRatings([])
+    } finally {
+      setLoadingRatings(false)
+    }
+  }
+
+  const fetchCustomers = async () => {
+    setLoadingCustomers(true)
+    try {
+      const res = await fetch('/api/list-all-users', { credentials: 'include' })
+      if (!res.ok) throw new Error('Failed to load customers')
+      const data = await res.json()
+
+      // Filter only customers and transform to match Customer interface
+      const customerUsers = data.users.filter((user: any) => user.role === 'customer')
+      const transformedCustomers: Customer[] = customerUsers.map((user: any, index: number) => ({
+        id: user.user_id,
+        name: `${user.first_name} ${user.last_name}`.trim(),
+        email: user.email,
+        phone: user.phone_number || 'N/A',
+        signupDate: user.created_at ? new Date(user.created_at).toISOString().split('T')[0] : 'N/A',
+        bookingsCount: user.bookings_count || 0
+      }))
+
+      setCustomers(transformedCustomers)
+    } catch (e) {
+      console.error('Failed to fetch customers:', e)
+      setCustomers([])
+    } finally {
+      setLoadingCustomers(false)
+    }
+  }
+
   useEffect(() => {
     fetchEmployees()
+    fetchRatings()
+    fetchCustomers()
   }, [])
 
   const handleRegisterEmployee = async () => {

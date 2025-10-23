@@ -10,7 +10,7 @@ type Props = {
 
 export default function LayoutShell({ children }: Props) {
   const pathname = usePathname()
-  const hideChrome = pathname === "/login" || pathname === "/signup" || pathname === "/admin" || pathname === "/tourguide" || pathname === "/employee"
+  const hideChrome = pathname === "/login" || pathname === "/signup" || pathname === "/admin" || pathname === "/tourguide" || pathname === "/employee" || pathname === "/change-password"
 
   return (
     <>

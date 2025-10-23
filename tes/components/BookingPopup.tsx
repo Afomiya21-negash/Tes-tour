@@ -96,26 +96,42 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
         console.log('Available tours:', tours)
         console.log('Looking for tour name:', tourName)
 
-        // Find the exact tour by name and set it directly
-        const tour = tours.find((t: Tour) => t.name.toLowerCase() === tourName.toLowerCase())
-        console.log('Selected tour:', tour)
+        // Normalize tour name for better matching
+        const normalizedTourName = tourName.toLowerCase().trim()
+
+        // Find the exact tour by name first
+        let tour = tours.find((t: Tour) => t.name.toLowerCase().trim() === normalizedTourName)
 
         if (!tour) {
-          console.warn(`Tour not found: "${tourName}". Available tours:`, tours.map(t => t.name))
-          // If no exact match, try to find a similar tour
-          const similarTour = tours.find((t: Tour) =>
-            t.name.toLowerCase().includes(tourName.toLowerCase()) ||
-            tourName.toLowerCase().includes(t.name.toLowerCase())
-          )
-          if (similarTour) {
-            console.log('Using similar tour:', similarTour)
-            setSelectedTour(similarTour)
-          } else {
-            setError(`Tour "${tourName}" not found in database`)
-          }
-        } else {
-          setSelectedTour(tour)
+          // Try partial matching if exact match fails
+          tour = tours.find((t: Tour) => {
+            const normalizedTourDbName = t.name.toLowerCase().trim()
+            return normalizedTourDbName.includes(normalizedTourName) ||
+                   normalizedTourName.includes(normalizedTourDbName)
+          })
         }
+
+        if (!tour) {
+          // Try keyword-based matching for common tour types
+          const keywords = normalizedTourName.split(/[\s-]+/)
+          tour = tours.find((t: Tour) => {
+            const normalizedTourDbName = t.name.toLowerCase().trim()
+            return keywords.some(keyword =>
+              keyword.length > 2 && normalizedTourDbName.includes(keyword)
+            )
+          })
+        }
+
+        console.log('Selected tour:', tour)
+
+        if (tour) {
+          setSelectedTour(tour)
+        } else {
+          console.warn(`Tour not found: "${tourName}". Available tours:`, tours.map((t: any) => t.name))
+          setError(`Tour "${tourName}" not found in database. Please check the tour name or contact support.`)
+        }
+      } else {
+        setError('Failed to load tour information from server')
       }
     } catch (e) {
       console.error('Error fetching tours:', e)
@@ -278,6 +294,7 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
       phone: "",
       peopleCount: 1,
       selectedVehicle: "",
+      selectedDriver: "",
       selectedBank: "",
       startDate: "",
       endDate: "",
@@ -457,7 +474,7 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
                     <div className="bg-gray-50 p-4 rounded-md">
                       <h4 className="font-semibold text-gray-900">Selected Tour</h4>
                       <p className="text-gray-600">{selectedTour.name}</p>
-                      <p className="text-emerald-600 font-medium">${selectedTour.price} per person</p>
+                      <p className="text-emerald-600 font-medium">ETB {selectedTour.price} per person</p>
                     </div>
                   )}
                   
@@ -483,7 +500,7 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="text-lg font-bold text-emerald-900">${selectedTour.price}</p>
+                            <p className="text-lg font-bold text-emerald-900">ETB {selectedTour.price}</p>
                             <p className="text-xs text-emerald-600">per person</p>
                           </div>
                         </div>
@@ -587,7 +604,7 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
                             {vehicle.capacity ? `${vehicle.capacity} passengers` : 'Capacity not specified'}
                           </p>
                           <p className="text-sm font-medium text-emerald-600">
-                            ${vehicle.dailyRate || 0}/day
+                            ETB {vehicle.dailyRate || 0}/day
                           </p>
                         </div>
                       ))}

@@ -44,11 +44,12 @@ export async function GET(request: NextRequest) {
     
   } catch (error) {
     console.error('Database test error:', error)
+    const details = error instanceof Error ? error.message : String(error)
     return NextResponse.json(
       { 
         success: false, 
         error: 'Database connection failed', 
-        details: error.message 
+        details: details 
       },
       { status: 500 }
     )
