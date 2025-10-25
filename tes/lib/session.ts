@@ -7,7 +7,7 @@ export type SessionUser = {
 }
 
 export async function getSession(): Promise<{ authenticated: boolean; user?: SessionUser }>{
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   const token = cookieStore.get('auth_token')?.value || cookieStore.get('token')?.value
   if (!token) return { authenticated: false }
   const payload = verifyJwt(token)

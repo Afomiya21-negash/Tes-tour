@@ -71,10 +71,125 @@ export default function EmployeeDashboard() {
   const [editNumberOfPeople, setEditNumberOfPeople] = useState(0)
   const [editSpecialRequests, setEditSpecialRequests] = useState("")
 
-  // Fetch data on component mount
+  // Check authentication on mount
   useEffect(() => {
-    fetchAllData()
+    checkAuth()
   }, [])
+
+  const checkAuth = async () => {
+    try {
+      const response = await fetch('/api/auth/me', { credentials: 'include' })
+      const data = await response.json()
+
+      if (!data.authenticated) {
+        // Show warning popup before redirecting to login
+        setTimeout(() => {
+          const popup = document.createElement('div')
+          popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4'
+          popup.innerHTML = `
+            <div class="bg-white rounded-lg w-full max-w-md">
+              <div class="flex justify-between items-center p-6 border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-red-800">Access Denied</h3>
+                <button onclick="this.closest('.fixed').remove(); window.location.href='/login'" class="text-gray-400 hover:text-gray-600">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
+              <div class="p-6">
+                <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                  <div class="flex items-center mb-2">
+                    <svg class="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                    </svg>
+                    <span class="font-semibold text-red-800">Authentication Required</span>
+                  </div>
+                  <p class="text-sm text-red-700">You must be logged in to access the employee dashboard.</p>
+                </div>
+                <button onclick="this.closest('.fixed').remove(); window.location.href='/login'" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition-colors">
+                  Go to Login
+                </button>
+              </div>
+            </div>
+          `
+          document.body.appendChild(popup)
+        }, 100)
+        return
+      }
+
+      if (data.user.role !== 'employee') {
+        // Show warning popup before redirecting to appropriate page
+        setTimeout(() => {
+          const popup = document.createElement('div')
+          popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4'
+          popup.innerHTML = `
+            <div class="bg-white rounded-lg w-full max-w-md">
+              <div class="flex justify-between items-center p-6 border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-orange-800">Access Restricted</h3>
+                <button onclick="this.closest('.fixed').remove(); window.location.href='/${data.user.role}'" class="text-gray-400 hover:text-gray-600">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
+              <div class="p-6">
+                <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                  <div class="flex items-center mb-2">
+                    <svg class="w-5 h-5 text-orange-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                    </svg>
+                    <span class="font-semibold text-orange-800">Employee Access Required</span>
+                  </div>
+                  <p class="text-sm text-orange-700">You are logged in as ${data.user.role}. Employee privileges are required to access this page.</p>
+                </div>
+                <button onclick="this.closest('.fixed').remove(); window.location.href='/${data.user.role}'" class="w-full bg-orange-600 hover:bg-orange-700 text-white py-2 px-4 rounded-lg transition-colors">
+                  Go to ${data.user.role.charAt(0).toUpperCase() + data.user.role.slice(1)} Dashboard
+                </button>
+              </div>
+            </div>
+          `
+          document.body.appendChild(popup)
+        }, 100)
+        return
+      }
+
+      setLoading(false)
+      fetchAllData()
+    } catch (e) {
+     
+      setTimeout(() => {
+        const popup = document.createElement('div')
+        popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4'
+        popup.innerHTML = `
+          <div class="bg-white rounded-lg w-full max-w-md">
+            <div class="flex justify-between items-center p-6 border-b border-gray-200">
+              <h3 class="text-xl font-semibold text-red-800">Connection Error</h3>
+              <button onclick="this.closest('.fixed').remove(); window.location.href='/login'" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="p-6">
+              <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                <div class="flex items-center mb-2">
+                  <svg class="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <span class="font-semibold text-red-800">Connection Failed</span>
+                </div>
+                <p class="text-sm text-red-700">Unable to verify authentication. Please try logging in again.</p>
+              </div>
+              <button onclick="this.closest('.fixed').remove(); window.location.href='/login'" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition-colors">
+                Go to Login
+              </button>
+            </div>
+          </div>
+        `
+        document.body.appendChild(popup)
+      }, 100)
+    }
+  }
 
   const fetchAllData = async () => {
     setLoading(true)
@@ -86,13 +201,6 @@ export default function EmployeeDashboard() {
       ])
     } catch (error) {
       console.error('Error fetching data:', error)
-      // If any of the endpoints returned 403 (HR-only), show access denied and redirect
-      if ((error as any)?.status === 403) {
-        setError('Access denied: HR role required to view this dashboard')
-        // Redirect after short delay
-        setTimeout(() => { window.location.href = '/' }, 2500)
-        return
-      }
       setError('Failed to load dashboard data')
     } finally {
       setLoading(false)
@@ -121,6 +229,10 @@ export default function EmployeeDashboard() {
       if (response.ok) {
         const data = await response.json()
         setTourGuides(data)
+      } else if (response.status === 403) {
+        setError('Access denied: HR role required to view this dashboard')
+        setTimeout(() => { window.location.href = '/' }, 2500)
+        return
       }
     } catch (error) {
       console.error('Error fetching tour guides:', error)
@@ -135,6 +247,10 @@ export default function EmployeeDashboard() {
       if (response.ok) {
         const data = await response.json()
         setRatings(data)
+      } else if (response.status === 403) {
+        setError('Access denied: HR role required to view this dashboard')
+        setTimeout(() => { window.location.href = '/' }, 2500)
+        return
       }
     } catch (error) {
       console.error('Error fetching ratings:', error)
@@ -188,8 +304,25 @@ export default function EmployeeDashboard() {
     if (!selectedBooking) return
 
     try {
-      // Here you would typically make an API call to assign the tour guide
-      // For now, we'll just update the local state
+      // Make API call to assign the tour guide
+      const response = await fetch('/api/employee/assign-tourguide', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          bookingId: selectedBooking.booking_id,
+          tourGuideId: tourGuideId,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to assign tour guide' }))
+        throw new Error(errorData.error || 'Failed to assign tour guide')
+      }
+
+      // Update local state to reflect the assignment
       const updatedBookings = bookings.map((booking) =>
         booking.booking_id === selectedBooking.booking_id
           ? {
@@ -204,10 +337,77 @@ export default function EmployeeDashboard() {
       setBookings(updatedBookings)
       setShowAssignModal(false)
       setSelectedBooking(null)
-      alert(`Tour guide ${tourGuideName} assigned successfully!`)
-    } catch (error) {
+
+      // Show success popup
+      setTimeout(() => {
+        const popup = document.createElement('div')
+        popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4'
+        popup.innerHTML = `
+          <div class="bg-white rounded-lg w-full max-w-md">
+            <div class="flex justify-between items-center p-6 border-b border-gray-200">
+              <h3 class="text-xl font-semibold text-green-800">Assignment Successful</h3>
+              <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="p-6">
+              <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                <div class="flex items-center mb-2">
+                  <svg class="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <span class="font-semibold text-green-800">Tour Guide Assigned</span>
+                </div>
+                <p class="text-sm text-green-700">${tourGuideName} has been successfully assigned to the booking.</p>
+              </div>
+              <button onclick="this.closest('.fixed').remove()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-colors">
+                Continue
+              </button>
+            </div>
+          </div>
+        `
+        document.body.appendChild(popup)
+      }, 100)
+
+      // Refresh data to show updated assignments
+      fetchBookings()
+    } catch (error: any) {
       console.error('Error assigning tour guide:', error)
-      alert("Failed to assign tour guide")
+
+      // Show error popup
+      setTimeout(() => {
+        const popup = document.createElement('div')
+        popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4'
+        popup.innerHTML = `
+          <div class="bg-white rounded-lg w-full max-w-md">
+            <div class="flex justify-between items-center p-6 border-b border-gray-200">
+              <h3 class="text-xl font-semibold text-red-800">Assignment Failed</h3>
+              <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="p-6">
+              <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                <div class="flex items-center mb-2">
+                  <svg class="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <span class="font-semibold text-red-800">Error</span>
+                </div>
+                <p class="text-sm text-red-700">${error.message || 'Failed to assign tour guide. Please try again.'}</p>
+              </div>
+              <button onclick="this.closest('.fixed').remove()" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition-colors">
+                Try Again
+              </button>
+            </div>
+          </div>
+        `
+        document.body.appendChild(popup)
+      }, 100)
     }
   }
 
@@ -257,6 +457,18 @@ export default function EmployeeDashboard() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="p-8 bg-red-50 border border-red-200 rounded-lg max-w-md">
+          <h2 className="text-xl font-semibold text-red-800 mb-2">Access Denied</h2>
+          <p className="text-red-600">{error}</p>
+          <p className="text-sm text-red-500 mt-2">Redirecting to home page...</p>
+        </div>
       </div>
     )
   }
@@ -352,11 +564,6 @@ export default function EmployeeDashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-red-600">{error}</p>
-          </div>
-        )}
 
         {/* Manage Bookings Tab */}
         {activeTab === "bookings" && (

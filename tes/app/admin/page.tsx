@@ -34,6 +34,130 @@ type Rating = {
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<"dashboard" | "ratings" | "customers">("dashboard")
   const [showRegisterModal, setShowRegisterModal] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string>('')
+
+  // Check authentication on mount
+  useEffect(() => {
+    checkAuth()
+  }, [])
+
+  const checkAuth = async () => {
+    try {
+      const response = await fetch('/api/auth/me', { credentials: 'include' })
+      const data = await response.json()
+
+      if (!data.authenticated) {
+        // Show warning popup before redirecting to login
+        setTimeout(() => {
+          const popup = document.createElement('div')
+          popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4'
+          popup.innerHTML = `
+            <div class="bg-white rounded-lg w-full max-w-md">
+              <div class="flex justify-between items-center p-6 border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-red-800">Access Denied</h3>
+                <button onclick="this.closest('.fixed').remove(); window.location.href='/login'" class="text-gray-400 hover:text-gray-600">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
+              <div class="p-6">
+                <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                  <div class="flex items-center mb-2">
+                    <svg class="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                    </svg>
+                    <span class="font-semibold text-red-800">Authentication Required</span>
+                  </div>
+                  <p class="text-sm text-red-700">You must be logged in to access the admin dashboard.</p>
+                </div>
+                <button onclick="this.closest('.fixed').remove(); window.location.href='/login'" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition-colors">
+                  Go to Login
+                </button>
+              </div>
+            </div>
+          `
+          document.body.appendChild(popup)
+        }, 100)
+        return
+      }
+
+      if (data.user.role !== 'admin') {
+        // Show warning popup before redirecting to appropriate page
+        setTimeout(() => {
+          const popup = document.createElement('div')
+          popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4'
+          popup.innerHTML = `
+            <div class="bg-white rounded-lg w-full max-w-md">
+              <div class="flex justify-between items-center p-6 border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-orange-800">Access Restricted</h3>
+                <button onclick="this.closest('.fixed').remove(); window.location.href='/${data.user.role}'" class="text-gray-400 hover:text-gray-600">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
+              <div class="p-6">
+                <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                  <div class="flex items-center mb-2">
+                    <svg class="w-5 h-5 text-orange-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                    </svg>
+                    <span class="font-semibold text-orange-800">Admin Access Required</span>
+                  </div>
+                  <p class="text-sm text-orange-700">You are logged in as ${data.user.role}. Admin privileges are required to access this page.</p>
+                </div>
+                <button onclick="this.closest('.fixed').remove(); window.location.href='/${data.user.role}'" class="w-full bg-orange-600 hover:bg-orange-700 text-white py-2 px-4 rounded-lg transition-colors">
+                  Go to ${data.user.role.charAt(0).toUpperCase() + data.user.role.slice(1)} Dashboard
+                </button>
+              </div>
+            </div>
+          `
+          document.body.appendChild(popup)
+        }, 100)
+        return
+      }
+
+      setLoading(false)
+      fetchEmployees()
+      fetchRatings()
+      fetchCustomers()
+    } catch (e) {
+      // Show error popup before redirecting to login
+      setTimeout(() => {
+        const popup = document.createElement('div')
+        popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4'
+        popup.innerHTML = `
+          <div class="bg-white rounded-lg w-full max-w-md">
+            <div class="flex justify-between items-center p-6 border-b border-gray-200">
+              <h3 class="text-xl font-semibold text-red-800">Connection Error</h3>
+              <button onclick="this.closest('.fixed').remove(); window.location.href='/login'" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="p-6">
+              <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                <div class="flex items-center mb-2">
+                  <svg class="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <span class="font-semibold text-red-800">Connection Failed</span>
+                </div>
+                <p class="text-sm text-red-700">Unable to verify authentication. Please try logging in again.</p>
+              </div>
+              <button onclick="this.closest('.fixed').remove(); window.location.href='/login'" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition-colors">
+                Go to Login
+              </button>
+            </div>
+          </div>
+        `
+        document.body.appendChild(popup)
+      }, 100)
+    }
+  }
 
   // Form states
   const [employeeName, setEmployeeName] = useState("")
@@ -70,12 +194,12 @@ export default function AdminDashboard() {
   const fetchRatings = async () => {
     setLoadingRatings(true)
     try {
-      const res = await fetch('/api/test-employee-ratings', { credentials: 'include' })
+      const res = await fetch('/api/employee/ratings', { credentials: 'include' })
       if (!res.ok) throw new Error('Failed to load ratings')
       const data = await res.json()
 
       // Transform the API data to match the Rating interface
-      const transformedRatings: Rating[] = data.ratings.map((rating: any, index: number) => ({
+      const transformedRatings: Rating[] = data.map((rating: any, index: number) => ({
         id: index + 1,
         employeeName: rating.employee_name,
         employeeRole: rating.rating_type as "tourguide" | "driver" | "employee",
@@ -121,11 +245,7 @@ export default function AdminDashboard() {
     }
   }
 
-  useEffect(() => {
-    fetchEmployees()
-    fetchRatings()
-    fetchCustomers()
-  }, [])
+  // Remove the old useEffect since we now call these in checkAuth
 
   const handleRegisterEmployee = async () => {
     if (!employeeName || !employeeEmail || !employeePhone) {
@@ -196,7 +316,7 @@ export default function AdminDashboard() {
         hireDate: new Date().toISOString().split("T")[0],
       }
 
-      // Show the generated credentials to the admin
+      // Show the generated credentials to the admin in a popup
       const credentialsMessage = `Employee registered successfully!
 
 Generated Login Credentials:
@@ -223,7 +343,39 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
   setPosition("")
   setDepartment("")
       setShowRegisterModal(false)
-      alert(credentialsMessage)
+
+      // Show popup instead of alert
+      setTimeout(() => {
+        const popup = document.createElement('div')
+        popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4'
+        popup.innerHTML = `
+          <div class="bg-white rounded-lg w-full max-w-md">
+            <div class="flex justify-between items-center p-6 border-b border-gray-200">
+              <h3 class="text-xl font-semibold text-gray-900">Employee Registration Successful</h3>
+              <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="p-6">
+              <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                <div class="flex items-center mb-2">
+                  <svg class="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <span class="font-semibold text-green-800">Registration Complete</span>
+                </div>
+                <div class="text-sm text-green-700 whitespace-pre-line">${credentialsMessage}</div>
+              </div>
+              <button onclick="this.closest('.fixed').remove()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-colors">
+                I have copied the credentials
+              </button>
+            </div>
+          </div>
+        `
+        document.body.appendChild(popup)
+      }, 100)
     } catch (e: any) {
       alert(e?.message || "Failed to register employee")
     }
@@ -264,6 +416,14 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
 
   const tourguideRatings = ratings.filter((r) => r.employeeRole === "tourguide")
   const driverRatings = ratings.filter((r) => r.employeeRole === "driver")
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -351,6 +511,12 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
+            <p className="text-red-600">{error}</p>
+          </div>
+        )}
+
         {/* Dashboard Tab */}
         {activeTab === "dashboard" && (
           <div>
