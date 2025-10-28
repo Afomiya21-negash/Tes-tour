@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Star, UserPlus, Users, X, LogOut, BarChart3, Shield, Lock } from "lucide-react"
+import { Star, UserPlus, Users, X, LogOut, BarChart3, Shield, Lock, Tag } from "lucide-react"
 
 type Employee = {
   id: number
@@ -33,7 +33,7 @@ type Rating = {
 }
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<"dashboard" | "ratings" | "customers">("dashboard")
+  const [activeTab, setActiveTab] = useState<"dashboard" | "ratings" | "customers" | "promotions">("dashboard")
   const [showRegisterModal, setShowRegisterModal] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string>('')
@@ -124,6 +124,8 @@ export default function AdminDashboard() {
       fetchEmployees()
       fetchRatings()
       fetchCustomers()
+      fetchTours()
+      fetchPromotions()
     } catch (e) {
       // Show error popup before redirecting to login
       setTimeout(() => {
@@ -180,6 +182,19 @@ export default function AdminDashboard() {
 
   const [ratings, setRatings] = useState<Rating[]>([])
   const [loadingRatings, setLoadingRatings] = useState(false)
+
+  // Promotion states
+  const [promotions, setPromotions] = useState<any[]>([])
+  const [loadingPromotions, setLoadingPromotions] = useState(false)
+  const [tours, setTours] = useState<any[]>([])
+  const [showPromotionModal, setShowPromotionModal] = useState(false)
+  const [promotionTitle, setPromotionTitle] = useState("")
+  const [promotionDescription, setPromotionDescription] = useState("")
+  const [selectedTourId, setSelectedTourId] = useState("")
+  const [discountPercentage, setDiscountPercentage] = useState("")
+  const [discountAmount, setDiscountAmount] = useState("")
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
 
   const fetchEmployees = async () => {
     try {
@@ -416,6 +431,81 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
     return employeeRatings.reduce((sum, r) => sum + r.rating, 0) / employeeRatings.length
   }
 
+  const fetchPromotions = async () => {
+    setLoadingPromotions(true)
+    try {
+      const res = await fetch('/api/promotions', { credentials: 'include' })
+      if (!res.ok) throw new Error('Failed to load promotions')
+      const data = await res.json()
+      setPromotions(data)
+    } catch (e) {
+      console.error('Failed to fetch promotions:', e)
+      setPromotions([])
+    } finally {
+      setLoadingPromotions(false)
+    }
+  }
+
+  const fetchTours = async () => {
+    try {
+      const res = await fetch('/api/tours', { credentials: 'include' })
+      if (!res.ok) throw new Error('Failed to load tours')
+      const data = await res.json()
+      setTours(data)
+    } catch (e) {
+      console.error('Failed to fetch tours:', e)
+      setTours([])
+    }
+  }
+
+  const handleCreatePromotion = async () => {
+    if (!promotionTitle || !selectedTourId) {
+      alert("Please fill in all required fields")
+      return
+    }
+
+    try {
+      const res = await fetch('/api/promotions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          tour_id: parseInt(selectedTourId),
+          title: promotionTitle,
+          description: promotionDescription,
+          discount_percentage: discountPercentage || null,
+          discount_amount: discountAmount || null,
+          start_date: startDate || null,
+          end_date: endDate || null
+        })
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: 'Failed to create promotion' }))
+        throw new Error(data.error || 'Failed to create promotion')
+      }
+
+      const data = await res.json()
+
+      // Reset form
+      setPromotionTitle("")
+      setPromotionDescription("")
+      setSelectedTourId("")
+      setDiscountPercentage("")
+      setDiscountAmount("")
+      setStartDate("")
+      setEndDate("")
+      setShowPromotionModal(false)
+
+      // Refresh promotions
+      fetchPromotions()
+
+      alert('Promotion created successfully!')
+    } catch (e: any) {
+      alert(e.message || 'Failed to create promotion')
+    }
+  }
+
   const tourguideRatings = ratings.filter((r) => r.employeeRole === "tourguide")
   const driverRatings = ratings.filter((r) => r.employeeRole === "driver")
 
@@ -505,6 +595,19 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
               <div className="flex items-center space-x-2">
                 <Users className="w-5 h-5" />
                 <span>Customers</span>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab("promotions")}
+              className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === "promotions"
+                  ? "border-green-600 text-green-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <Tag className="w-5 h-5" />
+                <span>Promotions</span>
               </div>
             </button>
           </div>
@@ -799,7 +902,210 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
             </div>
           </div>
         )}
+
+        {/* Promotions Tab */}
+        {activeTab === "promotions" && (
+          <div>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Tour Promotions</h2>
+              <button
+                onClick={() => setShowPromotionModal(true)}
+                className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                <Tag className="w-5 h-5" />
+                <span>Create Promotion</span>
+              </button>
+            </div>
+
+            <div className="bg-white border-2 border-green-200 rounded-lg overflow-hidden">
+              <table className="min-w-full divide-y divide-green-200">
+                <thead className="bg-green-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Tour
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Title
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Discount
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Start Date
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      End Date
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Status
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-green-100">
+                  {promotions.map((promotion) => (
+                    <tr key={`promotion-${promotion.promoid}`} className="hover:bg-green-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {promotion.tour_name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {promotion.title}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {promotion.discount_percentage ? `${promotion.discount_percentage}%` :
+                         promotion.discount_amount ? `ETB ${promotion.discount_amount}` : 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {promotion.start_date ? new Date(promotion.start_date).toLocaleDateString() : 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {promotion.end_date ? new Date(promotion.end_date).toLocaleDateString() : 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          promotion.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {promotion.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {promotions.length === 0 && (
+                <div className="text-center py-8">
+                  <Tag className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">No promotions created yet</p>
+                  <p className="text-sm text-gray-400">Create your first promotion to get started</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </main>
+
+      {/* Create Promotion Modal */}
+      {showPromotionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-md">
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+              <h3 className="text-xl font-semibold text-gray-900">Create Promotion</h3>
+              <button onClick={() => setShowPromotionModal(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Tour *</label>
+                <select
+                  value={selectedTourId}
+                  onChange={(e) => setSelectedTourId(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                >
+                  <option value="">Select a tour</option>
+                  {tours.map((tour) => (
+                    <option key={tour.tour_id} value={tour.tour_id}>
+                      {tour.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Promotion Title *</label>
+                <input
+                  type="text"
+                  value={promotionTitle}
+                  onChange={(e) => setPromotionTitle(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="e.g. Early Bird Special"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                <textarea
+                  value={promotionDescription}
+                  onChange={(e) => setPromotionDescription(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="Optional description"
+                  rows={3}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Discount %</label>
+                  <input
+                    type="number"
+                    value={discountPercentage}
+                    onChange={(e) => {
+                      setDiscountPercentage(e.target.value)
+                      if (e.target.value) setDiscountAmount("")
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    placeholder="e.g. 20"
+                    min="0"
+                    max="100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">OR Fixed Amount</label>
+                  <input
+                    type="number"
+                    value={discountAmount}
+                    onChange={(e) => {
+                      setDiscountAmount(e.target.value)
+                      if (e.target.value) setDiscountPercentage("")
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    placeholder="e.g. 500"
+                    min="0"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    min={new Date().toISOString().split('T')[0]}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    min={startDate || new Date().toISOString().split('T')[0]}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex space-x-3 p-6 border-t border-gray-200">
+              <button
+                onClick={handleCreatePromotion}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-colors"
+              >
+                Create Promotion
+              </button>
+              <button
+                onClick={() => setShowPromotionModal(false)}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Register Employee Modal */}
       {showRegisterModal && (
