@@ -19,6 +19,7 @@ type Customer = {
   phone: string
   signupDate: string
   bookingsCount: number
+  idPictures?: string[]
 }
 
 type Rating = {
@@ -233,7 +234,8 @@ export default function AdminDashboard() {
         email: user.email,
         phone: user.phone_number || 'N/A',
         signupDate: user.created_at ? new Date(user.created_at).toISOString().split('T')[0] : 'N/A',
-        bookingsCount: user.bookings_count || 0
+        bookingsCount: user.bookings_count || 0,
+        idPictures: user.id_pictures || undefined
       }))
 
       setCustomers(transformedCustomers)
@@ -749,7 +751,10 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                       Bookings
                     </th>
-                   
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      ID Pictures
+                    </th>
+
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-green-100">
@@ -764,7 +769,29 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
                           {customer.bookingsCount} bookings
                         </span>
                       </td>
-                    
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {customer.idPictures && customer.idPictures.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {customer.idPictures.slice(0, 3).map((pic: string, index: number) => (
+                              <img
+                                key={index}
+                                src={pic}
+                                alt={`ID ${index + 1}`}
+                                className="w-8 h-8 object-cover rounded border cursor-pointer hover:w-16 hover:h-16 transition-all"
+                                onClick={() => window.open(pic, '_blank')}
+                              />
+                            ))}
+                            {customer.idPictures.length > 3 && (
+                              <span className="text-xs text-gray-500 self-center">
+                                +{customer.idPictures.length - 3} more
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">No pictures</span>
+                        )}
+                      </td>
+
                     </tr>
                   ))}
                 </tbody>

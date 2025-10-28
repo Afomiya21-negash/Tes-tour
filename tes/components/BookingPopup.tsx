@@ -238,26 +238,31 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
       const days = selectedTour?.durationDays || 1
       const totalPrice = (tourPrice + (vehiclePrice * days)) * formData.peopleCount
 
-      // Create booking
+      // Create booking with FormData to handle file uploads
       console.log('Submitting booking with tourId:', selectedTour?.id)
       console.log('Selected tour details:', selectedTour)
-      
+
+      const bookingFormData = new FormData()
+      bookingFormData.append('tourId', selectedTour?.id?.toString() || '')
+      bookingFormData.append('vehicleId', selectedVehicleData?.id?.toString() || '')
+      bookingFormData.append('driverId', selectedDriverData?.user_id?.toString() || '')
+      bookingFormData.append('startDate', formData.startDate)
+      bookingFormData.append('endDate', formData.endDate)
+      bookingFormData.append('totalPrice', totalPrice.toString())
+      bookingFormData.append('peopleCount', formData.peopleCount.toString())
+      bookingFormData.append('specialRequests', '')
+      bookingFormData.append('customerName', formData.name)
+      bookingFormData.append('customerPhone', formData.phone)
+
+      // Add uploaded files
+      uploadedFiles.forEach((file, index) => {
+        bookingFormData.append(`idPicture${index}`, file)
+      })
+
       const bookingResponse = await fetch('/api/bookings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          tourId: selectedTour?.id || null,
-          vehicleId: selectedVehicleData?.id || null,
-          driverId: selectedDriverData?.user_id || null,
-          startDate: formData.startDate,
-          endDate: formData.endDate,
-          totalPrice,
-          peopleCount: formData.peopleCount,
-          specialRequests: '',
-          customerName: formData.name,
-          customerPhone: formData.phone
-        })
+        body: bookingFormData
       })
 
       if (!bookingResponse.ok) {
