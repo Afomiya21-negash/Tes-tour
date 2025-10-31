@@ -179,36 +179,43 @@ export class Guest {
       const fName = firstName ?? ''
       const lName = lastName ?? ''
 
-      // Discover available columns to avoid schema mismatches
-      const [userColsRows] = (await conn.query(
-        `SELECT column_name FROM information_schema.columns
-         WHERE table_schema = DATABASE() AND table_name = 'users'`
-      )) as any
-      const availableCols = new Set((userColsRows || []).map((r: any) => String(r.column_name)))
+      let result: any
+      try {
+        // Discover available columns to avoid schema mismatches (best-effort)
+        const [userColsRows] = (await conn.query(
+          `SELECT column_name FROM information_schema.columns
+           WHERE table_schema = DATABASE() AND table_name = 'users'`
+        )) as any
+        const availableCols = new Set((userColsRows || []).map((r: any) => String(r.column_name)))
 
-      const baseCols: string[] = ['username', 'email', 'password_hash', 'role']
-      const baseVals: any[] = [username, email, password_hash, 'customer']
+        const cols: string[] = []
+        const vals: any[] = []
 
-      const optionalMap: Array<[string, any]> = [
-        ['first_name', fName],
-        ['last_name', lName],
-        ['phone_number', phoneNo || null],
-        ['date_of_birth', DOB || null],
-        ['address', address || null],
-      ]
+        const push = (col: string, val: any) => { cols.push(col); vals.push(val) }
 
-      for (const [col, val] of optionalMap) {
-        if (availableCols.has(col)) {
-          baseCols.splice(baseCols.length - 1, 0, col) // insert before role to keep role last-ish (not required, but tidy)
-          baseVals.splice(baseVals.length - 1, 0, val)
-        }
+        push('username', username)
+        push('email', email)
+        push('password_hash', password_hash)
+        if (availableCols.has('first_name')) push('first_name', fName)
+        if (availableCols.has('last_name')) push('last_name', lName)
+        if (availableCols.has('phone_number')) push('phone_number', phoneNo || null)
+        push('role', 'customer')
+
+        const placeholders = cols.map(() => '?').join(', ')
+        const [ins] = (await conn.query(
+          `INSERT INTO users (${cols.join(', ')}) VALUES (${placeholders})`,
+          vals
+        )) as any
+        result = ins
+      } catch {
+        // Fallback to known schema from tes_tour.sql
+        const [ins] = (await conn.query(
+          `INSERT INTO users (username, email, password_hash, first_name, last_name, phone_number, role)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [username, email, password_hash, fName, lName, phoneNo || null, 'customer']
+        )) as any
+        result = ins
       }
-
-      const placeholders = baseCols.map(() => '?').join(', ')
-      const [result] = (await conn.query(
-        `INSERT INTO users (${baseCols.join(', ')}) VALUES (${placeholders})`,
-        baseVals
-      )) as any
 
       const userId = result.insertId as number
 
