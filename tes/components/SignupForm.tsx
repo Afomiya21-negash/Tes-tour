@@ -10,11 +10,17 @@ export default function SignupForm() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
+  const [dateOfBirth, setDateOfBirth] = useState("")
+  const [phoneNo, setPhoneNo] = useState("")
+  const [address, setAddress] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [passwordErrors, setPasswordErrors] = useState<string[]>([])
   const [passwordMatch, setPasswordMatch] = useState(true)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [ageError, setAgeError] = useState("")
   const router = useRouter()
 
   const validatePassword = (password: string) => {
@@ -39,11 +45,34 @@ export default function SignupForm() {
     return errors
   }
 
+  const validateAge = (dateOfBirth: string) => {
+    if (!dateOfBirth) return ""
+
+    const today = new Date()
+    const birthDate = new Date(dateOfBirth)
+    const age = today.getFullYear() - birthDate.getFullYear()
+    const monthDiff = today.getMonth() - birthDate.getMonth()
+
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      return age - 1 < 18 ? "You must be at least 18 years old to register" : ""
+    }
+
+    return age < 18 ? "You must be at least 18 years old to register" : ""
+  }
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
 
     if (name === "username") setUsername(value)
     if (name === "email") setEmail(value)
+    if (name === "firstName") setFirstName(value)
+    if (name === "lastName") setLastName(value)
+    if (name === "phoneNo") setPhoneNo(value)
+    if (name === "address") setAddress(value)
+    if (name === "dateOfBirth") {
+      setDateOfBirth(value)
+      setAgeError(validateAge(value))
+    }
     if (name === "password") {
       setPassword(value)
       setPasswordErrors(validatePassword(value))
@@ -66,13 +95,22 @@ export default function SignupForm() {
 
         <form onSubmit={async (e) => {
           e.preventDefault()
-          if (passwordErrors.length > 0 || !passwordMatch) return
+          if (passwordErrors.length > 0 || !passwordMatch || ageError) return
           try {
             setIsLoading(true)
             const res = await fetch('/api/auth/signup', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ username, email, password })
+              body: JSON.stringify({
+                username,
+                email,
+                password,
+                first_name: firstName,
+                last_name: lastName,
+                phoneNo,
+                address,
+                DOB: dateOfBirth
+              })
             })
             if (res.ok) {
               router.push('/')
@@ -113,6 +151,85 @@ export default function SignupForm() {
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002F63] focus:border-transparent transition-colors"
               placeholder="Enter your email"
               required
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
+                First Name
+              </label>
+              <input
+                type="text"
+                id="firstName"
+                name="firstName"
+                value={firstName}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002F63] focus:border-transparent transition-colors"
+                placeholder="First name"
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
+                Last Name
+              </label>
+              <input
+                type="text"
+                id="lastName"
+                name="lastName"
+                value={lastName}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002F63] focus:border-transparent transition-colors"
+                placeholder="Last name"
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700 mb-2">
+              Date of Birth *
+            </label>
+            <input
+              type="date"
+              id="dateOfBirth"
+              name="dateOfBirth"
+              value={dateOfBirth}
+              onChange={handleChange}
+              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002F63] focus:border-transparent transition-colors ${ageError ? "border-red-500" : "border-gray-300"}`}
+              required
+            />
+            {ageError && <p className="mt-2 text-sm text-red-600">{ageError}</p>}
+          </div>
+
+          <div>
+            <label htmlFor="phoneNo" className="block text-sm font-medium text-gray-700 mb-2">
+              Phone Number
+            </label>
+            <input
+              type="tel"
+              id="phoneNo"
+              name="phoneNo"
+              value={phoneNo}
+              onChange={handleChange}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002F63] focus:border-transparent transition-colors"
+              placeholder="Enter your phone number"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
+              Address
+            </label>
+            <input
+              type="text"
+              id="address"
+              name="address"
+              value={address}
+              onChange={handleChange}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002F63] focus:border-transparent transition-colors"
+              placeholder="Enter your address"
             />
           </div>
 
@@ -179,7 +296,7 @@ export default function SignupForm() {
 
           <button
             type="submit"
-            disabled={isLoading || passwordErrors.length > 0 || !passwordMatch}
+            disabled={isLoading || passwordErrors.length > 0 || !passwordMatch || !!ageError}
             className="w-full bg-[#002F63] hover:bg-[#002856] text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? "Creating Account..." : "Create Account"}

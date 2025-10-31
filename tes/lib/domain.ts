@@ -179,15 +179,61 @@ export class Guest {
       const fName = firstName ?? ''
       const lName = lastName ?? ''
 
+      // Discover available columns to avoid schema mismatches
+      const [userColsRows] = (await conn.query(
+        `SELECT column_name FROM information_schema.columns
+         WHERE table_schema = DATABASE() AND table_name = 'users'`
+      )) as any
+      const availableCols = new Set((userColsRows || []).map((r: any) => String(r.column_name)))
+
+      const baseCols: string[] = ['username', 'email', 'password_hash', 'role']
+      const baseVals: any[] = [username, email, password_hash, 'customer']
+
+      const optionalMap: Array<[string, any]> = [
+        ['first_name', fName],
+        ['last_name', lName],
+        ['phone_number', phoneNo || null],
+        ['date_of_birth', DOB || null],
+        ['address', address || null],
+      ]
+
+      for (const [col, val] of optionalMap) {
+        if (availableCols.has(col)) {
+          baseCols.splice(baseCols.length - 1, 0, col) // insert before role to keep role last-ish (not required, but tidy)
+          baseVals.splice(baseVals.length - 1, 0, val)
+        }
+      }
+
+      const placeholders = baseCols.map(() => '?').join(', ')
       const [result] = (await conn.query(
-        `INSERT INTO users (username, email, password_hash, first_name, last_name, phone_number, address, role)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [username, email, password_hash, fName, lName, phoneNo || null, address || null, 'customer']
+        `INSERT INTO users (${baseCols.join(', ')}) VALUES (${placeholders})`,
+        baseVals
       )) as any
 
-      // Note: DOB is collected but there is no column in schema; intentionally ignored for persistence.
-
       const userId = result.insertId as number
+
+      // Insert into customers table (create table if it doesn't exist)
+      try {
+        await conn.query(
+          `CREATE TABLE IF NOT EXISTS customers (
+            customer_id int(11) NOT NULL,
+            address varchar(255) DEFAULT NULL,
+            date_of_birth date DEFAULT NULL,
+            PRIMARY KEY (customer_id),
+            FOREIGN KEY (customer_id) REFERENCES users(user_id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci`
+        )
+
+        await conn.query(
+          `INSERT INTO customers (customer_id, address, date_of_birth)
+           VALUES (?, ?, ?)`,
+          [userId, address || null, DOB || null]
+        )
+      } catch (customerError) {
+        console.error('Error creating customer record:', customerError)
+        // Continue without failing the signup if customers table creation fails
+      }
+
       return { user_id: userId, username, email, role: 'customer' }
     } finally {
       conn.release()
@@ -345,11 +391,25 @@ export class Admin {
             'INSERT INTO employees (employee_id, position, department) VALUES (?, ?, ?)',
             [userId, 'Driver', 'Transport']
           )
+
+          // Ensure drivers table has correct picture column type
+          try {
+            await conn.query('ALTER TABLE drivers MODIFY COLUMN picture TEXT DEFAULT NULL')
+          } catch (alterError: any) {
+            console.log('Drivers table alter warning (may already be correct):', alterError?.message || 'Unknown error')
+          }
+
+          // Truncate picture if too long (base64 images can be very long)
+          let pictureData = payload.picture || null
+          if (pictureData && pictureData.length > 65535) {
+            console.warn('Picture data too long, truncating...')
+            pictureData = pictureData.substring(0, 65535)
+          }
+
           await conn.query(
-            'INSERT INTO drivers (driver_id, license_number, vehicle_type) VALUES (?, ?, ?)',
-            [userId, payload.licenseNo, payload.vehicleType || null]
+            'INSERT INTO drivers (driver_id, license_number, vehicle_type, picture) VALUES (?, ?, ?, ?)',
+            [userId, payload.licenseNo, payload.vehicleType || null, pictureData]
           )
-          // Note: Driver.picture is accepted by API but not persisted due to missing column in current schema.
           break
         }
       }
@@ -853,6 +913,61 @@ export class TourService {
       row.price,
       row.availability
     ))
+  }
+
+  static async getAllToursWithPromotions(): Promise<any[]> {
+    const pool = getPool()
+    const [rows] = (await pool.query(`
+      SELECT
+        t.tour_id,
+        t.tour_guide_id,
+        t.name,
+        t.description,
+        t.destination,
+        t.duration_days,
+        t.price,
+        t.availability,
+        p.promoid,
+        p.dis as discount_percentage,
+        p.date as promotion_date
+      FROM tours t
+      LEFT JOIN promotion p ON t.tour_id = p.tour_id
+        AND p.date >= CURDATE()
+      WHERE t.availability = 1
+      ORDER BY t.tour_id, p.date ASC
+    `)) as any
+
+    // Group tours and their promotions
+    const toursMap = new Map()
+
+    for (const row of rows || []) {
+      const tourId = row.tour_id
+
+      if (!toursMap.has(tourId)) {
+        toursMap.set(tourId, {
+          id: row.tour_id,
+          tour_guide_id: row.tour_guide_id,
+          name: row.name,
+          description: row.description,
+          destination: row.destination,
+          durationDays: row.duration_days,
+          price: row.price,
+          availability: row.availability,
+          promotions: []
+        })
+      }
+
+      // Add promotion if it exists
+      if (row.promoid) {
+        toursMap.get(tourId).promotions.push({
+          id: row.promoid,
+          discount_percentage: row.discount_percentage,
+          date: row.promotion_date
+        })
+      }
+    }
+
+    return Array.from(toursMap.values())
   }
 
   static async getTourById(tourId: number): Promise<Tour | null> {

@@ -173,6 +173,8 @@ export default function AdminDashboard() {
   const [specialization, setSpecialization] = useState("")
   const [position, setPosition] = useState("")
   const [department, setDepartment] = useState("")
+  const [driverImage, setDriverImage] = useState<File | null>(null)
+  const [driverImagePreview, setDriverImagePreview] = useState<string>("")
 
   // Mock data
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -299,6 +301,11 @@ export default function AdminDashboard() {
     // Employee role doesn't require additional validation
 
     try {
+      let driverImageBase64 = null
+      if (employeeRole === "driver" && driverImage) {
+        driverImageBase64 = await convertImageToBase64(driverImage)
+      }
+
       const res = await fetch("/api/admin/register-employee", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -314,6 +321,7 @@ export default function AdminDashboard() {
           vehicleType: employeeRole === "driver" ? vehicleType || null : undefined,
           experience: employeeRole === "tourguide" ? Number(experience) : undefined,
           specialization: employeeRole === "tourguide" ? specialization || null : undefined,
+          picture: employeeRole === "driver" ? driverImageBase64 : undefined,
         }),
       })
 
@@ -357,8 +365,10 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
       setExperience("")
       setVehicleType("")
       setSpecialization("")
-  setPosition("")
-  setDepartment("")
+      setPosition("")
+      setDepartment("")
+      setDriverImage(null)
+      setDriverImagePreview("")
       setShowRegisterModal(false)
 
       // Show popup instead of alert
@@ -504,6 +514,29 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
     } catch (e: any) {
       alert(e.message || 'Failed to create promotion')
     }
+  }
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setDriverImage(file)
+
+      // Create preview
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setDriverImagePreview(e.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const convertImageToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
   }
 
   const tourguideRatings = ratings.filter((r) => r.employeeRole === "tourguide")
@@ -948,23 +981,20 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
                         {promotion.tour_name}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {promotion.title}
+                        Promotion
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {promotion.discount_percentage ? `${promotion.discount_percentage}%` :
-                         promotion.discount_amount ? `ETB ${promotion.discount_amount}` : 'N/A'}
+                        {promotion.dis ? `${promotion.dis}%` : 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {promotion.start_date ? new Date(promotion.start_date).toLocaleDateString() : 'N/A'}
+                        {promotion.date ? new Date(promotion.date).toLocaleDateString() : 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {promotion.end_date ? new Date(promotion.end_date).toLocaleDateString() : 'N/A'}
+                        N/A
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          promotion.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
-                          {promotion.is_active ? 'Active' : 'Inactive'}
+                        <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
+                          Active
                         </span>
                       </td>
                     </tr>
@@ -1002,9 +1032,9 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
                   onChange={(e) => setSelectedTourId(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                 >
-                  <option value="">Select a tour</option>
-                  {tours.map((tour) => (
-                    <option key={tour.tour_id} value={tour.tour_id}>
+                  <option key="select-tour" value="">Select a tour</option>
+                  {tours.map((tour, index) => (
+                    <option key={`tour-${index}`} value={tour.tour_id}>
                       {tour.name}
                     </option>
                   ))}
@@ -1159,9 +1189,9 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
                   onChange={(e) => setEmployeeRole(e.target.value as "tourguide" | "driver" | "employee")}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                 >
-                  <option value="tourguide">Tour Guide</option>
-                  <option value="driver">Driver</option>
-                  <option value="employee">Employee</option>
+                  <option key="tourguide" value="tourguide">Tour Guide</option>
+                  <option key="driver" value="driver">Driver</option>
+                  <option key="employee" value="employee">Employee</option>
                 </select>
               </div>
 
@@ -1240,6 +1270,24 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                       placeholder="SUV, Minivan, Bus..."
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Driver Photo</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                    {driverImagePreview && (
+                      <div className="mt-2">
+                        <img
+                          src={driverImagePreview}
+                          alt="Driver preview"
+                          className="w-20 h-20 object-cover rounded-lg border border-gray-300"
+                        />
+                      </div>
+                    )}
                   </div>
                 </>
               )}

@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { username, email, password, phoneNo, address, DOB, first_name, last_name } = body || {}
 
-    if (!username || !email || !password) {
+    if (!username || !email || !password || !first_name || !last_name) {
       return NextResponse.json({ message: 'Missing required fields' }, { status: 400 })
     }
     if (!Validators.isValidEmail(email)) {
@@ -15,6 +15,23 @@ export async function POST(req: NextRequest) {
     }
     if (!Validators.isStrongPassword(password)) {
       return NextResponse.json({ message: 'Weak password' }, { status: 400 })
+    }
+
+    // Validate age if DOB is provided
+    if (DOB) {
+      const today = new Date()
+      const birthDate = new Date(DOB)
+      const age = today.getFullYear() - birthDate.getFullYear()
+      const monthDiff = today.getMonth() - birthDate.getMonth()
+
+      let actualAge = age
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        actualAge = age - 1
+      }
+
+      if (actualAge < 18) {
+        return NextResponse.json({ message: 'You must be at least 18 years old to register' }, { status: 400 })
+      }
     }
 
     try {

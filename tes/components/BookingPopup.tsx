@@ -234,7 +234,14 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
       const selectedVehicleData = vehicles.find(v => v.id.toString() === formData.selectedVehicle)
       const selectedDriverData = drivers.find(d => d.user_id.toString() === formData.selectedDriver)
       const vehiclePrice = selectedVehicleData?.dailyRate || 0
-      const tourPrice = selectedTour?.price || 0
+
+      // Calculate tour price with promotion discount if available
+      let tourPrice = selectedTour?.price || 0
+      if (selectedTour?.promotions && selectedTour.promotions.length > 0) {
+        const discountPercentage = selectedTour.promotions[0].discount_percentage
+        tourPrice = Math.round(tourPrice * (1 - discountPercentage / 100))
+      }
+
       const days = selectedTour?.durationDays || 1
       const totalPrice = (tourPrice + (vehiclePrice * days)) * formData.peopleCount
 
@@ -478,8 +485,26 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
                   {selectedTour && (
                     <div className="bg-gray-50 p-4 rounded-md">
                       <h4 className="font-semibold text-gray-900">Selected Tour</h4>
-                      <p className="text-gray-600">{selectedTour.name}</p>
-                      <p className="text-emerald-600 font-medium">ETB {selectedTour.price} per person</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-gray-600">{selectedTour.name}</p>
+                        {selectedTour.promotions && selectedTour.promotions.length > 0 && (
+                          <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+                            {selectedTour.promotions[0].discount_percentage}% OFF
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {selectedTour.promotions && selectedTour.promotions.length > 0 ? (
+                          <>
+                            <p className="text-gray-400 line-through text-sm">ETB {selectedTour.price}</p>
+                            <p className="text-emerald-600 font-medium">
+                              ETB {Math.round(selectedTour.price * (1 - selectedTour.promotions[0].discount_percentage / 100))} per person
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-emerald-600 font-medium">ETB {selectedTour.price} per person</p>
+                        )}
+                      </div>
                     </div>
                   )}
                   
@@ -496,17 +521,39 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Selected Tour
                       </label>
-                      <div className="w-full px-4 py-3 border border-emerald-200 rounded-md bg-emerald-50">
+                      <div className="w-full px-4 py-3 border border-emerald-200 rounded-md bg-emerald-50 relative">
+                        {selectedTour.promotions && selectedTour.promotions.length > 0 && (
+                          <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-3 py-1 rounded-full font-bold shadow-lg">
+                            {selectedTour.promotions[0].discount_percentage}% OFF
+                          </div>
+                        )}
                         <div className="flex justify-between items-center">
                           <div>
                             <h4 className="font-semibold text-emerald-900">{selectedTour.name}</h4>
                             <p className="text-sm text-emerald-700">
                               Duration: {selectedTour.durationDays} days
                             </p>
+                            {selectedTour.promotions && selectedTour.promotions.length > 0 && (
+                              <p className="text-xs text-red-600 font-medium mt-1">
+                                🎉 Limited Time Offer!
+                              </p>
+                            )}
                           </div>
                           <div className="text-right">
-                            <p className="text-lg font-bold text-emerald-900">ETB {selectedTour.price}</p>
-                            <p className="text-xs text-emerald-600">per person</p>
+                            {selectedTour.promotions && selectedTour.promotions.length > 0 ? (
+                              <>
+                                <p className="text-sm text-gray-500 line-through">ETB {selectedTour.price}</p>
+                                <p className="text-lg font-bold text-emerald-900">
+                                  ETB {Math.round(selectedTour.price * (1 - selectedTour.promotions[0].discount_percentage / 100))}
+                                </p>
+                                <p className="text-xs text-emerald-600">per person</p>
+                              </>
+                            ) : (
+                              <>
+                                <p className="text-lg font-bold text-emerald-900">ETB {selectedTour.price}</p>
+                                <p className="text-xs text-emerald-600">per person</p>
+                              </>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -639,8 +686,16 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
                           }`}
                         >
                           <div className="flex items-center space-x-3 mb-3">
-                            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                              <User className="h-6 w-6 text-gray-400" />
+                            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden">
+                              {driver.picture ? (
+                                <img
+                                  src={driver.picture}
+                                  alt={`${driver.first_name} ${driver.last_name}`}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <User className="h-6 w-6 text-gray-400" />
+                              )}
                             </div>
                             <div className="flex-1">
                               <h4 className="font-semibold text-gray-900">

@@ -8,12 +8,13 @@ export async function GET(request: NextRequest) {
     
     // Get drivers with robust aggregates using subqueries to avoid JOIN multiplication
     const [rows] = await pool.execute(
-      `SELECT 
+      `SELECT
         u.user_id,
         u.first_name,
         u.last_name,
         u.email,
         u.phone_number AS phone,
+        d.picture,
         (
           SELECT COUNT(DISTINCT b.booking_id)
           FROM Bookings b
@@ -42,6 +43,7 @@ export async function GET(request: NextRequest) {
               AND b2.start_date <= CURDATE() AND b2.end_date >= CURDATE()
           ) > 0 THEN 'busy' ELSE 'available' END AS availability
       FROM Users u
+      LEFT JOIN drivers d ON u.user_id = d.driver_id
       WHERE u.role = 'driver'
       ORDER BY average_rating DESC, total_trips DESC`
     )
