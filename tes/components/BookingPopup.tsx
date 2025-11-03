@@ -35,6 +35,7 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
   const [selectedTour, setSelectedTour] = useState<Tour | null>(null)
   const [bookingSuccess, setBookingSuccess] = useState(false)
   const [error, setError] = useState<string>('')
+  const [previousIdPictures, setPreviousIdPictures] = useState<string[]>([])
 
   useEffect(() => {
     // Check auth once when opened
@@ -61,6 +62,7 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
       fetchVehicles()
       fetchDrivers()
       fetchTourByName()
+      fetchPreviousIdPictures()
     }
   }, [isOpen, authenticated, tourName])
 
@@ -86,6 +88,24 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
     } catch (e) {
       console.error('Error fetching drivers:', e)
     }
+  }
+
+  const fetchPreviousIdPictures = async () => {
+    try {
+      const res = await fetch('/api/bookings', { credentials: 'include' })
+      if (!res.ok) return
+      const data = await res.json()
+      // Find the most recent booking with stored pictures
+      const withPics = (data || []).find((b: any) => b.id_pictures)
+      if (withPics && typeof withPics.id_pictures === 'string') {
+        try {
+          const parsed = JSON.parse(withPics.id_pictures)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setPreviousIdPictures(parsed as string[])
+          }
+        } catch {}
+      }
+    } catch {}
   }
 
   const fetchTourByName = async () => {
@@ -322,7 +342,7 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
       case 1:
         return formData.name.trim() && formData.phone.trim() && formData.peopleCount > 0 && formData.startDate && formData.endDate
       case 2:
-        return uploadedFiles.length === 3
+        return uploadedFiles.length === 3 || previousIdPictures.length >= 3
       case 3:
         return formData.selectedVehicle
       case 4:
@@ -567,6 +587,19 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
             <div className="space-y-6">
               <h3 className="text-xl font-semibold text-gray-900">Upload ID/Passport Photos</h3>
               <p className="text-gray-600">Please upload 3 ID or passport pictures</p>
+
+              {previousIdPictures.length >= 3 && (
+                <div className="bg-green-50 border border-green-200 p-4 rounded">
+                  <p className="text-sm text-green-800 font-medium mb-2">We found your previously uploaded ID pictures. You can reuse them or upload new ones.</p>
+                  <div className="grid grid-cols-3 gap-4">
+                    {previousIdPictures.slice(0,3).map((url, i) => (
+                      <div key={`prev-id-${i}`} className="border rounded overflow-hidden">
+                        <img src={url} alt={`Previous ID ${i+1}`} className="w-full h-32 object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[0, 1, 2].map((index) => (
@@ -582,6 +615,10 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
                         >
                           ×
                         </button>
+                      </div>
+                    ) : previousIdPictures[index] ? (
+                      <div className="w-full h-32 bg-gray-100 rounded-lg overflow-hidden">
+                        <img src={previousIdPictures[index]} alt={`ID ${index+1}`} className="w-full h-full object-cover" />
                       </div>
                     ) : (
                       <div className="w-full h-32 flex flex-col items-center justify-center">

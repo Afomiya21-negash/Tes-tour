@@ -203,7 +203,7 @@ export default function TourGuideDashboard() {
               <User className="w-8 h-8" />
               <div>
                 <h1 className="text-2xl font-bold">Tour Guide Dashboard</h1>
-                <p className="text-green-100 text-sm">Welcome back, Nina</p>
+                
               </div>
             </div>
             <div className="flex items-center space-x-3">

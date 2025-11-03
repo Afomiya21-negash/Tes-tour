@@ -16,17 +16,19 @@ export async function GET(request: NextRequest) {
     }
     
     const decoded = verifyJwt(token)
-    if (!decoded || decoded.role !== 'employee') {
+    if (!decoded || !['employee', 'admin'].includes(decoded.role)) {
       return NextResponse.json(
-        { error: 'Employee access required' },
+        { error: 'Employee or admin access required' },
         { status: 403 }
       )
     }
 
-    // Require HR position for access to employee dashboard
-    const isHr = await Employee.isHR(Number(decoded.user_id))
-    if (!isHr) {
-      return NextResponse.json({ error: 'HR access required' }, { status: 403 })
+    // Admins bypass HR check; employees must be HR
+    if (decoded.role === 'employee') {
+      const isHr = await Employee.isHR(Number(decoded.user_id))
+      if (!isHr) {
+        return NextResponse.json({ error: 'HR access required' }, { status: 403 })
+      }
     }
     
     const pool = getPool()

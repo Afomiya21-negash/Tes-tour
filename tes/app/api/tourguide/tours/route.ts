@@ -25,12 +25,12 @@ export async function GET(request: NextRequest) {
         b.end_date,
         b.status,
         b.number_of_people,
-        b.special_requests,
+        NULL as special_requests,
         b.booking_date,
         u.first_name as customer_first_name,
         u.last_name as customer_last_name,
         u.email as customer_email,
-        u.phone as customer_phone,
+        u.phone_number as customer_phone,
         t.name as tour_name,
         t.destination,
         t.duration_days,
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
         v.model as vehicle_model,
         d.first_name as driver_first_name,
         d.last_name as driver_last_name,
-        d.phone as driver_phone
+        d.phone_number as driver_phone
       FROM bookings b
       LEFT JOIN users u ON b.user_id = u.user_id
       LEFT JOIN tours t ON b.tour_id = t.tour_id

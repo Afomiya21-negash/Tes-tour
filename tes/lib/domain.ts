@@ -848,6 +848,7 @@ export class BookingService {
         b.total_price,
         b.booking_date,
         b.status,
+        b.id_picture as id_pictures,
         t.name as tour_name,
         t.destination,
         t.duration_days,
