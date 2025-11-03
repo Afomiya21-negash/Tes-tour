@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Star, UserPlus, BarChart3, Calendar, LogOut, Briefcase, Edit, X, Check, Lock } from "lucide-react"
+import { Star, UserPlus, BarChart3, Calendar, LogOut, Briefcase, X, Check, Lock } from "lucide-react"
 
 type Booking = {
   booking_id: number
@@ -53,7 +53,6 @@ type Rating = {
 
 export default function EmployeeDashboard() {
   const [activeTab, setActiveTab] = useState<"bookings" | "assign" | "ratings">("bookings")
-  const [showEditModal, setShowEditModal] = useState(false)
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [loading, setLoading] = useState(true)
@@ -64,12 +63,7 @@ export default function EmployeeDashboard() {
   const [tourGuides, setTourGuides] = useState<TourGuide[]>([])
   const [ratings, setRatings] = useState<Rating[]>([])
 
-  // Edit form states
-  const [editDate, setEditDate] = useState("")
-  const [editTime, setEditTime] = useState("")
-  const [editLocation, setEditLocation] = useState("")
-  const [editNumberOfPeople, setEditNumberOfPeople] = useState(0)
-  const [editSpecialRequests, setEditSpecialRequests] = useState("")
+  // Removed edit form states (Edit Details feature removed)
 
   // Check authentication on mount
   useEffect(() => {
@@ -257,43 +251,7 @@ export default function EmployeeDashboard() {
     }
   }
 
-  const handleEditBooking = (booking: Booking) => {
-    setSelectedBooking(booking)
-    setEditDate(booking.start_date)
-    setEditTime('08:00') // Default time since we don't store time separately
-    setEditLocation(booking.destination)
-    setEditNumberOfPeople(booking.number_of_people ?? 1)
-    setEditSpecialRequests(booking.special_requests ?? '')
-    setShowEditModal(true)
-  }
-
-  const handleSaveEdit = async () => {
-    if (!selectedBooking) return
-
-    try {
-      // Here you would typically make an API call to update the booking
-      // For now, we'll just update the local state
-      const updatedBookings = bookings.map((booking) =>
-        booking.booking_id === selectedBooking.booking_id
-          ? {
-              ...booking,
-              start_date: editDate,
-              destination: editLocation,
-              number_of_people: editNumberOfPeople,
-              special_requests: editSpecialRequests,
-            }
-          : booking,
-      )
-
-      setBookings(updatedBookings)
-      setShowEditModal(false)
-      setSelectedBooking(null)
-      alert("Booking updated successfully!")
-    } catch (error) {
-      console.error('Error updating booking:', error)
-      alert("Failed to update booking")
-    }
-  }
+  // Removed edit handlers (Edit Details feature removed)
 
   const handleAssignTourGuide = (booking: Booking) => {
     setSelectedBooking(booking)
@@ -628,13 +586,6 @@ export default function EmployeeDashboard() {
                       </div>
                     )}
                     <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleEditBooking(booking)}
-                        className="flex-1 flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-colors"
-                      >
-                        <Edit className="w-4 h-4" />
-                        <span>Edit Details</span>
-                      </button>
                       {!booking.tour_guide_first_name && (
                         <button
                           onClick={() => handleAssignTourGuide(booking)}
@@ -744,6 +695,43 @@ export default function EmployeeDashboard() {
                   <div className="text-center py-8 text-gray-500">
                     <Check className="w-12 h-12 mx-auto mb-2 text-green-600" />
                     <p>All bookings have been assigned tour guides!</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Recent Assignments */}
+            <div className="mt-10">
+              <h3 className="text-xl font-semibold text-green-600 mb-4">Recent Tour Guide Assignments</h3>
+              <div className="space-y-4">
+                {bookings
+                  .filter((b) => !!b.tour_guide_first_name)
+                  .map((booking) => (
+                    <div
+                      key={`assigned-${booking.booking_id}`}
+                      className="bg-white border-2 border-blue-200 rounded-lg p-6 hover:shadow-lg transition-shadow"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="text-lg font-semibold text-gray-900">{booking.tour_name || 'Custom Booking'}</h4>
+                          <p className="text-gray-600">Customer: {getFullName(booking.customer_first_name, booking.customer_last_name)}</p>
+                          <p className="text-sm text-gray-600 mt-2">
+                            {formatDate(booking.start_date)} - {formatDate(booking.end_date)} • {booking.destination}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-medium text-blue-900">Assigned Tour Guide</p>
+                          <p className="text-sm text-blue-700">
+                            {getFullName(booking.tour_guide_first_name ?? null, booking.tour_guide_last_name ?? null)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                {bookings.filter((b) => !!b.tour_guide_first_name).length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    <Check className="w-12 h-12 mx-auto mb-2 text-green-600" />
+                    <p>No assignments yet.</p>
                   </div>
                 )}
               </div>
@@ -887,88 +875,7 @@ export default function EmployeeDashboard() {
         )}
       </main>
 
-      {/* Edit Booking Modal */}
-      {showEditModal && selectedBooking && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-md">
-            <div className="flex justify-between items-center p-6 border-b border-gray-200">
-              <h3 className="text-xl font-semibold text-gray-900">Edit Booking Details</h3>
-              <button onClick={() => setShowEditModal(false)} className="text-gray-400 hover:text-gray-600">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
-                <input
-                  type="date"
-                  value={editDate}
-                  onChange={(e) => setEditDate(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Time</label>
-                <input
-                  type="text"
-                  value={editTime}
-                  onChange={(e) => setEditTime(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="08:00 AM"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-                <input
-                  type="text"
-                  value={editLocation}
-                  onChange={(e) => setEditLocation(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Number of People</label>
-                <input
-                  type="number"
-                  value={editNumberOfPeople}
-                  onChange={(e) => setEditNumberOfPeople(Number.parseInt(e.target.value))}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  min="1"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Special Requests</label>
-                <textarea
-                  value={editSpecialRequests}
-                  onChange={(e) => setEditSpecialRequests(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  rows={3}
-                />
-              </div>
-            </div>
-
-            <div className="flex space-x-3 p-6 border-t border-gray-200">
-              <button
-                onClick={handleSaveEdit}
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-colors"
-              >
-                Save Changes
-              </button>
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Edit Booking Modal removed */}
 
       {/* Assign Tour Guide Modal */}
       {showAssignModal && selectedBooking && (

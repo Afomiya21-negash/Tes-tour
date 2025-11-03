@@ -840,6 +840,9 @@ export class BookingService {
       `SELECT
         b.booking_id,
         b.tour_id,
+        b.vehicle_id,
+        b.driver_id,
+        b.tour_guide_id,
         b.start_date,
         b.end_date,
         b.total_price,
@@ -853,11 +856,21 @@ export class BookingService {
         v.capacity as vehicle_capacity,
         p.amount as payment_amount,
         p.status as payment_status,
-        p.payment_method
+        p.payment_method,
+        tg.first_name as tour_guide_first_name,
+        tg.last_name as tour_guide_last_name,
+        tg.phone_number as tour_guide_phone,
+        tg.email as tour_guide_email,
+        d.first_name as driver_first_name,
+        d.last_name as driver_last_name,
+        d.phone_number as driver_phone,
+        d.email as driver_email
       FROM bookings b
       LEFT JOIN tours t ON b.tour_id = t.tour_id
       LEFT JOIN vehicles v ON b.vehicle_id = v.vehicle_id
       LEFT JOIN payments p ON b.booking_id = p.booking_id
+      LEFT JOIN users tg ON b.tour_guide_id = tg.user_id
+      LEFT JOIN users d ON b.driver_id = d.user_id
       WHERE b.user_id = ?
       ORDER BY b.booking_date DESC`,
       [userId]
