@@ -385,33 +385,43 @@ export default function TourGuideDashboard() {
             <div className="space-y-4">
               {itineraries.map((itinerary) => (
                 <div
-                  key={`itinerary-${itinerary.id}`}
+                  key={`itinerary-${itinerary.booking_id}`}
                   className="bg-white border-2 border-green-200 rounded-lg p-6 hover:shadow-lg transition-shadow"
                 >
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h3 className="text-xl font-semibold text-gray-900">{itinerary.tourName}</h3>
-                      <p className="text-gray-600">Customer: {itinerary.customerName}</p>
+                      <h3 className="text-xl font-semibold text-gray-900">{itinerary.tour_name || 'Custom Tour'}</h3>
+                      <p className="text-gray-600">Customer: {`${itinerary.customer_first_name} ${itinerary.customer_last_name}`.trim()}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm text-gray-600">Date: {itinerary.date}</p>
-                      <p className="text-sm text-gray-600">Group Size: {itinerary.numberOfPeople} people</p>
+                      <p className="text-sm text-gray-600">{new Date(itinerary.start_date).toLocaleDateString()} - {new Date(itinerary.end_date).toLocaleDateString()}</p>
+                      <p className="text-sm text-gray-600">Group Size: {itinerary.number_of_people} people</p>
                     </div>
                   </div>
                   <div className="space-y-3">
-                    <div>
-                      <h4 className="font-semibold text-gray-900 mb-2">Destinations:</h4>
-                      <ul className="list-disc list-inside space-y-1 text-gray-600">
-                        {itinerary.destinations.map((dest, idx) => (
-                          <li key={`dest-${itinerary.id}-${idx}`}>{dest}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    {itinerary.specialRequests && (
+                    {itinerary.destination && (
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2">Destination:</h4>
+                        <p className="text-gray-600">{itinerary.destination}</p>
+                      </div>
+                    )}
+                    {itinerary.itinerary_data?.days && itinerary.itinerary_data.days.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2">Itinerary:</h4>
+                        <ul className="list-disc list-inside space-y-1 text-gray-600">
+                          {itinerary.itinerary_data.days.map((day: any, idx: number) => (
+                            <li key={`day-${itinerary.booking_id}-${idx}`}>
+                              <span className="font-medium">Day {day.day}:</span> {day.title} — {day.description}{day.location ? ` (${day.location})` : ''}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {itinerary.special_requests && (
                       <div>
                         <h4 className="font-semibold text-gray-900 mb-2">Special Requests:</h4>
                         <p className="text-gray-600 bg-yellow-50 p-3 rounded-lg border border-yellow-200">
-                          {itinerary.specialRequests}
+                          {itinerary.special_requests}
                         </p>
                       </div>
                     )}
@@ -440,19 +450,19 @@ export default function TourGuideDashboard() {
             <div className="space-y-4">
               {reviews.map((review) => (
                 <div
-                  key={`review-${review.id}`}
+                  key={`review-${review.rating_id}`}
                   className="bg-white border-2 border-green-200 rounded-lg p-6 hover:shadow-lg transition-shadow"
                 >
                   <div className="flex justify-between items-start mb-3">
                     <div>
-                      <h3 className="font-semibold text-gray-900">{review.customerName}</h3>
-                      <p className="text-sm text-gray-600">{review.tourName}</p>
+                      <h3 className="font-semibold text-gray-900">{`${review.customer_first_name} ${review.customer_last_name}`.trim()}</h3>
+                      <p className="text-sm text-gray-600">{review.tour_name}</p>
                     </div>
                     <div className="text-right">
                       <div className="flex items-center space-x-1 mb-1">
                         {[...Array(5)].map((_, starIdx) => (
                           <Star
-                            key={`review-${review.id}-star-${starIdx}`}
+                            key={`review-${review.rating_id}-star-${starIdx}`}
                             className={`w-4 h-4 ${
                               starIdx < review.rating
                                 ? "fill-yellow-400 text-yellow-400"
@@ -461,7 +471,7 @@ export default function TourGuideDashboard() {
                           />
                         ))}
                       </div>
-                      <p className="text-sm text-gray-600">{review.date}</p>
+                      <p className="text-sm text-gray-600">{new Date(review.created_at).toLocaleDateString()}</p>
                     </div>
                   </div>
                   <p className="text-gray-700 bg-gray-50 p-3 rounded-lg">{review.comment}</p>

@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     const userId = Number(payload.user_id)
     const pool = getPool()
     const [rows] = (await pool.query(
-      `SELECT user_id, username, email, role, first_name, last_name
+      `SELECT user_id, username, email, role, first_name, last_name, phone_number
        FROM users WHERE user_id = ? LIMIT 1`,
       [userId]
     )) as any
@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
         role: u.role,
         first_name: firstName || null,
         last_name: lastName || null,
+        phone_number: u.phone_number || null,
         display_name: displayName,
         initial: (displayName || u.username || 'U').trim().charAt(0).toUpperCase(),
       }

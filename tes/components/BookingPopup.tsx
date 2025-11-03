@@ -47,7 +47,18 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
           setAuthenticated(ok)
           if (!ok) {
             window.location.href = '/login'
+            return
           }
+          // Autofill name and phone from profile
+          const first = d?.user?.first_name || ''
+          const last = d?.user?.last_name || ''
+          const phone = d?.user?.phone_number || ''
+          const displayName = (first || last) ? `${first} ${last}`.trim() : (d?.user?.username || '')
+          setFormData(prev => ({
+            ...prev,
+            name: prev.name || displayName,
+            phone: prev.phone || phone,
+          }))
         })
         .catch(() => {
           setAuthenticated(false)

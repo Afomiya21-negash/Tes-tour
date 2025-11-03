@@ -17,14 +17,10 @@ export async function GET(request: NextRequest) {
 
     const pool = getPool()
     
-    // Get custom itineraries for tours assigned to this tour guide
+    // Get all tours assigned to this tour guide with their descriptions from the tours table
     const [rows] = await pool.execute(
-      `SELECT 
-        ci.custom_itinerary_id,
-        ci.booking_id,
-        ci.itinerary_data,
-        ci.created_at,
-        ci.updated_at,
+      `SELECT
+        b.booking_id,
         b.start_date,
         b.end_date,
         b.number_of_people,
@@ -32,24 +28,46 @@ export async function GET(request: NextRequest) {
         u.first_name as customer_first_name,
         u.last_name as customer_last_name,
         u.email as customer_email,
-        u.phone as customer_phone,
+        u.phone_number as customer_phone,
         t.name as tour_name,
-        t.destination
-      FROM custom_itinerary ci
-      JOIN bookings b ON ci.booking_id = b.booking_id
-      LEFT JOIN users u ON b.customer_id = u.user_id
+        t.destination,
+        t.description as tour_description,
+        t.duration_days
+      FROM bookings b
+      LEFT JOIN users u ON b.user_id = u.user_id
       LEFT JOIN tours t ON b.tour_id = t.tour_id
       WHERE b.tour_guide_id = ?
       ORDER BY b.start_date ASC`,
       [payload.user_id]
     )
-    
-    // Parse itinerary_data JSON for each row
+
+    // Process the results to create itinerary objects
     const itineraries = (Array.isArray(rows) ? rows : []).map((row: any) => ({
-      ...row,
-      itinerary_data: row.itinerary_data ? JSON.parse(row.itinerary_data) : null
+      custom_itinerary_id: null,
+      booking_id: row.booking_id,
+      itinerary_data: {
+        days: [{
+          day: 1,
+          title: `${row.tour_name} Tour`,
+          description: row.tour_description || 'Complete tour itinerary',
+          location: row.destination || 'Various locations'
+        }]
+      },
+      created_at: null,
+      updated_at: null,
+      start_date: row.start_date,
+      end_date: row.end_date,
+      number_of_people: row.number_of_people,
+      special_requests: row.special_requests,
+      customer_first_name: row.customer_first_name,
+      customer_last_name: row.customer_last_name,
+      customer_email: row.customer_email,
+      customer_phone: row.customer_phone,
+      tour_name: row.tour_name,
+      destination: row.destination,
+      itinerary_type: 'default'
     }))
-    
+
     return NextResponse.json(itineraries)
   } catch (error) {
     console.error('Error fetching tour guide itineraries:', error)

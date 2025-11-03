@@ -764,9 +764,7 @@ export default function EmployeeDashboard() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                           Comment
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                          Date
-                        </th>
+                       
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-green-100">
@@ -799,7 +797,7 @@ export default function EmployeeDashboard() {
                               </div>
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">{rating.comment}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{formatDate(rating.created_at)}</td>
+                   
                           </tr>
                         ))
                       )}
@@ -827,9 +825,7 @@ export default function EmployeeDashboard() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                           Comment
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                          Date
-                        </th>
+                       
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-green-100">
@@ -862,7 +858,7 @@ export default function EmployeeDashboard() {
                               </div>
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">{rating.comment}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{formatDate(rating.created_at)}</td>
+                        
                           </tr>
                         ))
                       )}
