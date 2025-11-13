@@ -30,7 +30,7 @@ interface Booking {
   payment_status?: string
   payment_method?: string
   number_of_people?: number
-  special_requests?: string
+ 
 }
 
 export default function CustomerDashboard() {
@@ -183,17 +183,7 @@ export default function CustomerDashboard() {
             </div>
           </div>
           
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <CreditCard className="h-8 w-8 text-blue-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Spent</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  ${bookings.reduce((sum, b) => sum + (Number(b.payment_amount) || 0), 0).toFixed(2)}
-                </p>
-              </div>
-            </div>
-          </div>
+          
         </div>
 
         {/* Bookings List */}
@@ -224,63 +214,162 @@ export default function CustomerDashboard() {
                         <h3 className="text-lg font-semibold text-gray-900">
                           {booking.tour_name || 'Custom Booking'}
                         </h3>
-                        <span className={`ml-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
-                          {getStatusIcon(booking.status)}
-                          <span className="ml-1 capitalize">{booking.status}</span>
-                        </span>
+                        
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600">
+                      {/* Basic Tour Information */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm text-gray-600 mb-4">
                         <div className="flex items-center">
-                          <MapPin className="h-4 w-4 mr-1" />
-                          {booking.destination || 'Not specified'}
-                        </div>
-                        <div className="flex items-center">
-                          <Calendar className="h-4 w-4 mr-1" />
-                          {formatDate(booking.start_date)} - {formatDate(booking.end_date)}
-                        </div>
-                        {booking.vehicle_make && (
-                          <div className="flex items-center">
-                            <Users className="h-4 w-4 mr-1" />
-                            {booking.vehicle_make} {booking.vehicle_model}
+                          <MapPin className="h-4 w-4 mr-2 text-emerald-600" />
+                          <div>
+                            <span className="font-medium">Destination:</span>
+                            <br />
+                            <span>{booking.destination || 'Not specified'}</span>
                           </div>
-                        )}
+                        </div>
                         <div className="flex items-center">
-                          <CreditCard className="h-4 w-4 mr-1" />
-                          ${Number(booking.total_price).toFixed(2)}
+                          <Calendar className="h-4 w-4 mr-2 text-emerald-600" />
+                          <div>
+                            <span className="font-medium">Duration:</span>
+                            <br />
+                            <span>{formatDate(booking.start_date)} - {formatDate(booking.end_date)}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center">
+                          <CreditCard className="h-4 w-4 mr-2 text-emerald-600" />
+                          <div>
+                            <span className="font-medium">Total Cost:</span>
+                            <br />
+                            <span>{Number(booking.total_price).toFixed(2)}</span>
+                          </div>
                         </div>
                       </div>
+
+                      {/* Group Size and Special Requests */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600 mb-4">
+                        <div className="flex items-center">
+                          <Users className="h-4 w-4 mr-2 text-emerald-600" />
+                          <div>
+                            <span className="font-medium">Group Size:</span>
+                            <span className="ml-2">{booking.number_of_people}</span>
+                          </div>
+                        </div>
+                     
+                      </div>
+
+                      {/* Vehicle Information */}
+                      {booking.vehicle_make && (
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+                          <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                            <span className="mr-2">🚗</span>
+                            Vehicle Details
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                            <div>
+                              <span className="font-medium text-gray-800">Vehicle:</span>
+                              <br />
+                              <span className="text-gray-700">{booking.vehicle_make} {booking.vehicle_model}</span>
+                            </div>
+                            <div>
+                              <span className="font-medium text-gray-800">Capacity:</span>
+                              <br />
+                              <span className="text-gray-700">{booking.vehicle_capacity} passengers</span>
+                            </div>
+                            <div>
+                              <span className="font-medium text-gray-800">Status:</span>
+                              <br />
+                              <span className="text-green-600">Assigned</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       
                       {/* Tour Guide and Driver Information */}
                       {(booking.tour_guide_first_name || booking.driver_first_name) && (
-                        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                           {booking.tour_guide_first_name && (
-                            <div className="bg-blue-50 p-3 rounded-lg">
-                              <h4 className="font-medium text-blue-900 mb-1">Tour Guide</h4>
-                              <p className="text-sm text-blue-700">
-                                {booking.tour_guide_first_name} {booking.tour_guide_last_name}
-                              </p>
-                              {booking.tour_guide_phone && (
-                                <p className="text-xs text-blue-600 mt-1">
-                                  📞 {booking.tour_guide_phone}
-                                </p>
-                              )}
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                              <h4 className="font-semibold text-blue-900 mb-3 flex items-center">
+                                <span className="mr-2">👨‍🏫</span>
+                                Your Tour Guide
+                              </h4>
+                              <div className="space-y-2 text-sm">
+                                <div>
+                                  <span className="font-medium text-blue-800">Name:</span>
+                                  <span className="ml-2 text-blue-700">
+                                    {booking.tour_guide_first_name} {booking.tour_guide_last_name}
+                                  </span>
+                                </div>
+                                {booking.tour_guide_phone && (
+                                  <div>
+                                    <span className="font-medium text-blue-800">📞 Phone:</span>
+                                    <span className="ml-2 text-blue-700">{booking.tour_guide_phone}</span>
+                                  </div>
+                                )}
+                                {booking.tour_guide_email && (
+                                  <div>
+                                    <span className="font-medium text-blue-800">📧 Email:</span>
+                                    <span className="ml-2 text-blue-700">{booking.tour_guide_email}</span>
+                                  </div>
+                                )}
+                                <div className="mt-2">
+                                  <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                                    Assigned by Employee
+                                  </span>
+                                </div>
+                              </div>
                             </div>
                           )}
                           
                           {booking.driver_first_name && (
-                            <div className="bg-green-50 p-3 rounded-lg">
-                              <h4 className="font-medium text-green-900 mb-1">Driver</h4>
-                              <p className="text-sm text-green-700">
-                                {booking.driver_first_name} {booking.driver_last_name}
-                              </p>
-                              {booking.driver_phone && (
-                                <p className="text-xs text-green-600 mt-1">
-                                  📞 {booking.driver_phone}
-                                </p>
-                              )}
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                              <h4 className="font-semibold text-green-900 mb-3 flex items-center">
+                                <span className="mr-2">👨‍✈️</span>
+                                Your Driver
+                              </h4>
+                              <div className="space-y-2 text-sm">
+                                <div>
+                                  <span className="font-medium text-green-800">Name:</span>
+                                  <span className="ml-2 text-green-700">
+                                    {booking.driver_first_name} {booking.driver_last_name}
+                                  </span>
+                                </div>
+                                {booking.driver_phone && (
+                                  <div>
+                                    <span className="font-medium text-green-800">📞 Phone:</span>
+                                    <span className="ml-2 text-green-700">{booking.driver_phone}</span>
+                                  </div>
+                                )}
+                                {booking.driver_email && (
+                                  <div>
+                                    <span className="font-medium text-green-800">📧 Email:</span>
+                                    <span className="ml-2 text-green-700">{booking.driver_email}</span>
+                                  </div>
+                                )}
+                                <div className="mt-2">
+                                  <span className="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                                    Vehicle Assigned
+                                  </span>
+                                </div>
+                              </div>
                             </div>
                           )}
+                        </div>
+                      )}
+
+                      {/* Assignment Status */}
+                      {!booking.tour_guide_first_name && !booking.driver_first_name && (
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                          <div className="flex items-center">
+                            <span className="text-yellow-600 mr-2">⏳</span>
+                            <div>
+                              <span className="font-medium text-yellow-800">Assignment Pending</span>
+                              <br />
+                              <span className="text-sm text-yellow-700">
+                                Our team will assign a tour guide and driver to your booking soon.
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       )}
                       

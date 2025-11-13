@@ -1,5 +1,6 @@
 import { getPool } from '@/lib/db'
 import { hashPassword, verifyPassword, signJwt } from '@/lib/auth'
+import { cache } from '@/lib/cache'
 
 // Shared types
 export type UserRole = 'customer' | 'admin' | 'employee' | 'tourguide' | 'driver'
@@ -919,12 +920,20 @@ export class BookingService {
 // Tour Service for handling tour operations
 export class TourService {
   static async getAllTours(): Promise<Tour[]> {
+    // Check cache first
+    const cacheKey = 'all_tours';
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      console.log('✅ Returning cached tours data');
+      return cached;
+    }
+
     const pool = getPool()
     const [rows] = (await pool.query(
       'SELECT tour_id, tour_guide_id, name, description, destination, duration_days, price, availability FROM tours WHERE availability = 1'
     )) as any
 
-    return (rows || []).map((row: any) => new Tour(
+    const tours = (rows || []).map((row: any) => new Tour(
       row.tour_id,
       row.tour_guide_id,
       row.name,
@@ -933,10 +942,24 @@ export class TourService {
       row.duration_days,
       row.price,
       row.availability
-    ))
+    ));
+
+    // Cache for 5 minutes
+    cache.set(cacheKey, tours, 300000);
+    console.log('💾 Cached tours data');
+    
+    return tours;
   }
 
   static async getAllToursWithPromotions(): Promise<any[]> {
+    // Check cache first
+    const cacheKey = 'all_tours_with_promotions';
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      console.log('✅ Returning cached tours with promotions data');
+      return cached;
+    }
+
     const pool = getPool()
     const [rows] = (await pool.query(`
       SELECT
@@ -988,20 +1011,38 @@ export class TourService {
       }
     }
 
-    return Array.from(toursMap.values())
+    const result = Array.from(toursMap.values());
+    
+    // Cache for 3 minutes (shorter due to promotions)
+    cache.set(cacheKey, result, 180000);
+    console.log('💾 Cached tours with promotions data');
+    
+    return result;
   }
 
   static async getTourById(tourId: number): Promise<Tour | null> {
+    // Check cache first
+    const cacheKey = `tour_${tourId}`;
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      console.log(`✅ Returning cached tour data for ID: ${tourId}`);
+      return cached;
+    }
+
     const pool = getPool()
     const [rows] = (await pool.query(
       'SELECT tour_id, tour_guide_id, name, description, destination, duration_days, price, availability FROM tours WHERE tour_id = ? LIMIT 1',
       [tourId]
     )) as any
 
-    if (!rows || rows.length === 0) return null
+    if (!rows || rows.length === 0) {
+      // Cache null result for 1 minute to prevent repeated queries
+      cache.set(cacheKey, null, 60000);
+      return null;
+    }
 
     const row = rows[0]
-    return new Tour(
+    const tour = new Tour(
       row.tour_id,
       row.tour_guide_id,
       row.name,
@@ -1010,7 +1051,19 @@ export class TourService {
       row.duration_days,
       row.price,
       row.availability
-    )
+    );
+
+    // Cache for 10 minutes
+    cache.set(cacheKey, tour, 600000);
+    console.log(`💾 Cached tour data for ID: ${tourId}`);
+    
+    return tour;
+  }
+
+  // Method to clear tour-related cache when tours are updated
+  static clearTourCache(): void {
+    cache.clear();
+    console.log('🗑️ Tour cache cleared');
   }
 }
 

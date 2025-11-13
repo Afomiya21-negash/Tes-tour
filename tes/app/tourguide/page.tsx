@@ -26,16 +26,20 @@ type Tour = {
 type CustomerItinerary = {
   custom_itinerary_id: number
   booking_id: number
+  tour_id: number
   customer_first_name: string
   customer_last_name: string
   customer_email: string
+  customer_phone: string
   tour_name: string
   destination: string
   start_date: string
   end_date: string
   number_of_people: number
   special_requests: string
+  duration_days: number
   itinerary_data: any
+  itinerary_type: string
   created_at: string
   updated_at: string
 }
@@ -300,7 +304,12 @@ export default function TourGuideDashboard() {
         {/* Tours Tab */}
         {activeTab === "tours" && (
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">My Tours</h2>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">My Assigned Tours</h2>
+              <div className="bg-green-100 px-4 py-2 rounded-lg">
+                <span className="text-green-800 font-semibold">{tours.length} Tours Assigned</span>
+              </div>
+            </div>
             {loading ? (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
@@ -314,60 +323,115 @@ export default function TourGuideDashboard() {
               <div className="text-center py-8 text-gray-500">
                 <Calendar className="w-12 h-12 mx-auto mb-2 text-gray-400" />
                 <p>No tours assigned yet.</p>
+                <p className="text-sm mt-2">You will see your assigned tours here once an employee assigns you to a booking.</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {tours.map((tour) => (
                   <div
                     key={`tour-${tour.booking_id}`}
                     className="bg-white border-2 border-green-200 rounded-lg p-6 hover:shadow-lg transition-shadow"
                   >
-                    <div className="flex justify-between items-start mb-4">
+                    {/* Header Section */}
+                    <div className="flex justify-between items-start mb-6">
                       <div>
-                        <h3 className="text-xl font-semibold text-gray-900">{tour.tour_name || 'Custom Tour'}</h3>
-                        <p className="text-gray-600">Customer: {getFullName(tour.customer_first_name, tour.customer_last_name)}</p>
+                        <h3 className="text-xl font-semibold text-gray-900 mb-1">{tour.tour_name || 'Custom Tour'}</h3>
+                      
                       </div>
-                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(tour.status)}`}>
-                        {getStatusText(tour.status)}
-                      </span>
+                     
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600 mb-4">
-                      <div className="flex items-center space-x-2">
+
+                    {/* Customer Information Section */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                      <h4 className="font-semibold text-blue-900 mb-3 flex items-center">
+                        <Users className="w-4 h-4 mr-2" />
+                        Customer Information
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-medium text-blue-800">Name:</span>
+                          <span className="text-blue-700">{getFullName(tour.customer_first_name, tour.customer_last_name)}</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span className="font-medium text-blue-800">Group Size:</span>
+                          <span className="text-blue-700">{tour.number_of_people} </span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span className="font-medium text-blue-800">📱 Phone:</span>
+                          <span className="text-blue-700">{tour.customer_phone}</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span className="font-medium text-blue-800">📧 Email:</span>
+                          <span className="text-blue-700">{tour.customer_email}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Tour Details Section */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
                         <Calendar className="w-4 h-4 text-green-600" />
-                        <span>{formatDate(tour.start_date)} - {formatDate(tour.end_date)}</span>
+                        <div>
+                          <span className="font-medium">Duration:</span>
+                          <br />
+                          <span>{formatDate(tour.start_date)} - {formatDate(tour.end_date)}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
                         <MapPin className="w-4 h-4 text-green-600" />
-                        <span>{tour.destination}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Users className="w-4 h-4 text-green-600" />
-                        <span>{tour.number_of_people} people</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span>📱</span>
-                        <span>{tour.customer_phone}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span>📧</span>
-                        <span>{tour.customer_email}</span>
-                      </div>
-                      {tour.vehicle_make && (
-                        <div className="flex items-center space-x-2">
-                          <span>🚗</span>
-                          <span>{tour.vehicle_make} {tour.vehicle_model}</span>
+                        <div>
+                          <span className="font-medium">Destination:</span>
+                          <br />
+                          <span>{tour.destination}</span>
                         </div>
-                      )}
-                      {tour.driver_first_name && (
-                        <div className="flex items-center space-x-2">
-                          <span>👨‍✈️</span>
-                          <span>Driver: {getFullName(tour.driver_first_name, tour.driver_last_name)} ({tour.driver_phone})</span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <Clock className="w-4 h-4 text-green-600" />
+                        <div>
+                          <span className="font-medium">Booked:</span>
+                          <br />
+                          <span>{formatDate(tour.booking_date)}</span>
                         </div>
-                      )}
+                      </div>
                     </div>
+
+                    {/* Vehicle and Driver Information */}
+                    {(tour.vehicle_make || tour.driver_first_name) && (
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+                        <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                          <span className="mr-2">🚗</span>
+                          Transportation Details
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                          {tour.vehicle_make && (
+                            <div className="flex items-center space-x-2">
+                              <span className="font-medium text-gray-800">Vehicle:</span>
+                              <span className="text-gray-700">{tour.vehicle_make} {tour.vehicle_model}</span>
+                            </div>
+                          )}
+                          {tour.driver_first_name && (
+                            <div className="flex items-center space-x-2">
+                              <span className="font-medium text-gray-800">Driver:</span>
+                              <span className="text-gray-700">{getFullName(tour.driver_first_name, tour.driver_last_name)}</span>
+                            </div>
+                          )}
+                          {tour.driver_phone && (
+                            <div className="flex items-center space-x-2">
+                              <span className="font-medium text-gray-800">Driver Phone:</span>
+                              <span className="text-gray-700">{tour.driver_phone}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Special Requests */}
                     {tour.special_requests && (
-                      <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
-                        <p className="text-sm font-medium text-yellow-800 mb-1">Special Requests:</p>
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <h4 className="font-semibold text-yellow-800 mb-2 flex items-center">
+                          <span className="mr-2">⚠️</span>
+                          Special Requests
+                        </h4>
                         <p className="text-sm text-yellow-700">{tour.special_requests}</p>
                       </div>
                     )}
@@ -381,54 +445,126 @@ export default function TourGuideDashboard() {
         {/* Itineraries Tab */}
         {activeTab === "itineraries" && (
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Customer Itineraries</h2>
-            <div className="space-y-4">
-              {itineraries.map((itinerary) => (
-                <div
-                  key={`itinerary-${itinerary.booking_id}`}
-                  className="bg-white border-2 border-green-200 rounded-lg p-6 hover:shadow-lg transition-shadow"
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-xl font-semibold text-gray-900">{itinerary.tour_name || 'Custom Tour'}</h3>
-                      <p className="text-gray-600">Customer: {`${itinerary.customer_first_name} ${itinerary.customer_last_name}`.trim()}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-600">{new Date(itinerary.start_date).toLocaleDateString()} - {new Date(itinerary.end_date).toLocaleDateString()}</p>
-                      <p className="text-sm text-gray-600">Group Size: {itinerary.number_of_people} people</p>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    {itinerary.destination && (
-                      <div>
-                        <h4 className="font-semibold text-gray-900 mb-2">Destination:</h4>
-                        <p className="text-gray-600">{itinerary.destination}</p>
-                      </div>
-                    )}
-                    {itinerary.itinerary_data?.days && itinerary.itinerary_data.days.length > 0 && (
-                      <div>
-                        <h4 className="font-semibold text-gray-900 mb-2">Itinerary:</h4>
-                        <ul className="list-disc list-inside space-y-1 text-gray-600">
-                          {itinerary.itinerary_data.days.map((day: any, idx: number) => (
-                            <li key={`day-${itinerary.booking_id}-${idx}`}>
-                              <span className="font-medium">Day {day.day}:</span> {day.title} — {day.description}{day.location ? ` (${day.location})` : ''}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    {itinerary.special_requests && (
-                      <div>
-                        <h4 className="font-semibold text-gray-900 mb-2">Special Requests:</h4>
-                        <p className="text-gray-600 bg-yellow-50 p-3 rounded-lg border border-yellow-200">
-                          {itinerary.special_requests}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Tour Itineraries</h2>
+              <div className="bg-blue-100 px-4 py-2 rounded-lg">
+                <span className="text-blue-800 font-semibold">{itineraries.length} Tour{itineraries.length !== 1 ? 's' : ''} with Itineraries</span>
+              </div>
             </div>
+            {loading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+                <p className="mt-2 text-gray-600">Loading itineraries...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-8 text-red-600">
+                <p>{error}</p>
+              </div>
+            ) : itineraries.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+               
+                <p>No tour itineraries available yet.</p>
+                <p className="text-sm mt-2">Itineraries will appear here for tours you are assigned to.</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {itineraries.map((itinerary) => (
+                  <div
+                    key={`itinerary-${itinerary.booking_id}`}
+                    className="bg-white border-2 border-green-200 rounded-lg p-6 hover:shadow-lg transition-shadow"
+                  >
+                    {/* Header Section */}
+                    <div className="flex justify-between items-start mb-6">
+                      <div>
+                        <h3 className="text-xl font-semibold text-gray-900 mb-1">{itinerary.tour_name  || 'Custom Tour'}</h3>
+                        <p className="text-gray-600 text-sm">Tour ID: #{itinerary.tour_id} | Booking ID: #{itinerary.booking_id}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-gray-900">{formatDate(itinerary.start_date)} - {formatDate(itinerary.end_date)}</p>
+                        <p className="text-sm text-gray-600">{itinerary.duration_days} days tour</p>
+                      </div>
+                    </div>
+
+                    {/* Customer Information */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                      <h4 className="font-semibold text-blue-900 mb-3 flex items-center">
+                        <Users className="w-4 h-4 mr-2" />
+                        Customer Details
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                        <div>
+                          <span className="font-medium text-blue-800">Name:</span>
+                          <br />
+                          <span className="text-blue-700">{getFullName(itinerary.customer_first_name, itinerary.customer_last_name)}</span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-blue-800">Group Size:</span>
+                          <br />
+                          <span className="text-blue-700">{itinerary.number_of_people} people</span>
+                        </div>
+                        <div>
+                          <span className="font-medium text-blue-800">Phone:</span>
+                          <br />
+                          <span className="text-blue-700">{itinerary.customer_phone}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Destination Information */}
+                    {itinerary.destination && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                        <h4 className="font-semibold text-green-900 mb-2 flex items-center">
+                          <MapPin className="w-4 h-4 mr-2" />
+                          Destination: {itinerary.destination}
+                        </h4>
+                      </div>
+                    )}
+
+                    {/* Detailed Itinerary */}
+                    {itinerary.itinerary_data?.days && itinerary.itinerary_data.days.length > 0 && (
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+                        <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
+                          <Calendar className="w-4 h-4 mr-2" />
+                          Day-by-Day Itinerary
+                        </h4>
+                        <div className="space-y-4">
+                          {itinerary.itinerary_data.days.map((day: any, idx: number) => (
+                            <div key={`day-${itinerary.booking_id}-${idx}`} className="bg-white border border-gray-300 rounded-lg p-4">
+                              <div className="flex items-start space-x-3">
+                                <div className="bg-green-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold flex-shrink-0">
+                                  {day.day}
+                                </div>
+                                <div className="flex-1">
+                                  <h5 className="font-semibold text-gray-900 mb-2">Day {day.day}: {day.title}</h5>
+                                  <p className="text-gray-700 text-sm leading-relaxed mb-2">{day.description}</p>
+                                  {day.location && (
+                                    <div className="flex items-center text-xs text-gray-600">
+                                      <MapPin className="w-3 h-3 mr-1" />
+                                      <span>{day.location}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Special Requests */}
+                    {itinerary.special_requests && (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <h4 className="font-semibold text-yellow-800 mb-2 flex items-center">
+                          <span className="mr-2">⚠️</span>
+                          Special Requests
+                        </h4>
+                        <p className="text-sm text-yellow-700">{itinerary.special_requests}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
