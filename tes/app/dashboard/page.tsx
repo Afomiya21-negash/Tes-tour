@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Calendar, MapPin, Users, CreditCard, Clock, CheckCircle, XCircle, Edit3 } from "lucide-react"
+import { Calendar, MapPin, Users, CreditCard, Clock, CheckCircle, XCircle, Edit3, HelpCircle, LogOut } from "lucide-react"
 import ItineraryCustomizer from "@/components/ItineraryCustomizer"
 
 interface Booking {
@@ -126,6 +126,17 @@ export default function CustomerDashboard() {
     setSelectedBooking(null)
   }
 
+  const logout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/login';
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Force redirect anyway
+      window.location.href = '/login';
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -145,7 +156,14 @@ export default function CustomerDashboard() {
               <p className="text-gray-600">Welcome back, {user?.first_name || user?.username}!</p>
             </div>
             <div className="flex items-center space-x-3">
-            
+              <a
+                href="/support"
+                className="flex items-center space-x-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              >
+                <HelpCircle className="h-5 w-5" />
+                <span className="font-medium">Help & Support</span>
+              </a>
+           
             </div>
           </div>
         </div>
