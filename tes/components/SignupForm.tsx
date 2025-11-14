@@ -21,6 +21,7 @@ export default function SignupForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [ageError, setAgeError] = useState("")
+  const [showVerificationMessage, setShowVerificationMessage] = useState(false)
   const router = useRouter()
 
   const validatePassword = (password: string) => {
@@ -93,7 +94,29 @@ export default function SignupForm() {
          
         </div>
 
-        <form onSubmit={async (e) => {
+        {showVerificationMessage ? (
+          <div className="text-center py-8">
+            <div className="mb-6">
+              <svg className="w-16 h-16 mx-auto text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Registration Successful!</h3>
+            <p className="text-gray-600 mb-4">
+              A verification email has been sent to your email address.
+            </p>
+            <p className="text-sm text-gray-500 mb-6">
+              Please check your console logs for the verification link (in local development).
+            </p>
+            <button
+              onClick={() => router.push('/login')}
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Go to Login
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={async (e) => {
           e.preventDefault()
           if (passwordErrors.length > 0 || !passwordMatch || ageError) return
           try {
@@ -113,7 +136,8 @@ export default function SignupForm() {
               })
             })
             if (res.ok) {
-              router.push('/')
+              setShowVerificationMessage(true)
+              // Don't redirect immediately - show verification message
             } else {
               const data = await res.json().catch(() => ({}))
               alert(data.message || 'Signup failed')
@@ -302,15 +326,18 @@ export default function SignupForm() {
             {isLoading ? "Creating Account..." : "Create Account"}
           </button>
         </form>
+        )}
 
-        <div className="mt-6 text-center">
-          <p className="text-gray-600">
-            Already have an account?{" "}
-            <a href="/login" className="text-[#002F63] hover:text-[#002856] font-medium transition-colors">
-              Sign in
-            </a>
-          </p>
-        </div>
+        {!showVerificationMessage && (
+          <div className="mt-6 text-center">
+            <p className="text-gray-600">
+              Already have an account?{" "}
+              <a href="/login" className="text-[#002F63] hover:text-[#002856] font-medium transition-colors">
+                Sign in
+              </a>
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )

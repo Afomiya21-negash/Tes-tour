@@ -1,6 +1,7 @@
 import { getPool } from '@/lib/db'
 import { hashPassword, verifyPassword, signJwt } from '@/lib/auth'
 import { cache } from '@/lib/cache'
+import { generateVerificationToken, storeVerificationToken, sendVerificationEmail } from '@/lib/email-verification'
 
 // Shared types
 export type UserRole = 'customer' | 'admin' | 'employee' | 'tourguide' | 'driver'
@@ -231,16 +232,37 @@ export class Guest {
             FOREIGN KEY (customer_id) REFERENCES users(user_id) ON DELETE CASCADE
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci`
         )
+      } catch (createTableError) {
+        console.log('Customers table already exists or creation skipped')
+      }
 
+      // Insert customer record - this should NOT fail silently
+      try {
         await conn.query(
           `INSERT INTO customers (customer_id, address, date_of_birth)
            VALUES (?, ?, ?)`,
           [userId, address || null, DOB || null]
         )
-      } catch (customerError) {
-        console.error('Error creating customer record:', customerError)
-        // Continue without failing the signup if customers table creation fails
+        console.log(`✅ Customer record created for user_id: ${userId}`)
+      } catch (customerError: any) {
+        console.error('❌ Error creating customer record:', customerError.message)
+        console.error('User ID:', userId, 'Address:', address, 'DOB:', DOB)
+        
+        // Check if it's a duplicate key error (customer already exists)
+        if (customerError.code === 'ER_DUP_ENTRY') {
+          console.log('Customer record already exists, continuing...')
+        } else {
+          // For other errors, throw to prevent incomplete signup
+          throw new Error(`Failed to create customer record: ${customerError.message}`)
+        }
       }
+
+      // Generate and store email verification token
+      const verificationToken = generateVerificationToken()
+      await storeVerificationToken(userId, verificationToken)
+      
+      // Send verification email
+      await sendVerificationEmail(email, verificationToken, 'customer')
 
       return { user_id: userId, username, email, role: 'customer' }
     } finally {
@@ -421,6 +443,13 @@ export class Admin {
           break
         }
       }
+
+      // Generate and store email verification token
+      const verificationToken = generateVerificationToken()
+      await storeVerificationToken(userId, verificationToken)
+      
+      // Send verification email
+      await sendVerificationEmail(email, verificationToken, input.role)
 
       await conn.commit()
 
