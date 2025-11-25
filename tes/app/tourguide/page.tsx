@@ -166,7 +166,30 @@ export default function TourGuideDashboard() {
     return status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ')
   }
 
+  // TASK 2: Handle tour status updates (Start/Finish)
+  const handleUpdateTourStatus = async (bookingId: number, newStatus: string) => {
+    try {
+      const response = await fetch('/api/tourguide/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ booking_id: bookingId, status: newStatus })
+      })
 
+      if (response.ok) {
+        const data = await response.json()
+        alert(data.message)
+        // Refresh tours to show updated status
+        await fetchTours()
+      } else {
+        const error = await response.json()
+        alert(`Error: ${error.error || 'Failed to update status'}`)
+      }
+    } catch (error) {
+      console.error('Error updating tour status:', error)
+      alert('Failed to update tour status. Please try again.')
+    }
+  }
 
   const handleUpdateLocation = () => {
     if (navigator.geolocation) {
@@ -334,11 +357,32 @@ export default function TourGuideDashboard() {
                   >
                     {/* Header Section */}
                     <div className="flex justify-between items-start mb-6">
-                      <div>
+                      <div className="flex-1">
                         <h3 className="text-xl font-semibold text-gray-900 mb-1">{tour.tour_name || 'Custom Tour'}</h3>
-                      
+                        {/* TASK 2: Display tour status */}
+                        <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(tour.status)}`}>
+                          {getStatusText(tour.status)}
+                        </span>
                       </div>
-                     
+                      {/* TASK 2: Start/Finish Tour Buttons */}
+                      <div className="flex gap-2">
+                        {(tour.status.toLowerCase() === 'confirmed' || tour.status.toLowerCase() === 'pending') && (
+                          <button
+                            onClick={() => handleUpdateTourStatus(tour.booking_id, 'in-progress')}
+                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                          >
+                            Start Tour
+                          </button>
+                        )}
+                        {tour.status.toLowerCase() === 'in-progress' && (
+                          <button
+                            onClick={() => handleUpdateTourStatus(tour.booking_id, 'completed')}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                          >
+                            Finish Tour
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     {/* Customer Information Section */}
@@ -386,11 +430,11 @@ export default function TourGuideDashboard() {
                         </div>
                       </div>
                       <div className="flex items-center space-x-2 text-sm text-gray-600">
-                        <Clock className="w-4 h-4 text-green-600" />
+                        <Users className="w-4 h-4 text-green-600" />
                         <div>
-                          <span className="font-medium">Booked:</span>
+                          <span className="font-medium">Group Size:</span>
                           <br />
-                          <span>{formatDate(tour.booking_date)}</span>
+                          <span>{tour.number_of_people} {tour.number_of_people === 1 ? 'person' : 'people'}</span>
                         </div>
                       </div>
                     </div>

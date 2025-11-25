@@ -19,11 +19,17 @@ interface Vehicle {
   imageUrl?: string | null
 }
 
+interface Promotion {
+  discount_percentage: number
+  // add other promotion fields here if your API returns them
+}
+
 interface Tour {
   id: number
   name: string
   price: number
   durationDays: number | null
+  promotions?: Promotion[] | null
 }
 
 export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopupProps) {
@@ -76,30 +82,6 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
       fetchPreviousIdPictures()
     }
   }, [isOpen, authenticated, tourName])
-
-  const fetchVehicles = async () => {
-    try {
-      const response = await fetch('/api/vehicles', { credentials: 'include' })
-      if (response.ok) {
-        const data = await response.json()
-        setVehicles(data)
-      }
-    } catch (e) {
-      console.error('Error fetching vehicles:', e)
-    }
-  }
-
-  const fetchDrivers = async () => {
-    try {
-      const response = await fetch('/api/drivers', { credentials: 'include' })
-      if (response.ok) {
-        const data = await response.json()
-        setDrivers(data)
-      }
-    } catch (e) {
-      console.error('Error fetching drivers:', e)
-    }
-  }
 
   const fetchPreviousIdPictures = async () => {
     try {
@@ -196,6 +178,50 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
       return () => document.removeEventListener('keydown', handleEscape)
     }
   }, [isOpen])
+
+  //  Fetch vehicles function (moved here after formData declaration)
+  const fetchVehicles = async () => {
+    try {
+      //  Pass date parameters to filter only available vehicles
+      let url = '/api/vehicles'
+      if (formData.startDate && formData.endDate) {
+        url += `?startDate=${encodeURIComponent(formData.startDate)}&endDate=${encodeURIComponent(formData.endDate)}`
+      }
+      const response = await fetch(url, { credentials: 'include' })
+      if (response.ok) {
+        const data = await response.json()
+        setVehicles(data)
+      }
+    } catch (e) {
+      console.error('Error fetching vehicles:', e)
+    }
+  }
+
+  //Fetch drivers function 
+  const fetchDrivers = async () => {
+    try {
+      // Pass date parameters to filter only available drivers
+      let url = '/api/drivers'
+      if (formData.startDate && formData.endDate) {
+        url += `?startDate=${encodeURIComponent(formData.startDate)}&endDate=${encodeURIComponent(formData.endDate)}`
+      }
+      const response = await fetch(url, { credentials: 'include' })
+      if (response.ok) {
+        const data = await response.json()
+        setDrivers(data)
+      }
+    } catch (e) {
+      console.error('Error fetching drivers:', e)
+    }
+  }
+
+  // Refetch vehicles and drivers when dates change to show only available ones
+  useEffect(() => {
+    if (formData.startDate && formData.endDate) {
+      fetchVehicles()
+      fetchDrivers()
+    }
+  }, [formData.startDate, formData.endDate])
 
   // Available banks
   const banks = [
@@ -310,13 +336,35 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
 
       const booking = await bookingResponse.json()
 
-      // For now, skip payment integration and just mark booking as confirmed
-      // In the future, this is where payment processing would happen
+      // Initialize payment immediately after booking creation
       console.log('Booking created successfully:', booking)
-      console.log('Payment method selected:', formData.selectedBank)
-      console.log('Total amount:', totalPrice)
+      console.log('Initializing payment...')
 
-      setBookingSuccess(true)
+      // Initialize payment with Chappa
+      const paymentResponse = await fetch('/api/payments/initialize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          booking_id: booking.booking_id,
+          payment_method: formData.selectedBank // Pass selected bank
+        })
+      })
+
+      if (!paymentResponse.ok) {
+        const errorData = await paymentResponse.json()
+        console.error('Payment initialization failed:', errorData)
+        throw new Error(errorData.error || errorData.details || 'Failed to initialize payment')
+      }
+
+      const paymentData = await paymentResponse.json()
+
+      if (paymentData.success && paymentData.checkout_url) {
+        // Redirect to Chappa payment page
+        window.location.href = paymentData.checkout_url
+      } else {
+        throw new Error('Failed to get payment checkout URL')
+      }
     } catch (e: any) {
       setError(e.message || 'An error occurred while processing your booking')
     } finally {
@@ -711,8 +759,14 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
                     </div>
 
                     {vehicles.length === 0 && (
-                      <div className="text-center py-4">
-                        <p className="text-gray-500">No vehicles available at the moment.</p>
+                      <div className="text-center py-8 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <Car className="h-12 w-12 text-yellow-600 mx-auto mb-3" />
+                        <p className="text-gray-700 font-medium">No vehicles available for the selected dates</p>
+                        <p className="text-sm text-gray-600 mt-2">
+                          {formData.startDate && formData.endDate 
+                            ? 'All vehicles are booked during this period. Please try different dates.'
+                            : 'Please select your travel dates to see available vehicles.'}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -771,8 +825,14 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
                     </div>
 
                     {drivers.length === 0 && (
-                      <div className="text-center py-4">
-                        <p className="text-gray-500">No drivers available at the moment.</p>
+                      <div className="text-center py-8 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <User className="h-12 w-12 text-yellow-600 mx-auto mb-3" />
+                        <p className="text-gray-700 font-medium">No drivers available for the selected dates</p>
+                        <p className="text-sm text-gray-600 mt-2">
+                          {formData.startDate && formData.endDate 
+                            ? 'All drivers are booked during this period. Please try different dates or contact support.'
+                            : 'Please select your travel dates to see available drivers.'}
+                        </p>
                       </div>
                     )}
                   </div>

@@ -522,11 +522,15 @@ export class Employee {
   static async isHR(userID: number): Promise<boolean> {
     try {
       const pool = getPool()
-      const [rows] = (await pool.query('SELECT position FROM employees WHERE employee_id = ? LIMIT 1', [userID])) as any
+      // TASK 1 FIX: Check both position AND department for "Human Resource" (from dropdown)
+      const [rows] = (await pool.query('SELECT position, department FROM employees WHERE employee_id = ? LIMIT 1', [userID])) as any
       if (!rows || rows.length === 0) return false
-      const pos = (rows[0].position || '').toLowerCase()
-      const hrTitles = ['hr', 'human resources', 'hr manager', 'hr officer', 'hr specialist']
-      return hrTitles.includes(pos)
+      
+      const position = (rows[0].position || '').toLowerCase()
+      const department = (rows[0].department || '').toLowerCase()
+      
+      // Check if position OR department is "Human Resource" (matches dropdown value)
+      return position.includes('human resource') || department.includes('human resource')
     } catch (e) {
       return false
     }

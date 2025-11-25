@@ -4,9 +4,48 @@ import { getPool } from '@/lib/db'
 export async function GET(req: NextRequest) {
   try {
     const pool = getPool()
-    const [rows] = await pool.query(
-      'SELECT vehicle_id, driver_id, make, model, year, license_plate, capacity, picture FROM vehicles WHERE status IN ("available", "Available")'
-    )
+    
+    // Get date filters from query parameters for checking availability
+    const { searchParams } = new URL(req.url)
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
+
+    let query = `
+      SELECT 
+        v.vehicle_id, 
+        v.driver_id, 
+        v.make, 
+        v.model, 
+        v.year, 
+        v.license_plate, 
+        v.capacity, 
+        v.picture
+      FROM vehicles v
+      WHERE v.status IN ("available", "Available")
+    `
+    
+    const params: any[] = []
+
+    //  exclude vehicles that are already booked during this period
+    if (startDate && endDate) {
+      query += `
+        AND v.vehicle_id NOT IN (
+          SELECT DISTINCT b.vehicle_id
+          FROM bookings b
+          WHERE b.vehicle_id IS NOT NULL
+            AND b.status IN ('confirmed', 'in-progress', 'pending')
+            AND (
+              (b.start_date <= ? AND b.end_date >= ?)
+              OR (b.start_date <= ? AND b.end_date >= ?)
+              OR (b.start_date >= ? AND b.end_date <= ?)
+            )
+        )
+      `
+      // Add parameters for date overlap check
+      params.push(endDate, startDate, startDate, endDate, startDate, endDate)
+    }
+
+    const [rows] = await pool.query(query, params)
 
     const vehicles = (rows || []).map((row: any) => {
       // Fix image path - remove 'tes' prefix and ensure it starts with '/'
@@ -45,8 +84,8 @@ export async function GET(req: NextRequest) {
     })
 
     return NextResponse.json(vehicles)
-  } catch (e) {
+  } catch (e: any) {
     console.error('Error fetching vehicles:', e)
-    return NextResponse.json({ message: 'Server error', error: e.message }, { status: 500 })
+    return NextResponse.json({ message: 'Server error', error: e?.message || 'Unknown error' }, { status: 500 })
   }
 }

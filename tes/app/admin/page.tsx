@@ -93,7 +93,7 @@ export default function AdminDashboard() {
             <div class="bg-white rounded-lg w-full max-w-md">
               <div class="flex justify-between items-center p-6 border-b border-gray-200">
                 <h3 class="text-xl font-semibold text-orange-800">Access Restricted</h3>
-                <button onclick="this.closest('.fixed').remove(); window.location.href='/${data.user.role}'" class="text-gray-400 hover:text-gray-600">
+                <button onclick="this.closest('.fixed').remove(); window.location.href='${data.user.role === 'customer' ? '/dashboard' : '/' + data.user.role}'" class="text-gray-400 hover:text-gray-600">
                   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                   </svg>
@@ -109,8 +109,8 @@ export default function AdminDashboard() {
                   </div>
                   <p class="text-sm text-orange-700">You are logged in as ${data.user.role}. Admin privileges are required to access this page.</p>
                 </div>
-                <button onclick="this.closest('.fixed').remove(); window.location.href='/${data.user.role}'" class="w-full bg-orange-600 hover:bg-orange-700 text-white py-2 px-4 rounded-lg transition-colors">
-                  Go to ${data.user.role.charAt(0).toUpperCase() + data.user.role.slice(1)} Dashboard
+                <button onclick="this.closest('.fixed').remove(); window.location.href='${data.user.role === 'customer' ? '/dashboard' : '/' + data.user.role}'" class="w-full bg-orange-600 hover:bg-orange-700 text-white py-2 px-4 rounded-lg transition-colors">
+                  Go to ${data.user.role === 'customer' ? 'Dashboard' : (data.user.role.charAt(0).toUpperCase() + data.user.role.slice(1) + ' Dashboard')}
                 </button>
               </div>
             </div>
@@ -341,7 +341,7 @@ export default function AdminDashboard() {
         hireDate: new Date().toISOString().split("T")[0],
       }
 
-      // Show the generated credentials to the admin in a popup
+     
       const credentialsMessage = `Employee registered successfully!
 
 Generated Login Credentials:
@@ -353,7 +353,7 @@ They should change their password after first login.
 
 IMPORTANT: Copy these credentials now - they will not be shown again!`
 
-      // Optimistic update (append), then refresh from server to ensure consistency
+      
       setEmployees([...employees, newEmployee])
       fetchEmployees()
       // Reset form
@@ -1194,25 +1194,29 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
               {employeeRole === 'employee' && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Position</label>
-                    <input
-                      type="text"
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Position *</label>
+                    <select
                       value={position}
                       onChange={(e) => setPosition(e.target.value)}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                      placeholder="e.g. HR, Finance, Operations"
-                    />
+                    >
+                      <option value="">-- Select Position --</option>
+                      <option value="Human Resource">Human Resource</option>
+                      <option value="Accountant">Accountant</option>
+                    </select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
-                    <input
-                      type="text"
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Department *</label>
+                    <select
                       value={department}
                       onChange={(e) => setDepartment(e.target.value)}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                      placeholder="e.g. Human Resources"
-                    />
+                    >
+                      <option value="">-- Select Department --</option>
+                      <option value="Human Resource">Human Resource</option>
+                      <option value="Finances">Finances</option>
+                    </select>
                   </div>
                 </>
               )}

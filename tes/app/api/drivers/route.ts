@@ -6,9 +6,13 @@ export async function GET(request: NextRequest) {
   try {
     const pool = getPool()
     
-    // Get drivers with robust aggregates using subqueries to avoid JOIN multiplication
-    const [rows] = await pool.execute(
-      `SELECT
+    // Get date filters from query parameters for checking availability
+    const { searchParams } = new URL(request.url)
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
+    
+    let query = `
+      SELECT
         u.user_id,
         u.first_name,
         u.last_name,
@@ -45,8 +49,31 @@ export async function GET(request: NextRequest) {
       FROM Users u
       LEFT JOIN drivers d ON u.user_id = d.driver_id
       WHERE u.role = 'driver'
-      ORDER BY average_rating DESC, total_trips DESC`
-    )
+    `
+    
+    const params: any[] = []
+    
+    // TASK 1 FIX: If dates provided, exclude drivers who are already booked during this period
+    if (startDate && endDate) {
+      query += `
+        AND u.user_id NOT IN (
+          SELECT DISTINCT b.driver_id
+          FROM bookings b
+          WHERE b.driver_id IS NOT NULL
+            AND b.status IN ('confirmed', 'in-progress', 'pending')
+            AND (
+              (b.start_date <= ? AND b.end_date >= ?)
+              OR (b.start_date <= ? AND b.end_date >= ?)
+              OR (b.start_date >= ? AND b.end_date <= ?)
+            )
+        )
+      `
+      params.push(endDate, startDate, startDate, endDate, startDate, endDate)
+    }
+    
+    query += ` ORDER BY average_rating DESC, total_trips DESC`
+    
+    const [rows] = await pool.execute(query, params)
     
     return NextResponse.json(Array.isArray(rows) ? rows : [])
   } catch (error) {

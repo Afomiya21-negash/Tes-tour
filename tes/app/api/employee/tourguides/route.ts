@@ -31,9 +31,14 @@ export async function GET(request: NextRequest) {
     
     const pool = getPool()
     
-    // Get tour guides with their average ratings and total tours
-    const [rows] = await pool.execute(
-      `SELECT 
+    // ISSUE 2 FIX: Extract date parameters to filter only available tour guides
+    const { searchParams } = new URL(request.url)
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
+    
+    // Base query
+    let query = `
+      SELECT 
         u.user_id,
         u.first_name,
         u.last_name,
@@ -42,8 +47,7 @@ export async function GET(request: NextRequest) {
         (
           SELECT COUNT(DISTINCT b.booking_id)
           FROM bookings b
-          JOIN tours t ON b.tour_id = t.tour_id
-          WHERE t.tour_guide_id = u.user_id
+          WHERE b.tour_guide_id = u.user_id
             AND b.status IN ('confirmed', 'completed', 'in-progress')
         ) as total_tours,
         COALESCE(
@@ -61,14 +65,37 @@ export async function GET(request: NextRequest) {
           WHEN (
             SELECT COUNT(1)
             FROM bookings b2
-            JOIN tours t2 ON b2.tour_id = t2.tour_id
-            WHERE t2.tour_guide_id = u.user_id
+            WHERE b2.tour_guide_id = u.user_id
               AND b2.status IN ('confirmed', 'in-progress')
           ) > 0 THEN 'busy' ELSE 'available' END as availability
       FROM users u
       WHERE u.role = 'tourguide'
-      ORDER BY average_rating DESC, total_tours DESC`
-    )
+    `
+    const params: any[] = []
+    
+    // ISSUE 2 FIX: Exclude tour guides already assigned during the requested date range
+    if (startDate && endDate) {
+      query += `
+        AND u.user_id NOT IN (
+          SELECT DISTINCT b.tour_guide_id
+          FROM bookings b
+          WHERE b.tour_guide_id IS NOT NULL
+            AND b.status IN ('confirmed', 'in-progress', 'pending')
+            AND (
+              (b.start_date <= ? AND b.end_date >= ?)
+              OR (b.start_date <= ? AND b.end_date >= ?)
+              OR (b.start_date >= ? AND b.end_date <= ?)
+            )
+        )
+      `
+      params.push(endDate, startDate, startDate, endDate, startDate, endDate)
+    }
+    
+    query += ` ORDER BY average_rating DESC, total_tours DESC`
+    
+    const [rows] = params.length > 0
+      ? await pool.execute(query, params)
+      : await pool.execute(query)
     
     return NextResponse.json(Array.isArray(rows) ? rows : [])
   } catch (error) {

@@ -120,7 +120,7 @@ export default function EmployeeDashboard() {
             <div class="bg-white rounded-lg w-full max-w-md">
               <div class="flex justify-between items-center p-6 border-b border-gray-200">
                 <h3 class="text-xl font-semibold text-orange-800">Access Restricted</h3>
-                <button onclick="this.closest('.fixed').remove(); window.location.href='/${data.user.role}'" class="text-gray-400 hover:text-gray-600">
+                <button onclick="this.closest('.fixed').remove(); window.location.href='${data.user.role === 'customer' ? '/dashboard' : '/' + data.user.role}'" class="text-gray-400 hover:text-gray-600">
                   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                   </svg>
@@ -136,8 +136,47 @@ export default function EmployeeDashboard() {
                   </div>
                   <p class="text-sm text-orange-700">You are logged in as ${data.user.role}. Employee privileges are required to access this page.</p>
                 </div>
-                <button onclick="this.closest('.fixed').remove(); window.location.href='/${data.user.role}'" class="w-full bg-orange-600 hover:bg-orange-700 text-white py-2 px-4 rounded-lg transition-colors">
-                  Go to ${data.user.role.charAt(0).toUpperCase() + data.user.role.slice(1)} Dashboard
+                <button onclick="this.closest('.fixed').remove(); window.location.href='${data.user.role === 'customer' ? '/dashboard' : '/' + data.user.role}'" class="w-full bg-orange-600 hover:bg-orange-700 text-white py-2 px-4 rounded-lg transition-colors">
+                  Go to ${data.user.role === 'customer' ? 'Dashboard' : (data.user.role.charAt(0).toUpperCase() + data.user.role.slice(1) + ' Dashboard')}
+                </button>
+              </div>
+            </div>
+          `
+          document.body.appendChild(popup)
+        }, 100)
+        return
+      }
+
+      // TASK 1 FIX: Check if employee has HR access using the isHR flag from API
+      // The API uses Employee.isHR() method from domain.ts which checks position and department
+      if (!data.user.isHR) {
+        // Show access denied popup for non-HR employees (e.g., Accountant)
+        setTimeout(() => {
+          const popup = document.createElement('div')
+          popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4'
+          popup.innerHTML = `
+            <div class="bg-white rounded-lg w-full max-w-md">
+              <div class="flex justify-between items-center p-6 border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-red-800">Access Denied</h3>
+                <button onclick="this.closest('.fixed').remove(); window.location.href='/'" class="text-gray-400 hover:text-gray-600">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
+              <div class="p-6">
+                <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                  <div class="flex items-center mb-2">
+                    <svg class="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                    </svg>
+                    <span class="font-semibold text-red-800">HR Access Required</span>
+                  </div>
+                  <p class="text-sm text-red-700">This page is only accessible to Human Resource department employees.</p>
+                  <p class="text-sm text-red-700 mt-2">Accountants and other employees do not have permission to access employee management.</p>
+                </div>
+                <button onclick="this.closest('.fixed').remove(); window.location.href='/'" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition-colors">
+                  Go to Homepage
                 </button>
               </div>
             </div>
@@ -215,9 +254,16 @@ export default function EmployeeDashboard() {
     }
   }
 
-  const fetchTourGuides = async () => {
+  // ISSUE 2 FIX: Accept date parameters to filter available tour guides
+  const fetchTourGuides = async (startDate?: string, endDate?: string) => {
     try {
-      const response = await fetch('/api/employee/tourguides', {
+      let url = '/api/employee/tourguides'
+      // Add date parameters if provided to filter only available tour guides
+      if (startDate && endDate) {
+        url += `?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`
+      }
+      
+      const response = await fetch(url, {
         credentials: 'include'
       })
       if (response.ok) {
@@ -256,6 +302,8 @@ export default function EmployeeDashboard() {
   const handleAssignTourGuide = (booking: Booking) => {
     setSelectedBooking(booking)
     setShowAssignModal(true)
+    // ISSUE 2 FIX: Fetch tour guides filtered by booking dates to show only available ones
+    fetchTourGuides(booking.start_date, booking.end_date)
   }
 
   const handleConfirmAssignment = async (tourGuideId: number, tourGuideName: string) => {

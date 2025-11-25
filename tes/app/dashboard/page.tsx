@@ -84,6 +84,8 @@ export default function CustomerDashboard() {
         return 'bg-green-100 text-green-800'
       case 'pending':
         return 'bg-yellow-100 text-yellow-800'
+      case 'in-progress':
+        return 'bg-orange-100 text-orange-800'
       case 'cancelled':
         return 'bg-red-100 text-red-800'
       case 'completed':
@@ -99,6 +101,8 @@ export default function CustomerDashboard() {
         return <CheckCircle className="h-4 w-4" />
       case 'pending':
         return <Clock className="h-4 w-4" />
+      case 'in-progress':
+        return <MapPin className="h-4 w-4" />
       case 'cancelled':
         return <XCircle className="h-4 w-4" />
       case 'completed':
@@ -228,11 +232,15 @@ export default function CustomerDashboard() {
                 <div key={booking.booking_id} className="p-6 hover:bg-gray-50 transition-colors">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center mb-2">
+                      <div className="flex items-center mb-2 gap-3">
                         <h3 className="text-lg font-semibold text-gray-900">
                           {booking.tour_name || 'Custom Booking'}
                         </h3>
-                        
+                        {/* TASK 1: Show booking status badge */}
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
+                          {getStatusIcon(booking.status)}
+                          <span className="ml-1 capitalize">{booking.status.replace('-', ' ')}</span>
+                        </span>
                       </div>
                       
                       {/* Basic Tour Information */}
