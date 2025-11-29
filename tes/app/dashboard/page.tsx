@@ -1,8 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Calendar, MapPin, Users, CreditCard, Clock, CheckCircle, XCircle, Edit3, HelpCircle, LogOut } from "lucide-react"
+import { Calendar, MapPin, Users, CreditCard, Clock, CheckCircle, XCircle, Edit3, HelpCircle, LogOut, Navigation } from "lucide-react"
 import ItineraryCustomizer from "@/components/ItineraryCustomizer"
+import FreeMapTracker from "@/components/FreeMapTracker"
 
 interface Booking {
   booking_id: number
@@ -40,6 +41,8 @@ export default function CustomerDashboard() {
   const [user, setUser] = useState<any>(null)
   const [showItineraryCustomizer, setShowItineraryCustomizer] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
+  const [showGPSTracker, setShowGPSTracker] = useState(false)
+  const [selectedBookingForTracking, setSelectedBookingForTracking] = useState<Booking | null>(null)
 
   useEffect(() => {
     checkAuth()
@@ -128,6 +131,16 @@ export default function CustomerDashboard() {
   const closeItineraryCustomizer = () => {
     setShowItineraryCustomizer(false)
     setSelectedBooking(null)
+  }
+
+  const openGPSTracker = (booking: Booking) => {
+    setSelectedBookingForTracking(booking)
+    setShowGPSTracker(true)
+  }
+
+  const closeGPSTracker = () => {
+    setShowGPSTracker(false)
+    setSelectedBookingForTracking(null)
   }
 
   const logout = async () => {
@@ -417,15 +430,26 @@ export default function CustomerDashboard() {
                         </p>
                       </div>
 
-                      {booking.tour_id && booking.status === 'confirmed' && (
-                        <button
-                          onClick={() => openItineraryCustomizer(booking)}
-                          className="bg-emerald-600 text-white px-3 py-1 rounded-md hover:bg-emerald-700 transition-colors text-sm flex items-center space-x-1"
-                        >
-                          <Edit3 className="h-3 w-3" />
-                          <span>Customize Itinerary</span>
-                        </button>
-                      )}
+                      <div className="space-y-2">
+                        {booking.tour_id && booking.status === 'confirmed' && (
+                          <button
+                            onClick={() => openItineraryCustomizer(booking)}
+                            className="bg-emerald-600 text-white px-3 py-1 rounded-md hover:bg-emerald-700 transition-colors text-sm flex items-center space-x-1 w-full justify-center"
+                          >
+                            <Edit3 className="h-3 w-3" />
+                            <span>Customize Itinerary</span>
+                          </button>
+                        )}
+                        {(booking.status === 'confirmed' || booking.status === 'in-progress') && (
+                          <button
+                            onClick={() => openGPSTracker(booking)}
+                            className="bg-purple-600 text-white px-3 py-1 rounded-md hover:bg-purple-700 transition-colors text-sm flex items-center space-x-1 w-full justify-center"
+                          >
+                            <Navigation className="h-3 w-3" />
+                            <span>Track Location</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -442,6 +466,35 @@ export default function CustomerDashboard() {
           tourId={selectedBooking.tour_id}
           onClose={closeItineraryCustomizer}
         />
+      )}
+
+      {/* GPS Tracker Modal */}
+      {showGPSTracker && selectedBookingForTracking && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">GPS Location Tracking</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  {selectedBookingForTracking.tour_name || 'Custom Booking'} - Booking #{selectedBookingForTracking.booking_id}
+                </p>
+              </div>
+              <button
+                onClick={closeGPSTracker}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <XCircle className="h-8 w-8" />
+              </button>
+            </div>
+            <div className="p-6">
+              <FreeMapTracker 
+                bookingId={selectedBookingForTracking.booking_id}
+                userRole="customer"
+                isJourneyActive={selectedBookingForTracking.status === 'in-progress'}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

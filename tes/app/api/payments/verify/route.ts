@@ -58,23 +58,67 @@ export async function GET(req: NextRequest) {
     } else {
       // Production mode - verify with Chapa
       console.log('Production mode: Verifying with Chapa...')
-      const chapaResponse = await verifyPayment(tx_ref)
+      try {
+        const chapaResponse = await verifyPayment(tx_ref)
+        console.log('Chapa verification response:', JSON.stringify(chapaResponse, null, 2))
 
-      if (chapaResponse.status !== 'success' || chapaResponse.data.status !== 'success') {
+        if (chapaResponse.status !== 'success' || chapaResponse.data.status !== 'success') {
+          console.error('Chapa verification failed:', {
+            status: chapaResponse.status,
+            data_status: chapaResponse.data?.status,
+            message: chapaResponse.message
+          })
+          return NextResponse.json({
+            success: false,
+            status: chapaResponse.data?.status || 'failed',
+            message: chapaResponse.message || 'Payment verification failed'
+          }, { status: 400 })
+        }
+        
+        // Payment verified successfully
+        paymentSuccess = true
+        paymentDetails = {
+          amount: chapaResponse.data.amount,
+          currency: chapaResponse.data.currency,
+          method: chapaResponse.data.method,
+          reference: chapaResponse.data.reference,
+          tx_ref: chapaResponse.data.tx_ref,
+        }
+      } catch (chapaError: any) {
+        console.error('Chapa verification error:', chapaError.message)
+        console.error('Error details:', chapaError)
+        // If Chapa verification fails, fall back to checking database status
+        console.log('Falling back to database check...')
+        const [paymentRows] = await pool.query(
+          `SELECT p.*, b.total_price
+           FROM payments p
+           JOIN bookings b ON p.booking_id = b.booking_id
+           WHERE p.transaction_id = ? AND p.booking_id = ?`,
+          [tx_ref, booking_id]
+        ) as any
+        
+        if (paymentRows && paymentRows.length > 0 && paymentRows[0].status === 'completed') {
+          // Payment already completed, return success
+          console.log('Payment already marked as completed in database')
+          return NextResponse.json({
+            success: true,
+            status: 'completed',
+            message: 'Payment already verified',
+            payment_details: {
+              amount: paymentRows[0].amount,
+              currency: 'ETB',
+              method: paymentRows[0].payment_method,
+              reference: tx_ref,
+              tx_ref: tx_ref,
+            }
+          })
+        }
+        
         return NextResponse.json({
           success: false,
-          status: chapaResponse.data.status,
-          message: 'Payment verification failed'
+          error: 'Chapa verification failed',
+          details: chapaError.message
         }, { status: 400 })
-      }
-      
-      paymentSuccess = true
-      paymentDetails = {
-        amount: chapaResponse.data.amount,
-        currency: chapaResponse.data.currency,
-        method: chapaResponse.data.method,
-        reference: chapaResponse.data.reference,
-        tx_ref: chapaResponse.data.tx_ref,
       }
     }
 

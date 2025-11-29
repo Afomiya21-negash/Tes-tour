@@ -3,6 +3,48 @@ import { verifyJwt } from '@/lib/auth'
 import { getPool } from '@/lib/db'
 import { initializePayment, generateTxRef } from '@/lib/chapa'
 
+// Format phone number for Chapa (Ethiopian format: 251XXXXXXXXX)
+function formatPhoneForChapa(phone: string | null | undefined): string {
+  if (!phone || phone.trim() === '') {
+    return '251911000000' // Default test number
+  }
+  
+  // Remove all non-digit characters
+  let cleaned = phone.replace(/\D/g, '')
+  
+  // If empty after cleaning, return default
+  if (!cleaned) {
+    return '251911000000'
+  }
+  
+  // If starts with 0, remove it (Ethiopian local format)
+  if (cleaned.startsWith('0')) {
+    cleaned = cleaned.substring(1)
+  }
+  
+  // If already has country code 251
+  if (cleaned.startsWith('251')) {
+    cleaned = cleaned.substring(3) // Remove 251 prefix to process the local number
+  }
+  
+  // Ethiopian phone numbers should be 9 digits (after removing leading 0)
+  // If less than 9 digits, pad with leading 9s to make it valid
+  if (cleaned.length < 9) {
+    console.warn(`Phone number too short (${cleaned.length} digits): ${cleaned}. Padding to 9 digits.`)
+    cleaned = '9'.repeat(9 - cleaned.length) + cleaned
+  }
+  
+  // If more than 9 digits, take only the first 9
+  if (cleaned.length > 9) {
+    cleaned = cleaned.substring(0, 9)
+  }
+  
+  // Add country code 251
+  const result = '251' + cleaned
+  
+  return result
+}
+
 export async function POST(req: NextRequest) {
   try {
     // Verify authentication
@@ -78,6 +120,20 @@ export async function POST(req: NextRequest) {
         console.log('Chapa Secret Key exists:', !!process.env.CHAPA_SECRET_KEY)
         console.log('App URL:', process.env.NEXT_PUBLIC_APP_URL)
         console.log('Payment amount:', parseFloat(booking.total_price))
+        console.log('Booking data:', {
+          first_name: booking.first_name,
+          last_name: booking.last_name,
+          email: booking.email,
+          phone_number: booking.phone_number,
+          phone_type: typeof booking.phone_number
+        })
+        
+        // Format phone number for Chapa
+        const formattedPhone = formatPhoneForChapa(booking.phone_number)
+        console.log('Original phone:', booking.phone_number)
+        console.log('Formatted phone:', formattedPhone)
+        console.log('Formatted phone length:', formattedPhone.length)
+        
         // Initialize payment with Chapa
         const chapaResponse = await initializePayment({
           amount: parseFloat(booking.total_price),
@@ -85,7 +141,7 @@ export async function POST(req: NextRequest) {
           email: booking.email,
           first_name: booking.first_name,
           last_name: booking.last_name,
-          phone_number: booking.phone_number,
+          phone_number: formattedPhone,
           tx_ref: tx_ref,
           callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/payments/webhook`,
           return_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment/verify?booking_id=${booking_id}&tx_ref=${tx_ref}`,

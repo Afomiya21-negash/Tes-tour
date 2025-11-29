@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { MapPin, Calendar, Users, Star, LogOut, User, Clock, Navigation, Lock } from "lucide-react"
+import FreeMapTracker from "@/components/FreeMapTracker"
 
 type Tour = {
   booking_id: number
@@ -60,6 +61,7 @@ type Review = {
 
 export default function TourGuideDashboard() {
   const [activeTab, setActiveTab] = useState<"tours" | "itineraries" | "location" | "reviews">("tours")
+  const [selectedBookingForTracking, setSelectedBookingForTracking] = useState<number | null>(null)
   const [currentLocation, setCurrentLocation] = useState({
     lat: "9.0320",
     lng: "38.7469",
@@ -375,12 +377,24 @@ export default function TourGuideDashboard() {
                           </button>
                         )}
                         {tour.status.toLowerCase() === 'in-progress' && (
-                          <button
-                            onClick={() => handleUpdateTourStatus(tour.booking_id, 'completed')}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                          >
-                            Finish Tour
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleUpdateTourStatus(tour.booking_id, 'completed')}
+                              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                            >
+                              Finish Tour
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedBookingForTracking(tour.booking_id)
+                                setActiveTab('location')
+                              }}
+                              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                            >
+                              <Navigation className="w-4 h-4" />
+                              <span>Track Location</span>
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>
@@ -613,6 +627,59 @@ export default function TourGuideDashboard() {
         )}
 
         {/* Location Tab */}
+        {activeTab === "location" && (
+          <div>
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">GPS Location Tracking</h2>
+              <p className="text-gray-600">Share your location with customers during active tours</p>
+            </div>
+
+            {/* Booking Selector for Location Tracking */}
+            {tours.filter(t => t.status.toLowerCase() === 'in-progress' || t.status.toLowerCase() === 'confirmed').length > 0 ? (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Active Tour to Track:
+                </label>
+                <select
+                  value={selectedBookingForTracking || ''}
+                  onChange={(e) => setSelectedBookingForTracking(e.target.value ? parseInt(e.target.value) : null)}
+                  className="w-full md:w-96 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                >
+                  <option value="">-- Select a tour --</option>
+                  {tours
+                    .filter(t => t.status.toLowerCase() === 'in-progress' || t.status.toLowerCase() === 'confirmed')
+                    .map(tour => (
+                      <option key={tour.booking_id} value={tour.booking_id}>
+                        {tour.tour_name || 'Custom Tour'} - {tour.customer_first_name} {tour.customer_last_name} ({tour.status})
+                      </option>
+                    ))}
+                </select>
+              </div>
+            ) : (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
+                <p className="text-yellow-800">
+                  No active tours available for tracking. Location tracking is only available for confirmed or in-progress tours.
+                </p>
+              </div>
+            )}
+
+            {/* Free Map Tracker Component */}
+            {selectedBookingForTracking ? (
+              <FreeMapTracker 
+                bookingId={selectedBookingForTracking} 
+                userRole="tourguide"
+              />
+            ) : (
+              <div className="bg-gray-50 border-2 border-gray-200 rounded-lg p-8 text-center">
+                <Navigation className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600 text-lg">Select a tour above to start live tracking</p>
+                <p className="text-gray-500 text-sm mt-2">
+                  Track your journey in real-time on Google Maps and share your location with customers
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       
         {/* Reviews Tab */}
         {activeTab === "reviews" && (

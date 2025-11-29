@@ -1187,6 +1187,306 @@ export interface ItineraryRequest {
   created_at: string
 }
 
+// Location tracking types and interfaces
+export type UserType = 'customer' | 'tourguide' | 'driver'
+
+export interface LocationData {
+  location_id?: number
+  booking_id: number
+  user_id: number
+  user_type: UserType
+  latitude: number
+  longitude: number
+  accuracy?: number
+  altitude?: number
+  speed?: number
+  heading?: number
+  timestamp?: Date
+  created_at?: Date
+}
+
+export interface LocationUpdate {
+  booking_id: number
+  latitude: number
+  longitude: number
+  accuracy?: number
+  altitude?: number
+  speed?: number
+  heading?: number
+}
+
+export interface TrackingParticipant {
+  user_id: number
+  user_type: UserType
+  first_name: string
+  last_name: string
+  email: string
+  phone_number?: string
+  latest_location?: {
+    latitude: number
+    longitude: number
+    accuracy?: number
+    timestamp: Date
+  }
+}
+
+// Location Tracking Service
+export class LocationTrackingService {
+  // Update location for a user on a booking
+  static async updateLocation(
+    userId: number,
+    userType: UserType,
+    locationUpdate: LocationUpdate
+  ): Promise<{ location_id: number }> {
+    const pool = getPool()
+    const conn = await pool.getConnection()
+
+    try {
+      await conn.beginTransaction()
+
+      // Verify booking exists and user is part of it
+      const [bookingRows] = await conn.query(
+        `SELECT b.booking_id, b.user_id, b.tour_guide_id, b.driver_id, b.status
+         FROM bookings b
+         WHERE b.booking_id = ? AND b.status IN ('confirmed', 'in-progress')
+         LIMIT 1`,
+        [locationUpdate.booking_id]
+      ) as any
+
+      if (!bookingRows || bookingRows.length === 0) {
+        throw new Error('Booking not found or not active')
+      }
+
+      const booking = bookingRows[0]
+      
+      // Verify user is authorized (customer, assigned tour guide, or assigned driver)
+      const isAuthorized = 
+        (userType === 'customer' && booking.user_id === userId) ||
+        (userType === 'tourguide' && booking.tour_guide_id === userId) ||
+        (userType === 'driver' && booking.driver_id === userId)
+
+      if (!isAuthorized) {
+        throw new Error('User not authorized for this booking')
+      }
+
+      // Insert location update
+      const [result] = await conn.query(
+        `INSERT INTO location_tracking 
+         (booking_id, user_id, user_type, latitude, longitude, accuracy, altitude, speed, heading, timestamp)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [
+          locationUpdate.booking_id,
+          userId,
+          userType,
+          locationUpdate.latitude,
+          locationUpdate.longitude,
+          locationUpdate.accuracy || null,
+          locationUpdate.altitude || null,
+          locationUpdate.speed || null,
+          locationUpdate.heading || null
+        ]
+      ) as any
+
+      await conn.commit()
+      return { location_id: result.insertId }
+    } catch (error) {
+      await conn.rollback()
+      throw error
+    } finally {
+      conn.release()
+    }
+  }
+
+  // Get latest locations for all participants in a booking
+  static async getBookingLocations(
+    bookingId: number,
+    requestingUserId: number
+  ): Promise<TrackingParticipant[]> {
+    const pool = getPool()
+
+    // First verify the requesting user is part of this booking
+    const [bookingRows] = await pool.query(
+      `SELECT b.booking_id, b.user_id, b.tour_guide_id, b.driver_id, b.status
+       FROM bookings b
+       WHERE b.booking_id = ? AND b.status IN ('confirmed', 'in-progress')
+       LIMIT 1`,
+      [bookingId]
+    ) as any
+
+    if (!bookingRows || bookingRows.length === 0) {
+      throw new Error('Booking not found or not active')
+    }
+
+    const booking = bookingRows[0]
+    const isAuthorized = 
+      booking.user_id === requestingUserId ||
+      booking.tour_guide_id === requestingUserId ||
+      booking.driver_id === requestingUserId
+
+    if (!isAuthorized) {
+      throw new Error('User not authorized to view this booking')
+    }
+
+    // Get all participants with their latest locations
+    const participants: TrackingParticipant[] = []
+
+    // Get customer info
+    const [customerRows] = await pool.query(
+      `SELECT u.user_id, u.first_name, u.last_name, u.email, u.phone_number,
+              lt.latitude, lt.longitude, lt.accuracy, lt.timestamp
+       FROM users u
+       LEFT JOIN (
+         SELECT user_id, latitude, longitude, accuracy, timestamp
+         FROM location_tracking
+         WHERE booking_id = ? AND user_id = ?
+         ORDER BY timestamp DESC
+         LIMIT 1
+       ) lt ON u.user_id = lt.user_id
+       WHERE u.user_id = ?`,
+      [bookingId, booking.user_id, booking.user_id]
+    ) as any
+
+    if (customerRows && customerRows.length > 0) {
+      const customer = customerRows[0]
+      participants.push({
+        user_id: customer.user_id,
+        user_type: 'customer',
+        first_name: customer.first_name,
+        last_name: customer.last_name,
+        email: customer.email,
+        phone_number: customer.phone_number,
+        latest_location: customer.latitude ? {
+          latitude: parseFloat(customer.latitude),
+          longitude: parseFloat(customer.longitude),
+          accuracy: customer.accuracy ? parseFloat(customer.accuracy) : undefined,
+          timestamp: customer.timestamp
+        } : undefined
+      })
+    }
+
+    // Get tour guide info if assigned
+    if (booking.tour_guide_id) {
+      const [guideRows] = await pool.query(
+        `SELECT u.user_id, u.first_name, u.last_name, u.email, u.phone_number,
+                lt.latitude, lt.longitude, lt.accuracy, lt.timestamp
+         FROM users u
+         LEFT JOIN (
+           SELECT user_id, latitude, longitude, accuracy, timestamp
+           FROM location_tracking
+           WHERE booking_id = ? AND user_id = ?
+           ORDER BY timestamp DESC
+           LIMIT 1
+         ) lt ON u.user_id = lt.user_id
+         WHERE u.user_id = ?`,
+        [bookingId, booking.tour_guide_id, booking.tour_guide_id]
+      ) as any
+
+      if (guideRows && guideRows.length > 0) {
+        const guide = guideRows[0]
+        participants.push({
+          user_id: guide.user_id,
+          user_type: 'tourguide',
+          first_name: guide.first_name,
+          last_name: guide.last_name,
+          email: guide.email,
+          phone_number: guide.phone_number,
+          latest_location: guide.latitude ? {
+            latitude: parseFloat(guide.latitude),
+            longitude: parseFloat(guide.longitude),
+            accuracy: guide.accuracy ? parseFloat(guide.accuracy) : undefined,
+            timestamp: guide.timestamp
+          } : undefined
+        })
+      }
+    }
+
+    // Get driver info if assigned
+    if (booking.driver_id) {
+      const [driverRows] = await pool.query(
+        `SELECT u.user_id, u.first_name, u.last_name, u.email, u.phone_number,
+                lt.latitude, lt.longitude, lt.accuracy, lt.timestamp
+         FROM users u
+         LEFT JOIN (
+           SELECT user_id, latitude, longitude, accuracy, timestamp
+           FROM location_tracking
+           WHERE booking_id = ? AND user_id = ?
+           ORDER BY timestamp DESC
+           LIMIT 1
+         ) lt ON u.user_id = lt.user_id
+         WHERE u.user_id = ?`,
+        [bookingId, booking.driver_id, booking.driver_id]
+      ) as any
+
+      if (driverRows && driverRows.length > 0) {
+        const driver = driverRows[0]
+        participants.push({
+          user_id: driver.user_id,
+          user_type: 'driver',
+          first_name: driver.first_name,
+          last_name: driver.last_name,
+          email: driver.email,
+          phone_number: driver.phone_number,
+          latest_location: driver.latitude ? {
+            latitude: parseFloat(driver.latitude),
+            longitude: parseFloat(driver.longitude),
+            accuracy: driver.accuracy ? parseFloat(driver.accuracy) : undefined,
+            timestamp: driver.timestamp
+          } : undefined
+        })
+      }
+    }
+
+    return participants
+  }
+
+  // Get location history for a specific user on a booking
+  static async getLocationHistory(
+    bookingId: number,
+    userId: number,
+    limit: number = 50
+  ): Promise<LocationData[]> {
+    const pool = getPool()
+
+    const [rows] = await pool.query(
+      `SELECT location_id, booking_id, user_id, user_type, 
+              latitude, longitude, accuracy, altitude, speed, heading, 
+              timestamp, created_at
+       FROM location_tracking
+       WHERE booking_id = ? AND user_id = ?
+       ORDER BY timestamp DESC
+       LIMIT ?`,
+      [bookingId, userId, limit]
+    ) as any
+
+    return (rows || []).map((row: any) => ({
+      location_id: row.location_id,
+      booking_id: row.booking_id,
+      user_id: row.user_id,
+      user_type: row.user_type,
+      latitude: parseFloat(row.latitude),
+      longitude: parseFloat(row.longitude),
+      accuracy: row.accuracy ? parseFloat(row.accuracy) : undefined,
+      altitude: row.altitude ? parseFloat(row.altitude) : undefined,
+      speed: row.speed ? parseFloat(row.speed) : undefined,
+      heading: row.heading ? parseFloat(row.heading) : undefined,
+      timestamp: row.timestamp,
+      created_at: row.created_at
+    }))
+  }
+
+  // Delete old location data (cleanup - keep only last 7 days)
+  static async cleanupOldLocations(): Promise<number> {
+    const pool = getPool()
+
+    const [result] = await pool.query(
+      `DELETE FROM location_tracking 
+       WHERE timestamp < DATE_SUB(NOW(), INTERVAL 7 DAY)`
+    ) as any
+
+    return result.affectedRows
+  }
+}
+
 export class ItineraryService {
   // Get default tour itinerary
   static async getTourItinerary(tourId: number): Promise<TourItinerary[]> {

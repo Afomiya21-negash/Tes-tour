@@ -233,6 +233,31 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }))
+    // Clear error when user starts typing
+    if (error) setError('')
+  }
+  
+  // Validate Ethiopian phone number
+  const validatePhone = (phone: string): boolean => {
+    // Remove all non-digit characters
+    const cleaned = phone.replace(/\D/g, '')
+    
+    // Ethiopian phone numbers should be:
+    // - 10 digits starting with 0 (e.g., 0911234567)
+    // - 9 digits without leading 0 (e.g., 911234567)
+    // - 12 digits with country code (e.g., 251911234567)
+    
+    if (cleaned.length === 10 && cleaned.startsWith('0')) {
+      return true // Valid: 0911234567
+    }
+    if (cleaned.length === 9) {
+      return true // Valid: 911234567
+    }
+    if (cleaned.length === 12 && cleaned.startsWith('251')) {
+      return true // Valid: 251911234567
+    }
+    
+    return false
   }
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -260,6 +285,11 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
       }
       if (!formData.name || !formData.phone || !formData.startDate || !formData.endDate) {
         setError('Please fill in all required fields')
+        return
+      }
+      // Validate phone number format
+      if (!validatePhone(formData.phone)) {
+        setError('Please enter a valid Ethiopian phone number (e.g., 0911234567 or 911234567)')
         return
       }
     } else if (currentStep === 3) {
@@ -519,8 +549,12 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
                         value={formData.phone}
                         onChange={(e) => handleInputChange("phone", e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        placeholder="Enter your phone number"
+                        placeholder="0911234567 or 911234567"
+                        title="Enter Ethiopian phone number (9-10 digits)"
                       />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Enter 9 or 10 digits (e.g., 0911234567)
+                      </p>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
