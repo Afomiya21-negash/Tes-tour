@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Calendar, MapPin, Users, CreditCard, Clock, CheckCircle, XCircle, Edit3, HelpCircle, LogOut, Navigation } from "lucide-react"
-import ItineraryCustomizer from "@/components/ItineraryCustomizer"
+import ItineraryCustomization from "@/components/ItineraryCustomization"
 import FreeMapTracker from "@/components/FreeMapTracker"
 
 interface Booking {
@@ -431,7 +431,7 @@ export default function CustomerDashboard() {
                       </div>
 
                       <div className="space-y-2">
-                        {booking.tour_id && booking.status === 'confirmed' && (
+                        {booking.tour_id && (booking.status === 'confirmed' || booking.status === 'in-progress') && (
                           <button
                             onClick={() => openItineraryCustomizer(booking)}
                             className="bg-emerald-600 text-white px-3 py-1 rounded-md hover:bg-emerald-700 transition-colors text-sm flex items-center space-x-1 w-full justify-center"
@@ -461,11 +461,14 @@ export default function CustomerDashboard() {
 
       {/* Itinerary Customizer Modal */}
       {showItineraryCustomizer && selectedBooking && (
-        <ItineraryCustomizer
-          bookingId={selectedBooking.booking_id}
-          tourId={selectedBooking.tour_id}
-          onClose={closeItineraryCustomizer}
-        />
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <ItineraryCustomization
+              bookingId={selectedBooking.booking_id}
+              onClose={closeItineraryCustomizer}
+            />
+          </div>
+        </div>
       )}
 
       {/* GPS Tracker Modal */}

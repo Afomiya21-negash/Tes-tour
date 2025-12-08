@@ -65,6 +65,9 @@ export default function MapTrackerClient({
   const [journeyStartTime, setJourneyStartTime] = useState<Date | null>(null)
   const [distance, setDistance] = useState(0)
   const [mapCenter, setMapCenter] = useState<[number, number]>([9.0320, 38.7469])
+  const [hasSetInitialCenter, setHasSetInitialCenter] = useState(false)
+  const [followMyLocation, setFollowMyLocation] = useState(true)
+  const [myCurrentPosition, setMyCurrentPosition] = useState<[number, number] | null>(null)
 
   // Custom marker icons
   const createCustomIcon = (color: string) => {
@@ -89,47 +92,98 @@ export default function MapTrackerClient({
       
       if (response.ok) {
         const data = await response.json()
-        setParticipants(data.participants || [])
+        const participants = data.participants || []
+        setParticipants(participants)
         
-        // Build route path from tour guide's location history
-        const tourGuide = data.participants?.find((p: Participant) => p.user_type === 'tourguide')
+        // Find any participant with a location to center the map
+        let centerLocation: LocationPoint | null = null
+        
+        // Priority: tour guide > driver > customer
+        const tourGuide = participants.find((p: Participant) => p.user_type === 'tourguide')
+        const driver = participants.find((p: Participant) => p.user_type === 'driver')
+        const customer = participants.find((p: Participant) => p.user_type === 'customer')
+        
         if (tourGuide?.latest_location) {
-          const newPoint: LocationPoint = {
+          centerLocation = {
             lat: parseFloat(tourGuide.latest_location.latitude.toString()),
             lng: parseFloat(tourGuide.latest_location.longitude.toString()),
             timestamp: tourGuide.latest_location.timestamp
           }
           
-          // Update map center to tour guide location
-          setMapCenter([newPoint.lat, newPoint.lng])
-          
+          // Build route path from tour guide's location history
           setRoutePath(prev => {
-            // Only add if it's a new point (different from last)
             if (prev.length === 0 || 
-                prev[prev.length - 1].lat !== newPoint.lat || 
-                prev[prev.length - 1].lng !== newPoint.lng) {
-              return [...prev, newPoint]
+                prev[prev.length - 1].lat !== centerLocation!.lat || 
+                prev[prev.length - 1].lng !== centerLocation!.lng) {
+              return [...prev, centerLocation!]
             }
             return prev
           })
+        } else if (driver?.latest_location) {
+          centerLocation = {
+            lat: parseFloat(driver.latest_location.latitude.toString()),
+            lng: parseFloat(driver.latest_location.longitude.toString()),
+            timestamp: driver.latest_location.timestamp
+          }
+        } else if (customer?.latest_location) {
+          centerLocation = {
+            lat: parseFloat(customer.latest_location.latitude.toString()),
+            lng: parseFloat(customer.latest_location.longitude.toString()),
+            timestamp: customer.latest_location.timestamp
+          }
         }
+        
+        // Update map center ONLY if:
+        // 1. Not actively tracking own location
+        // 2. Not following own location
+        // 3. Don't have own current position
+        if (centerLocation && !isTracking && !myCurrentPosition) {
+          setMapCenter([centerLocation.lat, centerLocation.lng])
+          setHasSetInitialCenter(true)
+          console.log('Map centered at other participant:', centerLocation)
+        } else if (centerLocation && !isTracking && myCurrentPosition) {
+          console.log('Ignoring fetched location - using own position')
+        } else if (!centerLocation) {
+          console.log('No participant locations available yet')
+        }
+      } else {
+        console.error('Failed to fetch locations:', response.status, response.statusText)
       }
     } catch (err) {
       console.error('Error fetching locations:', err)
     }
-  }, [bookingId])
+  }, [bookingId, isTracking, myCurrentPosition])
 
   // Update current user's location
   const updateMyLocation = async (position: GeolocationPosition) => {
     try {
+      const currentLat = position.coords.latitude
+      const currentLng = position.coords.longitude
+      
+      console.log('Updating location:', {
+        lat: currentLat,
+        lng: currentLng,
+        accuracy: position.coords.accuracy,
+        speed: position.coords.speed
+      })
+      
+      // Store current position
+      setMyCurrentPosition([currentLat, currentLng])
+      
+      // Always update map center to follow current location when tracking
+      if (isTracking && followMyLocation) {
+        setMapCenter([currentLat, currentLng])
+        console.log('Map center updated to current position:', currentLat, currentLng)
+      }
+      
       const response = await fetch('/api/location/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
           booking_id: bookingId,
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
+          latitude: currentLat,
+          longitude: currentLng,
           accuracy: position.coords.accuracy,
           altitude: position.coords.altitude,
           speed: position.coords.speed,
@@ -138,7 +192,10 @@ export default function MapTrackerClient({
       })
 
       if (response.ok) {
+        setHasSetInitialCenter(true)
         await fetchLocations()
+      } else {
+        console.error('Failed to update location:', response.status, response.statusText)
       }
     } catch (err) {
       console.error('Error updating location:', err)
@@ -166,53 +223,82 @@ export default function MapTrackerClient({
       return
     }
 
+    // Check if we're on HTTPS or localhost (required for geolocation)
+    if (typeof window !== 'undefined' && window.location.protocol !== 'https:' && !window.location.hostname.includes('localhost')) {
+      setError('Geolocation requires HTTPS connection. Please use https:// or localhost')
+      return
+    }
+
     setIsTracking(true)
     setError('')
     setJourneyStartTime(new Date())
+    
+    console.log('Starting location tracking...')
 
     // Get initial position
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        const lat = position.coords.latitude
+        const lng = position.coords.longitude
+        console.log('Initial position obtained:', {
+          lat: lat,
+          lng: lng,
+          accuracy: position.coords.accuracy
+        })
         setCurrentLocation(position)
+        setMyCurrentPosition([lat, lng])
+        setMapCenter([lat, lng])
+        setHasSetInitialCenter(true)
         updateMyLocation(position)
       },
       (error) => {
-        console.error('Geolocation error:', {
+        const errorDetails = {
           code: error.code,
           message: error.message,
-          PERMISSION_DENIED: error.PERMISSION_DENIED,
-          POSITION_UNAVAILABLE: error.POSITION_UNAVAILABLE,
-          TIMEOUT: error.TIMEOUT
-        })
+          type: error.code === 1 ? 'PERMISSION_DENIED' : 
+                error.code === 2 ? 'POSITION_UNAVAILABLE' : 
+                error.code === 3 ? 'TIMEOUT' : 'UNKNOWN'
+        }
+        console.error('Geolocation error:', errorDetails)
         const errorMessage = getGeolocationErrorMessage(error)
         setError(errorMessage)
         setIsTracking(false)
       },
       {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
+        enableHighAccuracy: true,  // Force GPS instead of WiFi/cell towers
+        timeout: 30000,            // Wait up to 30 seconds for accurate GPS lock
+        maximumAge: 0              // Never use cached position
       }
     )
 
-    // Watch position changes
+    // Watch position changes - this continuously tracks movement
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
+        console.log('Position update received:', {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          speed: position.coords.speed
+        })
         setCurrentLocation(position)
         updateMyLocation(position)
       },
       (error) => {
-        console.error('Watch position error:', {
+        const errorDetails = {
           code: error.code,
-          message: error.message
-        })
+          message: error.message,
+          type: error.code === 1 ? 'PERMISSION_DENIED' : 
+                error.code === 2 ? 'POSITION_UNAVAILABLE' : 
+                error.code === 3 ? 'TIMEOUT' : 'UNKNOWN'
+        }
+        console.error('Watch position error:', errorDetails)
         const errorMessage = getGeolocationErrorMessage(error)
         setError(errorMessage)
       },
       {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 5000
+        enableHighAccuracy: true,  // Force GPS instead of WiFi/cell towers
+        timeout: 30000,            // Wait up to 30 seconds for accurate GPS lock
+        maximumAge: 0              // Always get fresh position, don't use cached
       }
     )
 
@@ -226,6 +312,8 @@ export default function MapTrackerClient({
   const stopTracking = () => {
     setIsTracking(false)
     setJourneyStartTime(null)
+    // Keep current position so map doesn't jump
+    console.log('Tracking stopped - maintaining current position')
   }
 
   // Handle journey start (for tour guide)
@@ -370,7 +458,75 @@ export default function MapTrackerClient({
       {/* Error Display */}
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800">{error}</p>
+          <div className="flex items-start gap-3">
+            <div className="text-red-600 text-xl">⚠️</div>
+            <div className="flex-1">
+              <p className="text-red-800 font-semibold mb-1">Location Error</p>
+              <p className="text-red-700 text-sm">{error}</p>
+              {error.includes('permission') && (
+                <div className="mt-2 text-xs text-red-600">
+                  <p className="font-medium">To fix this:</p>
+                  <ul className="list-disc list-inside mt-1 space-y-1">
+                    <li>Click the location icon 📍 in your browser's address bar</li>
+                    <li>Select "Allow" for location access</li>
+                    <li>Refresh the page and try again</li>
+                  </ul>
+                </div>
+              )}
+              {error.includes('HTTPS') && (
+                <div className="mt-2 text-xs text-red-600">
+                  <p className="font-medium">Geolocation requires a secure connection (HTTPS)</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Location Info Display */}
+      {isTracking && currentLocation && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-sm text-blue-600 font-medium">Your Current Location</p>
+              <p className="text-xs text-blue-700">
+                Lat: {currentLocation.coords.latitude.toFixed(6)}, 
+                Lng: {currentLocation.coords.longitude.toFixed(6)}
+              </p>
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-xs text-blue-600">
+                  Accuracy: ±{currentLocation.coords.accuracy?.toFixed(0)}m
+                  {currentLocation.coords.speed !== null && currentLocation.coords.speed !== undefined && 
+                    ` • Speed: ${(currentLocation.coords.speed * 3.6).toFixed(1)} km/h`}
+                </p>
+                {currentLocation.coords.accuracy && currentLocation.coords.accuracy > 50 && (
+                  <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">
+                    Low accuracy
+                  </span>
+                )}
+                {currentLocation.coords.accuracy && currentLocation.coords.accuracy <= 20 && (
+                  <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">
+                    High accuracy
+                  </span>
+                )}
+              </div>
+              {currentLocation.coords.accuracy && currentLocation.coords.accuracy > 100 && (
+                <p className="text-xs text-yellow-700 mt-1">
+                  💡 For better accuracy: Use a smartphone with GPS or go outdoors
+                </p>
+              )}
+            </div>
+            <button
+              onClick={() => setFollowMyLocation(!followMyLocation)}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                followMyLocation 
+                  ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              {followMyLocation ? '📍 Following' : '📍 Follow Me'}
+            </button>
+          </div>
         </div>
       )}
 

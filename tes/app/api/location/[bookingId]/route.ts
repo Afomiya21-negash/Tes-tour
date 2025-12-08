@@ -4,7 +4,7 @@ import { LocationTrackingService } from '@/lib/domain'
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { bookingId: string } }
+  { params }: { params: Promise<{ bookingId: string }> }
 ) {
   try {
     const token = req.cookies.get('auth_token')?.value
@@ -17,7 +17,8 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const bookingId = parseInt(params.bookingId)
+    const { bookingId: bookingIdParam } = await params
+    const bookingId = parseInt(bookingIdParam)
     if (isNaN(bookingId)) {
       return NextResponse.json({ error: 'Invalid booking ID' }, { status: 400 })
     }

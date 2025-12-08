@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react"
 import { MapPin, Calendar, Users, Star, LogOut, User, Clock, Navigation, Lock } from "lucide-react"
 import FreeMapTracker from "@/components/FreeMapTracker"
+import ItineraryNotifications from "@/components/ItineraryNotifications"
+import TourGuideItineraryView from "@/components/TourGuideItineraryView"
 
 type Tour = {
   booking_id: number
@@ -62,6 +64,7 @@ type Review = {
 export default function TourGuideDashboard() {
   const [activeTab, setActiveTab] = useState<"tours" | "itineraries" | "location" | "reviews">("tours")
   const [selectedBookingForTracking, setSelectedBookingForTracking] = useState<number | null>(null)
+  const [viewingItineraryBookingId, setViewingItineraryBookingId] = useState<number | null>(null)
   const [currentLocation, setCurrentLocation] = useState({
     lat: "9.0320",
     lng: "38.7469",
@@ -243,19 +246,26 @@ export default function TourGuideDashboard() {
                 <Lock className="w-5 h-5" />
                 <span>Change Password</span>
               </button>
-              <button
-                onClick={async () => {
-                  try {
-                    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
-                  } finally {
-                    window.location.href = '/'
-                  }
-                }}
-                className="flex items-center space-x-2 bg-green-700 hover:bg-green-800 px-4 py-2 rounded-lg transition-colors"
-              >
-                <LogOut className="w-5 h-5" />
-                <span>Logout</span>
-              </button>
+              <div className="flex items-center space-x-4">
+                {/* Itinerary Notifications */}
+                <ItineraryNotifications
+                  onViewItinerary={(bookingId) => setViewingItineraryBookingId(bookingId)}
+                />
+                
+                <button
+                  onClick={async () => {
+                    try {
+                      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+                    } finally {
+                      window.location.href = '/'
+                    }
+                  }}
+                  className="flex items-center space-x-2 bg-green-700 hover:bg-green-800 px-4 py-2 rounded-lg transition-colors"
+                >
+                  <LogOut className="w-5 h-5" />
+                  <span>Logout</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -728,6 +738,18 @@ export default function TourGuideDashboard() {
           </div>
         )}
       </main>
+
+      {/* Itinerary Viewer Modal */}
+      {viewingItineraryBookingId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <TourGuideItineraryView
+              bookingId={viewingItineraryBookingId}
+              onClose={() => setViewingItineraryBookingId(null)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
