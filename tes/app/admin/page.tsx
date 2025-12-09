@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Star, UserPlus, Users, X, LogOut, BarChart3, Shield, Lock, Tag } from "lucide-react"
+import { Star, UserPlus, Users, X, LogOut, BarChart3, Shield, Lock, Tag, RefreshCcw, CheckCircle, XCircle } from "lucide-react"
 
 type Employee = {
   id: number
@@ -20,6 +20,9 @@ type Customer = {
   signupDate: string
   bookingsCount: number
   idPictures?: string[]
+  paidBookings?: number
+  pendingPayments?: number
+  totalPaid?: number
 }
 
 type Rating = {
@@ -32,8 +35,35 @@ type Rating = {
   date: string
 }
 
+type ChangeRequest = {
+  request_id: number
+  booking_id: number
+  tour_name: string
+  start_date: string
+  end_date: string
+  booking_status: string
+  customer_first_name: string
+  customer_last_name: string
+  customer_email: string
+  request_type: 'tour_guide' | 'driver' | 'both'
+  current_guide_first_name?: string
+  current_guide_last_name?: string
+  current_driver_first_name?: string
+  current_driver_last_name?: string
+  new_guide_first_name?: string
+  new_guide_last_name?: string
+  new_driver_first_name?: string
+  new_driver_last_name?: string
+  reason?: string
+  status: 'pending' | 'approved' | 'rejected' | 'completed'
+  created_at: string
+  processed_at?: string
+  processed_by_first_name?: string
+  processed_by_last_name?: string
+}
+
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<"dashboard" | "ratings" | "customers" | "promotions">("dashboard")
+  const [activeTab, setActiveTab] = useState<"dashboard" | "ratings" | "customers" | "promotions" | "requests">("dashboard")
   const [showRegisterModal, setShowRegisterModal] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string>('')
@@ -124,6 +154,7 @@ export default function AdminDashboard() {
       fetchEmployees()
       fetchRatings()
       fetchCustomers()
+      fetchChangeRequests()
       fetchTours()
       fetchPromotions()
     } catch (e) {
@@ -185,6 +216,15 @@ export default function AdminDashboard() {
   const [ratings, setRatings] = useState<Rating[]>([])
   const [loadingRatings, setLoadingRatings] = useState(false)
 
+  const [changeRequests, setChangeRequests] = useState<ChangeRequest[]>([])
+  const [loadingChangeRequests, setLoadingChangeRequests] = useState(false)
+  const [selectedRequest, setSelectedRequest] = useState<ChangeRequest | null>(null)
+  const [showProcessRequestModal, setShowProcessRequestModal] = useState(false)
+  const [selectedNewGuideId, setSelectedNewGuideId] = useState<string>('')
+  const [selectedNewDriverId, setSelectedNewDriverId] = useState<string>('')
+  const [availableGuides, setAvailableGuides] = useState<any[]>([])
+  const [availableDrivers, setAvailableDrivers] = useState<any[]>([])
+
   // Promotion states
   const [promotions, setPromotions] = useState<any[]>([])
   const [loadingPromotions, setLoadingPromotions] = useState(false)
@@ -213,23 +253,34 @@ export default function AdminDashboard() {
     setLoadingRatings(true)
     try {
       const res = await fetch('/api/employee/ratings', { credentials: 'include' })
-      if (!res.ok) throw new Error('Failed to load ratings')
+      if (!res.ok) {
+        console.log('Ratings API returned error:', res.status)
+        setRatings([])
+        return
+      }
       const data = await res.json()
+
+      // Ensure data is an array
+      if (!Array.isArray(data)) {
+        console.log('Ratings data is not an array')
+        setRatings([])
+        return
+      }
 
       // Transform the API data to match the Rating interface
       const transformedRatings: Rating[] = data.map((rating: any, index: number) => ({
         id: index + 1,
-        employeeName: rating.employee_name,
+        employeeName: rating.employee_name || 'Unknown',
         employeeRole: rating.rating_type as "tourguide" | "driver" | "employee",
-        customerName: rating.customer_name,
-        rating: Number(rating.rating),
-        comment: rating.comment,
+        customerName: rating.customer_name || 'Unknown',
+        rating: Number(rating.rating) || 0,
+        comment: rating.comment || '',
         date: rating.created_at ? new Date(rating.created_at).toISOString().split('T')[0] : 'N/A'
       }))
 
       setRatings(transformedRatings)
     } catch (e) {
-      console.error('Failed to fetch ratings:', e)
+      console.log('Error fetching ratings:', e)
       setRatings([])
     } finally {
       setLoadingRatings(false)
@@ -252,6 +303,9 @@ export default function AdminDashboard() {
         phone: user.phone_number || 'N/A',
         signupDate: user.created_at ? new Date(user.created_at).toISOString().split('T')[0] : 'N/A',
         bookingsCount: user.bookings_count || 0,
+        paidBookings: user.paid_bookings || 0,
+        pendingPayments: user.pending_payments || 0,
+        totalPaid: user.total_paid || 0,
         idPictures: user.id_pictures || undefined
       }))
 
@@ -261,6 +315,106 @@ export default function AdminDashboard() {
       setCustomers([])
     } finally {
       setLoadingCustomers(false)
+    }
+  }
+
+  const fetchChangeRequests = async () => {
+    setLoadingChangeRequests(true)
+    try {
+      const res = await fetch('/api/change-requests', { credentials: 'include' })
+      if (!res.ok) throw new Error('Failed to load change requests')
+      const data = await res.json()
+      setChangeRequests(Array.isArray(data) ? data : [])
+    } catch (e) {
+      console.error('Failed to fetch change requests:', e)
+      setChangeRequests([])
+    } finally {
+      setLoadingChangeRequests(false)
+    }
+  }
+
+  const openProcessRequestModal = async (request: ChangeRequest) => {
+    setSelectedRequest(request)
+    setSelectedNewGuideId('')
+    setSelectedNewDriverId('')
+    setShowProcessRequestModal(true)
+
+    // Fetch available guides and drivers for the booking date range
+    if (request.request_type === 'tour_guide' || request.request_type === 'both') {
+      try {
+        const res = await fetch(
+          `/api/employee/tourguides?startDate=${request.start_date}&endDate=${request.end_date}`,
+          { credentials: 'include' }
+        )
+        if (res.ok) {
+          const guides = await res.json()
+          setAvailableGuides(guides)
+        }
+      } catch (e) {
+        console.error('Failed to fetch guides:', e)
+      }
+    }
+
+    if (request.request_type === 'driver' || request.request_type === 'both') {
+      try {
+        const res = await fetch(
+          `/api/drivers?startDate=${request.start_date}&endDate=${request.end_date}`,
+          { credentials: 'include' }
+        )
+        if (res.ok) {
+          const drivers = await res.json()
+          setAvailableDrivers(drivers)
+        }
+      } catch (e) {
+        console.error('Failed to fetch drivers:', e)
+      }
+    }
+  }
+
+  const processChangeRequest = async (action: 'approved' | 'rejected') => {
+    if (!selectedRequest) return
+
+    if (action === 'approved') {
+      if (
+        (selectedRequest.request_type === 'tour_guide' || selectedRequest.request_type === 'both') &&
+        !selectedNewGuideId
+      ) {
+        alert('Please select a new tour guide')
+        return
+      }
+      if (
+        (selectedRequest.request_type === 'driver' || selectedRequest.request_type === 'both') &&
+        !selectedNewDriverId
+      ) {
+        alert('Please select a new driver')
+        return
+      }
+    }
+
+    try {
+      const res = await fetch(`/api/change-requests/${selectedRequest.request_id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          status: action,
+          new_tour_guide_id: selectedNewGuideId || null,
+          new_driver_id: selectedNewDriverId || null
+        })
+      })
+
+      if (res.ok) {
+        alert(`Request ${action} successfully`)
+        setShowProcessRequestModal(false)
+        setSelectedRequest(null)
+        fetchChangeRequests() // Refresh the list
+      } else {
+        const data = await res.json()
+        alert(data.error || 'Failed to process request')
+      }
+    } catch (error) {
+      console.error('Error processing request:', error)
+      alert('An error occurred while processing the request')
     }
   }
 
@@ -643,6 +797,26 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
                 <span>Promotions</span>
               </div>
             </button>
+            <button
+              onClick={() => setActiveTab("requests")}
+              className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === "requests"
+                  ? "border-green-600 text-green-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <RefreshCcw className="w-5 h-5" />
+                <span>
+                  Change Requests
+                  {changeRequests.filter(r => r.status === 'pending').length > 0 && (
+                    <span className="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+                      {changeRequests.filter(r => r.status === 'pending').length}
+                    </span>
+                  )}
+                </span>
+              </div>
+            </button>
           </div>
         </div>
       </nav>
@@ -884,6 +1058,9 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
                       Bookings
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Payment Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                       ID Pictures
                     </th>
 
@@ -900,6 +1077,25 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
                         <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-semibold">
                           {customer.bookingsCount} bookings
                         </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <div className="space-y-1">
+                          <div className="flex items-center space-x-2">
+                            <span className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-xs font-semibold">
+                              ✓ {customer.paidBookings || 0} Paid
+                            </span>
+                            {(customer.pendingPayments || 0) > 0 && (
+                              <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-xs font-semibold">
+                                ⏳ {customer.pendingPayments} Pending
+                              </span>
+                            )}
+                          </div>
+                          {(customer.totalPaid || 0) > 0 && (
+                            <div className="text-xs text-gray-600 font-medium">
+                              Total: ETB {customer.totalPaid?.toFixed(2)}
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {customer.idPictures && customer.idPictures.length > 0 ? (
@@ -1007,7 +1203,216 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
             </div>
           </div>
         )}
+
+        {/* Change Requests Tab */}
+        {activeTab === "requests" && (
+          <div>
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Change Requests</h2>
+              <p className="text-gray-600 mt-1">Manage customer requests to change tour guides or drivers</p>
+            </div>
+
+            {loadingChangeRequests ? (
+              <div className="flex justify-center items-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+              </div>
+            ) : (
+              <div className="bg-white shadow-sm rounded-lg overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tour</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Request Type</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {changeRequests.map((request) => (
+                      <tr key={request.request_id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {request.customer_first_name} {request.customer_last_name}
+                          </div>
+                          <div className="text-sm text-gray-500">{request.customer_email}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900">{request.tour_name}</div>
+                          <div className="text-xs text-gray-500">
+                            {new Date(request.start_date).toLocaleDateString()} - {new Date(request.end_date).toLocaleDateString()}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {request.request_type === 'both' ? 'Both' : request.request_type === 'tour_guide' ? 'Tour Guide' : 'Driver'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {request.current_guide_first_name && (
+                            <div>Guide: {request.current_guide_first_name} {request.current_guide_last_name}</div>
+                          )}
+                          {request.current_driver_first_name && (
+                            <div>Driver: {request.current_driver_first_name} {request.current_driver_last_name}</div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {request.status === 'pending' && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                              Pending
+                            </span>
+                          )}
+                          {request.status === 'completed' && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              Completed
+                            </span>
+                          )}
+                          {request.status === 'rejected' && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                              Rejected
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(request.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          {request.status === 'pending' && (
+                            <button
+                              onClick={() => openProcessRequestModal(request)}
+                              className="text-green-600 hover:text-green-900 font-medium"
+                            >
+                              Process
+                            </button>
+                          )}
+                          {request.status === 'completed' && request.new_guide_first_name && (
+                            <div className="text-xs text-gray-500">
+                              <div>New Guide: {request.new_guide_first_name} {request.new_guide_last_name}</div>
+                            </div>
+                          )}
+                          {request.status === 'completed' && request.new_driver_first_name && (
+                            <div className="text-xs text-gray-500">
+                              <div>New Driver: {request.new_driver_first_name} {request.new_driver_last_name}</div>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {changeRequests.length === 0 && (
+                  <div className="text-center py-12">
+                    <RefreshCcw className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">No change requests</p>
+                    <p className="text-sm text-gray-400">Customer requests will appear here</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </main>
+
+      {/* Process Change Request Modal */}
+      {showProcessRequestModal && selectedRequest && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-2xl font-bold text-gray-900">Process Change Request</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Assign new guide/driver for {selectedRequest.tour_name}
+              </p>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="font-semibold text-gray-900 mb-2">Request Details:</h3>
+                <div className="space-y-1 text-sm">
+                  <p><strong>Customer:</strong> {selectedRequest.customer_first_name} {selectedRequest.customer_last_name}</p>
+                  <p><strong>Tour:</strong> {selectedRequest.tour_name}</p>
+                  <p><strong>Dates:</strong> {new Date(selectedRequest.start_date).toLocaleDateString()} - {new Date(selectedRequest.end_date).toLocaleDateString()}</p>
+                  <p><strong>Type:</strong> {selectedRequest.request_type}</p>
+                  {selectedRequest.reason && <p><strong>Reason:</strong> {selectedRequest.reason}</p>}
+                </div>
+              </div>
+
+              {(selectedRequest.request_type === 'tour_guide' || selectedRequest.request_type === 'both') && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select New Tour Guide <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={selectedNewGuideId}
+                    onChange={(e) => setSelectedNewGuideId(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="">-- Select Tour Guide --</option>
+                    {availableGuides.map((guide) => (
+                      <option key={guide.user_id} value={guide.user_id}>
+                        {guide.first_name} {guide.last_name} - ⭐ {guide.average_rating ? Number(guide.average_rating).toFixed(1) : 'N/A'} ({guide.total_tours || 0} tours)
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Only guides available for the tour dates are shown
+                  </p>
+                </div>
+              )}
+
+              {(selectedRequest.request_type === 'driver' || selectedRequest.request_type === 'both') && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select New Driver <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={selectedNewDriverId}
+                    onChange={(e) => setSelectedNewDriverId(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="">-- Select Driver --</option>
+                    {availableDrivers.map((driver) => (
+                      <option key={driver.user_id} value={driver.user_id}>
+                        {driver.first_name} {driver.last_name} - ⭐ {driver.average_rating ? Number(driver.average_rating).toFixed(1) : 'N/A'} ({driver.total_trips || 0} trips)
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Only drivers available for the tour dates are shown
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex gap-3">
+              <button
+                onClick={() => {
+                  setShowProcessRequestModal(false)
+                  setSelectedRequest(null)
+                }}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => processChangeRequest('rejected')}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2"
+              >
+                <XCircle className="w-4 h-4" />
+                Reject
+              </button>
+              <button
+                onClick={() => processChangeRequest('approved')}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
+              >
+                <CheckCircle className="w-4 h-4" />
+                Approve & Assign
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create Promotion Modal */}
       {showPromotionModal && (

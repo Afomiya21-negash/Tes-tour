@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Calendar, MapPin, Users, CreditCard, Clock, CheckCircle, XCircle, Edit3, HelpCircle, LogOut, Navigation } from "lucide-react"
+import { Calendar, MapPin, Users, CreditCard, Clock, CheckCircle, XCircle, Edit3, HelpCircle, LogOut, Navigation, RefreshCcw } from "lucide-react"
 import ItineraryCustomization from "@/components/ItineraryCustomization"
 import FreeMapTracker from "@/components/FreeMapTracker"
+import RatingPopup from "@/components/RatingPopup"
 
 interface Booking {
   booking_id: number
@@ -19,10 +20,12 @@ interface Booking {
   vehicle_make?: string
   vehicle_model?: string
   vehicle_capacity?: number
+  tour_guide_id?: number
   tour_guide_first_name?: string
   tour_guide_last_name?: string
   tour_guide_email?: string
   tour_guide_phone?: string
+  driver_id?: number
   driver_first_name?: string
   driver_last_name?: string
   driver_email?: string
@@ -31,7 +34,7 @@ interface Booking {
   payment_status?: string
   payment_method?: string
   number_of_people?: number
- 
+  has_rating?: boolean
 }
 
 export default function CustomerDashboard() {
@@ -43,11 +46,31 @@ export default function CustomerDashboard() {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [showGPSTracker, setShowGPSTracker] = useState(false)
   const [selectedBookingForTracking, setSelectedBookingForTracking] = useState<Booking | null>(null)
+  const [showRatingPopup, setShowRatingPopup] = useState(false)
+  const [bookingToRate, setBookingToRate] = useState<Booking | null>(null)
+  const [showChangeRequestModal, setShowChangeRequestModal] = useState(false)
+  const [bookingToChange, setBookingToChange] = useState<Booking | null>(null)
+  const [changeRequestType, setChangeRequestType] = useState<'tour_guide' | 'driver' | 'both'>('both')
+  const [changeRequestReason, setChangeRequestReason] = useState('')
 
   useEffect(() => {
     checkAuth()
     fetchBookings()
   }, [])
+
+  // Check for completed bookings without ratings and show rating popup
+  useEffect(() => {
+    if (bookings.length > 0) {
+      const completedWithoutRating = bookings.find(
+        b => b.status === 'completed' && !b.has_rating
+      )
+      
+      if (completedWithoutRating && !showRatingPopup) {
+        setBookingToRate(completedWithoutRating)
+        setShowRatingPopup(true)
+      }
+    }
+  }, [bookings])
 
   const checkAuth = async () => {
     try {
@@ -151,6 +174,50 @@ export default function CustomerDashboard() {
       console.error('Logout error:', error);
       // Force redirect anyway
       window.location.href = '/login';
+    }
+  }
+
+  const openChangeRequestModal = (booking: Booking) => {
+    setBookingToChange(booking)
+    setShowChangeRequestModal(true)
+    setChangeRequestReason('')
+    // Default to 'both' but allow user to select
+    setChangeRequestType('both')
+  }
+
+  const closeChangeRequestModal = () => {
+    setShowChangeRequestModal(false)
+    setBookingToChange(null)
+    setChangeRequestReason('')
+    setChangeRequestType('both')
+  }
+
+  const submitChangeRequest = async () => {
+    if (!bookingToChange) return
+
+    try {
+      const response = await fetch('/api/change-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          booking_id: bookingToChange.booking_id,
+          request_type: changeRequestType,
+          reason: changeRequestReason
+        })
+      })
+
+      if (response.ok) {
+        alert('Change request submitted successfully! We will assign a new guide/driver within 24 hours.')
+        closeChangeRequestModal()
+        fetchBookings() // Refresh bookings
+      } else {
+        const data = await response.json()
+        alert(data.error || 'Failed to submit change request')
+      }
+    } catch (error) {
+      console.error('Error submitting change request:', error)
+      alert('An error occurred while submitting your request')
     }
   }
 
@@ -449,6 +516,15 @@ export default function CustomerDashboard() {
                             <span>Track Location</span>
                           </button>
                         )}
+                        {booking.status === 'in-progress' && (
+                          <button
+                            onClick={() => openChangeRequestModal(booking)}
+                            className="bg-orange-600 text-white px-3 py-1 rounded-md hover:bg-orange-700 transition-colors text-sm flex items-center space-x-1 w-full justify-center"
+                          >
+                            <RefreshCcw className="h-3 w-3" />
+                            <span>Change Guide/Driver</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -495,6 +571,144 @@ export default function CustomerDashboard() {
                 userRole="customer"
                 isJourneyActive={selectedBookingForTracking.status === 'in-progress'}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rating Popup */}
+      {showRatingPopup && bookingToRate && (
+        <RatingPopup
+          bookingId={bookingToRate.booking_id}
+          tourGuideName={bookingToRate.tour_guide_first_name && bookingToRate.tour_guide_last_name 
+            ? `${bookingToRate.tour_guide_first_name} ${bookingToRate.tour_guide_last_name}`
+            : undefined}
+          driverName={bookingToRate.driver_first_name && bookingToRate.driver_last_name
+            ? `${bookingToRate.driver_first_name} ${bookingToRate.driver_last_name}`
+            : undefined}
+          hasTourGuide={!!bookingToRate.tour_guide_id}
+          hasDriver={!!bookingToRate.driver_id}
+          onClose={() => {
+            setShowRatingPopup(false)
+            setBookingToRate(null)
+          }}
+          onSubmitSuccess={() => {
+            setShowRatingPopup(false)
+            setBookingToRate(null)
+            // Refresh bookings to update has_rating status
+            fetchBookings()
+          }}
+        />
+      )}
+
+      {/* Change Request Modal */}
+      {showChangeRequestModal && bookingToChange && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-2xl font-bold text-gray-900">Request Change</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Request a new tour guide or driver for your tour
+              </p>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  ⏱️ We will assign a new guide/driver within <strong>24 hours</strong> of your request.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-2">Current Assignment:</h3>
+                <div className="space-y-1 text-sm text-gray-700">
+                  {bookingToChange.tour_guide_first_name && (
+                    <p>
+                      <strong>Tour Guide:</strong> {bookingToChange.tour_guide_first_name} {bookingToChange.tour_guide_last_name}
+                    </p>
+                  )}
+                  {bookingToChange.driver_first_name && (
+                    <p>
+                      <strong>Driver:</strong> {bookingToChange.driver_first_name} {bookingToChange.driver_last_name}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  What would you like to change?
+                </label>
+                <div className="space-y-2">
+                  {bookingToChange.tour_guide_id && bookingToChange.driver_id && (
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="changeType"
+                        value="both"
+                        checked={changeRequestType === 'both'}
+                        onChange={(e) => setChangeRequestType(e.target.value as any)}
+                        className="text-orange-600 focus:ring-orange-500"
+                      />
+                      <span className="text-sm text-gray-700">Both Tour Guide & Driver</span>
+                    </label>
+                  )}
+                  {bookingToChange.tour_guide_id && (
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="changeType"
+                        value="tour_guide"
+                        checked={changeRequestType === 'tour_guide'}
+                        onChange={(e) => setChangeRequestType(e.target.value as any)}
+                        className="text-orange-600 focus:ring-orange-500"
+                      />
+                      <span className="text-sm text-gray-700">Tour Guide Only</span>
+                    </label>
+                  )}
+                  {bookingToChange.driver_id && (
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="changeType"
+                        value="driver"
+                        checked={changeRequestType === 'driver'}
+                        onChange={(e) => setChangeRequestType(e.target.value as any)}
+                        className="text-orange-600 focus:ring-orange-500"
+                      />
+                      <span className="text-sm text-gray-700">Driver Only</span>
+                    </label>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Reason for change (optional)
+                </label>
+                <textarea
+                  value={changeRequestReason}
+                  onChange={(e) => setChangeRequestReason(e.target.value)}
+                  placeholder="Tell us why you'd like to make this change..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+                  rows={3}
+                />
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex gap-3">
+              <button
+                onClick={closeChangeRequestModal}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitChangeRequest}
+                className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium"
+              >
+                Submit Request
+              </button>
             </div>
           </div>
         </div>

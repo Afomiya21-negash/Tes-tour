@@ -44,31 +44,26 @@ export async function GET(request: NextRequest) {
         u.last_name,
         u.email,
         u.phone_number as phone,
+        tg.specialization,
+        tg.experience_years,
         (
           SELECT COUNT(DISTINCT b.booking_id)
           FROM bookings b
           WHERE b.tour_guide_id = u.user_id
             AND b.status IN ('confirmed', 'completed', 'in-progress')
         ) as total_tours,
-        COALESCE(
-          (
-            SELECT AVG(r.rating)
-            FROM ratings r
-            WHERE r.rated_user_id = u.user_id AND LOWER(r.rating_type) = 'tourguide'
-          ),
-          (
-            SELECT tg.rating FROM tourguides tg WHERE tg.tour_guide_id = u.user_id LIMIT 1
-          ),
-          0
-        ) as average_rating,
+        COALESCE(tg.rating, 0) as average_rating,
+        COALESCE(tg.total_ratings, 0) as total_ratings,
         CASE 
           WHEN (
             SELECT COUNT(1)
             FROM bookings b2
             WHERE b2.tour_guide_id = u.user_id
               AND b2.status IN ('confirmed', 'in-progress')
+              AND b2.start_date <= CURDATE() AND b2.end_date >= CURDATE()
           ) > 0 THEN 'busy' ELSE 'available' END as availability
       FROM users u
+      LEFT JOIN tourguides tg ON u.user_id = tg.tour_guide_id
       WHERE u.role = 'tourguide'
     `
     const params: any[] = []

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { Navigation, MapPin, Users, Clock, Activity } from 'lucide-react'
+import { Navigation, MapPin, Users, Clock, Activity, XCircle } from 'lucide-react'
 
 // Fix for default marker icons in Leaflet
 if (typeof window !== 'undefined') {
@@ -68,6 +68,9 @@ export default function MapTrackerClient({
   const [hasSetInitialCenter, setHasSetInitialCenter] = useState(false)
   const [followMyLocation, setFollowMyLocation] = useState(true)
   const [myCurrentPosition, setMyCurrentPosition] = useState<[number, number] | null>(null)
+  const [wasReplaced, setWasReplaced] = useState(false)
+  const [replacementInfo, setReplacementInfo] = useState<any>(null)
+  const [checkingAssignment, setCheckingAssignment] = useState(true)
 
   // Custom marker icons
   const createCustomIcon = (color: string) => {
@@ -82,6 +85,48 @@ export default function MapTrackerClient({
   const tourGuideIcon = createCustomIcon('#10B981') // Green
   const customerIcon = createCustomIcon('#3B82F6') // Blue
   const driverIcon = createCustomIcon('#EF4444') // Red
+
+  // Check if tour guide or driver has been replaced
+  useEffect(() => {
+    const checkAssignment = async () => {
+      // Only check for tour guides and drivers
+      if (userRole !== 'tourguide' && userRole !== 'driver') {
+        setCheckingAssignment(false)
+        return
+      }
+
+      try {
+        const response = await fetch(
+          `/api/bookings/check-assignment?booking_id=${bookingId}`,
+          { credentials: 'include' }
+        )
+
+        if (response.ok) {
+          const data = await response.json()
+          if (data.wasReplaced) {
+            setWasReplaced(true)
+            setReplacementInfo(data.replacementInfo)
+          }
+        } else if (response.status === 403) {
+          // User is not assigned to this booking
+          const data = await response.json()
+          if (!data.isAssigned) {
+            setWasReplaced(true)
+            setReplacementInfo({
+              role: userRole === 'tourguide' ? 'tour guide' : 'driver',
+              message: 'You are not assigned to this booking.'
+            })
+          }
+        }
+      } catch (error) {
+        console.error('Error checking assignment:', error)
+      } finally {
+        setCheckingAssignment(false)
+      }
+    }
+
+    checkAssignment()
+  }, [bookingId, userRole])
 
   // Fetch all participants' locations
   const fetchLocations = useCallback(async () => {
@@ -203,17 +248,73 @@ export default function MapTrackerClient({
   }
 
   // Get user-friendly error message
-  const getGeolocationErrorMessage = (error: GeolocationPositionError): string => {
-    switch (error.code) {
-      case error.PERMISSION_DENIED:
-        return 'Location permission denied. Please enable location access in your browser settings.'
-      case error.POSITION_UNAVAILABLE:
-        return 'Location information unavailable. Please check your device settings.'
-      case error.TIMEOUT:
-        return 'Location request timed out. Please try again.'
-      default:
-        return `Location error: ${error.message || 'Unknown error'}`
+  const getGeolocationErrorMessage = (error: GeolocationPositionError | null | undefined): string => {
+    if (!error) {
+      return 'Location error: Unable to get your location. Please ensure location services are enabled.'
     }
+    
+    switch (error.code) {
+      case 1: // PERMISSION_DENIED
+        return 'Location permission denied. Please enable location access in your browser settings.'
+      case 2: // POSITION_UNAVAILABLE
+        return 'Location information unavailable. Please check your device settings and ensure GPS is enabled.'
+      case 3: // TIMEOUT
+        return 'GPS is taking longer than usual. Trying with lower accuracy mode...'
+      default:
+        return `Location error: ${error.message || 'Unable to get your location. Please ensure location services are enabled.'}`
+    }
+  }
+
+  // Retry with lower accuracy if high accuracy fails
+  const retryWithLowerAccuracy = () => {
+    console.log('Retrying location with lower accuracy (WiFi/Cell towers)...')
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude
+        const lng = position.coords.longitude
+        console.log('Position obtained with lower accuracy:', {
+          lat: lat,
+          lng: lng,
+          accuracy: position.coords.accuracy
+        })
+        setCurrentLocation(position)
+        setMyCurrentPosition([lat, lng])
+        setMapCenter([lat, lng])
+        setHasSetInitialCenter(true)
+        updateMyLocation(position)
+        setError('') // Clear timeout error
+      },
+      (error) => {
+        // Safe error logging
+        try {
+          if (error && typeof error === 'object' && Object.keys(error).length > 0) {
+            console.log('Lower accuracy failed:', {
+              code: error?.code,
+              message: error?.message
+            })
+          }
+        } catch (logError) {
+          // Ignore logging errors
+        }
+        
+        // Handle error
+        if (error?.code === 1) {
+          setError('Location permission denied. Please enable location access in your browser settings.')
+        } else if (error?.code === 2) {
+          setError('Location information unavailable. Please check your device settings and ensure GPS is enabled.')
+        } else if (error?.code === 3) {
+          setError('Unable to get location. Please ensure location services are enabled and try moving outdoors.')
+        } else {
+          setError('Unable to access location. Please ensure location services are enabled and try again.')
+        }
+        setIsTracking(false)
+      },
+      {
+        enableHighAccuracy: false,  // Use WiFi/cell towers (faster but less accurate)
+        timeout: 10000,             // 10 second timeout
+        maximumAge: 10000           // Accept cached position up to 10 seconds old
+      }
+    )
   }
 
   // Start tracking location
@@ -235,6 +336,15 @@ export default function MapTrackerClient({
     
     console.log('Starting location tracking...')
 
+    // Check if geolocation is available
+    if (!navigator.geolocation) {
+      const errorMsg = 'Geolocation is not supported by your browser. Please use a modern browser with location services.'
+      console.error(errorMsg)
+      setError(errorMsg)
+      setIsTracking(false)
+      return
+    }
+
     // Get initial position
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -252,21 +362,42 @@ export default function MapTrackerClient({
         updateMyLocation(position)
       },
       (error) => {
-        const errorDetails = {
-          code: error.code,
-          message: error.message,
-          type: error.code === 1 ? 'PERMISSION_DENIED' : 
-                error.code === 2 ? 'POSITION_UNAVAILABLE' : 
-                error.code === 3 ? 'TIMEOUT' : 'UNKNOWN'
+        // Enhanced error logging for debugging - wrapped in try-catch
+        try {
+          if (error && typeof error === 'object' && Object.keys(error).length > 0) {
+            console.log('Geolocation error details:', {
+              code: error?.code,
+              message: error?.message,
+              type: typeof error
+            })
+          }
+        } catch (logError) {
+          // Ignore logging errors
         }
-        console.error('Geolocation error:', errorDetails)
-        const errorMessage = getGeolocationErrorMessage(error)
-        setError(errorMessage)
-        setIsTracking(false)
+        
+        // Handle the actual error
+        // If timeout, retry with lower accuracy (WiFi/cell towers instead of GPS)
+        if (error?.code === 3) {
+          const errorMessage = getGeolocationErrorMessage(error)
+          setError(errorMessage)
+          retryWithLowerAccuracy()
+        } else if (error?.code === 1) {
+          // Permission denied
+          setError('Location permission denied. Please enable location access in your browser settings.')
+          setIsTracking(false)
+        } else if (error?.code === 2) {
+          // Position unavailable
+          setError('Location information unavailable. Please check your device settings and ensure GPS is enabled.')
+          setIsTracking(false)
+        } else {
+          // Unknown error or empty error object
+          setError('Unable to access location. Please ensure location services are enabled and try again.')
+          setIsTracking(false)
+        }
       },
       {
         enableHighAccuracy: true,  // Force GPS instead of WiFi/cell towers
-        timeout: 30000,            // Wait up to 30 seconds for accurate GPS lock
+        timeout: 20000,            // Wait up to 20 seconds for GPS lock
         maximumAge: 0              // Never use cached position
       }
     )
@@ -284,21 +415,34 @@ export default function MapTrackerClient({
         updateMyLocation(position)
       },
       (error) => {
-        const errorDetails = {
-          code: error.code,
-          message: error.message,
-          type: error.code === 1 ? 'PERMISSION_DENIED' : 
-                error.code === 2 ? 'POSITION_UNAVAILABLE' : 
-                error.code === 3 ? 'TIMEOUT' : 'UNKNOWN'
+        // Enhanced error logging for debugging - wrapped in try-catch
+        try {
+          if (error && typeof error === 'object' && Object.keys(error).length > 0) {
+            console.log('Watch position error details:', {
+              code: error?.code,
+              message: error?.message,
+              type: typeof error
+            })
+          }
+        } catch (logError) {
+          // Ignore logging errors
         }
-        console.error('Watch position error:', errorDetails)
-        const errorMessage = getGeolocationErrorMessage(error)
-        setError(errorMessage)
+        
+        // Handle the actual error
+        if (error?.code === 1) {
+          setError('Location permission denied. Please enable location access in your browser settings.')
+        } else if (error?.code === 2) {
+          setError('Location information unavailable. Please check your device settings and ensure GPS is enabled.')
+        } else if (error?.code === 3) {
+          setError('Location tracking timeout. Please ensure GPS is enabled.')
+        } else {
+          setError('Unable to track location. Please ensure location services are enabled and try again.')
+        }
       },
       {
         enableHighAccuracy: true,  // Force GPS instead of WiFi/cell towers
-        timeout: 30000,            // Wait up to 30 seconds for accurate GPS lock
-        maximumAge: 0              // Always get fresh position, don't use cached
+        timeout: 10000,            // Wait up to 10 seconds for position updates
+        maximumAge: 5000           // Accept positions up to 5 seconds old for smoother tracking
       }
     )
 
@@ -376,6 +520,55 @@ export default function MapTrackerClient({
       default:
         return customerIcon
     }
+  }
+
+  // Show loading state while checking assignment
+  if (checkingAssignment) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      </div>
+    )
+  }
+
+  // Show replacement notice if user was replaced
+  if (wasReplaced && replacementInfo) {
+    return (
+      <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6">
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0">
+            <XCircle className="w-12 h-12 text-red-600" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-xl font-bold text-red-900 mb-2">
+              You Have Been Replaced
+            </h3>
+            <p className="text-red-800 mb-4">
+              {replacementInfo.message}
+            </p>
+            {replacementInfo.requestedAt && (
+              <p className="text-sm text-red-600">
+                Change requested on: {new Date(replacementInfo.requestedAt).toLocaleString()}
+              </p>
+            )}
+            <div className="mt-4 p-4 bg-white border border-red-200 rounded-md">
+              <p className="text-sm text-gray-700">
+                <strong>What this means:</strong> The customer has requested a change and a new {replacementInfo.role} has been assigned to this tour. 
+                You no longer have access to track this tour's location.
+              </p>
+            </div>
+            <div className="mt-4">
+              <button
+                onClick={() => window.history.back()}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Go Back
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -478,6 +671,61 @@ export default function MapTrackerClient({
                   <p className="font-medium">Geolocation requires a secure connection (HTTPS)</p>
                 </div>
               )}
+              {(error.includes('timed out') || error.includes('Trying with lower') || error.includes('Unable to get location') || error.includes('Unable to access location') || error.includes('Unable to track location')) && (
+                <div className="mt-3 space-y-2">
+                  <div className="text-xs text-red-600">
+                    <p className="font-medium mb-2">💡 Troubleshooting Steps:</p>
+                    <div className="space-y-2">
+                      <div className="bg-white p-2 rounded border border-red-100">
+                        <p className="font-semibold text-red-700">1️⃣ Check Browser Permissions</p>
+                        <ul className="list-disc list-inside mt-1 space-y-1 ml-2">
+                          <li>Click the 🔒 or location icon in browser address bar</li>
+                          <li>Set location to "Allow" or "Always allow"</li>
+                          <li>Reload the page</li>
+                        </ul>
+                      </div>
+                      
+                      <div className="bg-white p-2 rounded border border-red-100">
+                        <p className="font-semibold text-red-700">2️⃣ Check Device Settings</p>
+                        <ul className="list-disc list-inside mt-1 space-y-1 ml-2">
+                          <li><strong>Windows:</strong> Settings → Privacy → Location → Turn ON</li>
+                          <li><strong>Mac:</strong> System Preferences → Security → Privacy → Location Services → Turn ON</li>
+                          <li><strong>Android:</strong> Settings → Location → Turn ON</li>
+                          <li><strong>iOS:</strong> Settings → Privacy → Location Services → Turn ON</li>
+                        </ul>
+                      </div>
+                      
+                      <div className="bg-white p-2 rounded border border-red-100">
+                        <p className="font-semibold text-red-700">3️⃣ Improve GPS Signal</p>
+                        <ul className="list-disc list-inside mt-1 space-y-1 ml-2">
+                          <li>Move outdoors with clear view of the sky</li>
+                          <li>Wait 30-60 seconds for GPS satellite lock</li>
+                          <li>Avoid tall buildings, dense foliage, or tunnels</li>
+                          <li>Use mobile phone instead of laptop (better GPS)</li>
+                        </ul>
+                      </div>
+                      
+                      <div className="bg-white p-2 rounded border border-red-100">
+                        <p className="font-semibold text-red-700">4️⃣ Browser-Specific Tips</p>
+                        <ul className="list-disc list-inside mt-1 space-y-1 ml-2">
+                          <li><strong>Chrome:</strong> Settings → Privacy → Site Settings → Location → Allow</li>
+                          <li><strong>Firefox:</strong> Settings → Privacy → Permissions → Location → Allow</li>
+                          <li><strong>Safari:</strong> Preferences → Websites → Location → Allow</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                  {!isTracking && (
+                    <button
+                      onClick={startTracking}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2"
+                    >
+                      <Navigation className="w-4 h-4" />
+                      Retry Location Access
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -511,8 +759,19 @@ export default function MapTrackerClient({
                 )}
               </div>
               {currentLocation.coords.accuracy && currentLocation.coords.accuracy > 100 && (
-                <p className="text-xs text-yellow-700 mt-1">
-                  💡 For better accuracy: Use a smartphone with GPS or go outdoors
+                <div className="text-xs text-yellow-700 mt-2 space-y-1">
+                  <p className="font-semibold">💡 Tips to improve GPS accuracy:</p>
+                  <ul className="list-disc list-inside space-y-0.5 pl-2">
+                    <li>Move outdoors away from buildings</li>
+                    <li>Ensure device GPS is enabled in settings</li>
+                    <li>Wait 30-60 seconds for GPS to acquire satellites</li>
+                    <li>Avoid using indoors or in urban canyons</li>
+                  </ul>
+                </div>
+              )}
+              {currentLocation.coords.accuracy && currentLocation.coords.accuracy > 50 && currentLocation.coords.accuracy <= 100 && (
+                <p className="text-xs text-yellow-600 mt-1">
+                  ⚠️ Moderate accuracy. For best results, move outdoors and wait a moment.
                 </p>
               )}
             </div>

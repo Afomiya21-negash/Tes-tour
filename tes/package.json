@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@react-google-maps/api": "^2.20.7",
-    "@types/leaflet": "^1.9.21",
     "axios": "^1.13.2",
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2",
@@ -27,6 +26,7 @@
     "@tailwindcss/postcss": "^4.1.11",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/leaflet": "^1.9.21",
     "@types/node": "^20.19.21",
     "@types/react": "^19",
     "@types/react-dom": "^19",

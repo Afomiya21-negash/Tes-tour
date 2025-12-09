@@ -288,47 +288,7 @@ export default function LiveMapTracker({
         </div>
       )}
 
-      {/* Journey Stats */}
-      {(isJourneyActive || isTracking) && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <Clock className="w-8 h-8 text-blue-600" />
-              <div>
-                <p className="text-sm text-blue-600 font-medium">Duration</p>
-                <p className="text-xl font-bold text-blue-900">
-                  {journeyStartTime ? 
-                    Math.floor((new Date().getTime() - journeyStartTime.getTime()) / 60000) : 0} min
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <MapPin className="w-8 h-8 text-green-600" />
-              <div>
-                <p className="text-sm text-green-600 font-medium">Distance</p>
-                <p className="text-xl font-bold text-green-900">
-                  {distance.toFixed(2)} km
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <Users className="w-8 h-8 text-purple-600" />
-              <div>
-                <p className="text-sm text-purple-600 font-medium">Participants</p>
-                <p className="text-xl font-bold text-purple-900">
-                  {participants.filter(p => p.latest_location).length} active
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      
 
       {/* Error Display */}
       {error && (

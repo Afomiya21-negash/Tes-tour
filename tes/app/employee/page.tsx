@@ -27,6 +27,7 @@ type Booking = {
   driver_first_name?: string | null
   driver_last_name?: string | null
   payment_status?: string | null
+  payment_amount?: number | null
 }
 
 type TourGuide = {
@@ -147,7 +148,7 @@ export default function EmployeeDashboard() {
         return
       }
 
-      // TASK 1 FIX: Check if employee has HR access using the isHR flag from API
+      //  Check if employee has HR access using the isHR flag from API
       // The API uses Employee.isHR() method from domain.ts which checks position and department
       if (!data.user.isHR) {
         // Show access denied popup for non-HR employees (e.g., Accountant)
@@ -933,13 +934,56 @@ export default function EmployeeDashboard() {
             </div>
 
             <div className="p-6">
+              {/* Payment Status Check */}
+              <div className={`mb-4 p-3 rounded-lg border ${
+                selectedBooking.payment_status === 'completed' 
+                  ? 'bg-emerald-50 border-emerald-200' 
+                  : 'bg-amber-50 border-amber-200'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-lg">
+                      {selectedBooking.payment_status === 'completed' ? '✅' : '⚠️'}
+                    </span>
+                    <div>
+                      <p className={`text-sm font-semibold ${
+                        selectedBooking.payment_status === 'completed' 
+                          ? 'text-emerald-800' 
+                          : 'text-amber-800'
+                      }`}>
+                        {selectedBooking.payment_status === 'completed' 
+                          ? 'Payment Completed' 
+                          : 'Payment Pending'}
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        {selectedBooking.payment_status === 'completed' 
+                          ? `Paid: ETB ${selectedBooking.payment_amount || selectedBooking.total_price}` 
+                          : 'Customer has not completed payment yet'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <p className="text-sm text-gray-600 mb-4">
                 Select a tour guide for <strong>{selectedBooking.tour_name}</strong>
               </p>
+              
+              {selectedBooking.payment_status !== 'completed' && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    💡 <strong>Note:</strong> You can assign a tour guide, but ensure payment is completed before the tour starts.
+                  </p>
+                </div>
+              )}
+
               <div className="space-y-3">
-                {tourGuides
-                  .filter((guide) => guide.availability === "available")
-                  .map((guide) => (
+                {tourGuides.length === 0 && (
+                  <p className="text-sm text-gray-600 text-center py-4">
+                    No tour guides available for the selected dates.
+                  </p>
+                )}
+                {tourGuides.map((guide) => (
                     <button
                       key={`assign-guide-${guide.user_id}`}
                       onClick={() => handleConfirmAssignment(guide.user_id, getFullName(guide.first_name, guide.last_name))}

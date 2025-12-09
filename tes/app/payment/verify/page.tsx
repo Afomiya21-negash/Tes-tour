@@ -10,6 +10,7 @@ export default function PaymentVerifyPage() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState('')
   const [paymentDetails, setPaymentDetails] = useState<any>(null)
+  const [countdown, setCountdown] = useState(5) // 5 second countdown
 
   useEffect(() => {
     const verifyPayment = async () => {
@@ -47,10 +48,16 @@ export default function PaymentVerifyPage() {
           setMessage('Payment completed successfully!')
           setPaymentDetails(data.payment_details)
           
-          // Redirect to dashboard after 3 seconds
-          setTimeout(() => {
-            router.push('/dashboard')
-          }, 3000)
+          // Start countdown timer
+          let secondsLeft = 5
+          const countdownInterval = setInterval(() => {
+            secondsLeft--
+            setCountdown(secondsLeft)
+            if (secondsLeft <= 0) {
+              clearInterval(countdownInterval)
+              router.push('/dashboard')
+            }
+          }, 1000)
         } else {
           console.error('Verification failed:', data)
           setStatus('error')
@@ -105,10 +112,22 @@ export default function PaymentVerifyPage() {
               </div>
             )}
 
-            <p className="text-sm text-gray-500">Redirecting to dashboard in 3 seconds...</p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+              <p className="text-sm text-blue-800 font-medium">
+                💡 Take a screenshot of this confirmation for your records
+              </p>
+            </div>
+
+            <div className="flex items-center justify-center space-x-2 mb-4">
+              <div className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-full font-bold text-lg">
+                {countdown}
+              </div>
+              <p className="text-sm text-gray-500">seconds until redirect...</p>
+            </div>
+            
             <button
               onClick={() => router.push('/dashboard')}
-              className="mt-4 w-full bg-emerald-600 text-white py-3 rounded-lg hover:bg-emerald-700 transition-colors font-medium"
+              className="w-full bg-emerald-600 text-white py-3 rounded-lg hover:bg-emerald-700 transition-colors font-medium"
             >
               Go to Dashboard Now
             </button>

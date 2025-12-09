@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Allow both employees and admins to access bookings
-    // Remove HR requirement for now to allow all employees to see bookings
+  
     
     const pool = getPool()
     const [rows] = await pool.execute(
@@ -50,13 +50,16 @@ export async function GET(request: NextRequest) {
         d.email as driver_email,
         tg.first_name as tour_guide_first_name,
         tg.last_name as tour_guide_last_name,
-        tg.email as tour_guide_email
+        tg.email as tour_guide_email,
+        p.status as payment_status,
+        p.amount as payment_amount
       FROM bookings b
       LEFT JOIN users u ON b.user_id = u.user_id
       LEFT JOIN tours t ON b.tour_id = t.tour_id
       LEFT JOIN vehicles v ON b.vehicle_id = v.vehicle_id
       LEFT JOIN users d ON b.driver_id = d.user_id
       LEFT JOIN users tg ON b.tour_guide_id = tg.user_id
+      LEFT JOIN payments p ON b.booking_id = p.booking_id
       ORDER BY b.booking_date DESC`
     )
     

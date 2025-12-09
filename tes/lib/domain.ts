@@ -854,6 +854,7 @@ export class BookingService {
         b.booking_date,
         b.status,
         b.id_picture as id_pictures,
+        b.number_of_people,
         t.name as tour_name,
         t.destination,
         t.duration_days,
@@ -870,13 +871,15 @@ export class BookingService {
         d.first_name as driver_first_name,
         d.last_name as driver_last_name,
         d.phone_number as driver_phone,
-        d.email as driver_email
+        d.email as driver_email,
+        IF(r.rating_id IS NOT NULL, true, false) as has_rating
       FROM bookings b
       LEFT JOIN tours t ON b.tour_id = t.tour_id
       LEFT JOIN vehicles v ON b.vehicle_id = v.vehicle_id
       LEFT JOIN payments p ON b.booking_id = p.booking_id
       LEFT JOIN users tg ON b.tour_guide_id = tg.user_id
       LEFT JOIN users d ON b.driver_id = d.user_id
+      LEFT JOIN ratings r ON b.booking_id = r.booking_id
       WHERE b.user_id = ?
       ORDER BY b.booking_date DESC`,
       [userId]
@@ -1628,5 +1631,243 @@ export class ItineraryService {
         values
       )
     }
+  }
+}
+
+// Rating types
+export interface RatingData {
+  rating_id?: number
+  booking_id: number
+  customer_id: number
+  tour_guide_id?: number | null
+  driver_id?: number | null
+  rating_tourguide?: number | null
+  rating_driver?: number | null
+  review_tourguide?: string | null
+  review_driver?: string | null
+  created_at?: Date
+}
+
+export interface RatingSubmission {
+  booking_id: number
+  rating_tourguide?: number
+  rating_driver?: number
+  review_tourguide?: string
+  review_driver?: string
+}
+
+// Rating Service
+export class RatingService {
+  /**
+   * Submit a rating for a completed booking
+   * Calculates and updates average ratings for tour guide and driver
+   */
+  static async submitRating(
+    customerId: number,
+    ratingData: RatingSubmission
+  ): Promise<{ rating_id: number }> {
+    const pool = getPool()
+    const conn = await pool.getConnection()
+
+    try {
+      await conn.beginTransaction()
+
+      // Verify booking exists, belongs to customer, and is completed
+      const [bookingRows] = await conn.query(
+        `SELECT b.booking_id, b.user_id, b.tour_guide_id, b.driver_id, b.status
+         FROM bookings b
+         WHERE b.booking_id = ? AND b.user_id = ? AND b.status = 'completed'
+         LIMIT 1`,
+        [ratingData.booking_id, customerId]
+      ) as any
+
+      if (!bookingRows || bookingRows.length === 0) {
+        throw new Error('Booking not found, does not belong to you, or is not completed')
+      }
+
+      const booking = bookingRows[0]
+
+      // Check if rating already exists
+      const [existingRating] = await conn.query(
+        `SELECT rating_id FROM ratings WHERE booking_id = ? LIMIT 1`,
+        [ratingData.booking_id]
+      ) as any
+
+      if (existingRating && existingRating.length > 0) {
+        throw new Error('Rating already submitted for this booking')
+      }
+
+      // Insert rating
+      const [result] = await conn.query(
+        `INSERT INTO ratings 
+         (booking_id, customer_id, tour_guide_id, driver_id, rating_tourguide, rating_driver, review_tourguide, review_driver)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          ratingData.booking_id,
+          customerId,
+          booking.tour_guide_id,
+          booking.driver_id,
+          ratingData.rating_tourguide || null,
+          ratingData.rating_driver || null,
+          ratingData.review_tourguide || null,
+          ratingData.review_driver || null
+        ]
+      ) as any
+
+      // Update tour guide average rating if rated
+      if (booking.tour_guide_id && ratingData.rating_tourguide) {
+        await this.updateTourGuideRating(conn, booking.tour_guide_id)
+      }
+
+      // Update driver average rating if rated
+      if (booking.driver_id && ratingData.rating_driver) {
+        await this.updateDriverRating(conn, booking.driver_id)
+      }
+
+      await conn.commit()
+      return { rating_id: result.insertId }
+    } catch (error) {
+      await conn.rollback()
+      throw error
+    } finally {
+      conn.release()
+    }
+  }
+
+  /**
+   * Calculate and update average rating for a tour guide
+   */
+  private static async updateTourGuideRating(conn: any, guideId: number): Promise<void> {
+    // Calculate average rating from all ratings
+    const [ratingRows] = await conn.query(
+      `SELECT AVG(rating_tourguide) as avg_rating, COUNT(*) as total_ratings
+       FROM ratings
+       WHERE tour_guide_id = ? AND rating_tourguide IS NOT NULL`,
+      [guideId]
+    ) as any
+
+    if (ratingRows && ratingRows.length > 0) {
+      const avgRating = parseFloat(ratingRows[0].avg_rating) || 0
+      const totalRatings = parseInt(ratingRows[0].total_ratings) || 0
+
+      // Update tourguides table
+      await conn.query(
+        `UPDATE tourguides 
+         SET rating = ?, total_ratings = ?
+         WHERE tour_guide_id = ?`,
+        [avgRating.toFixed(2), totalRatings, guideId]
+      )
+    }
+  }
+
+  /**
+   * Calculate and update average rating for a driver
+   */
+  private static async updateDriverRating(conn: any, driverId: number): Promise<void> {
+    // Calculate average rating from all ratings
+    const [ratingRows] = await conn.query(
+      `SELECT AVG(rating_driver) as avg_rating, COUNT(*) as total_ratings
+       FROM ratings
+       WHERE driver_id = ? AND rating_driver IS NOT NULL`,
+      [driverId]
+    ) as any
+
+    if (ratingRows && ratingRows.length > 0) {
+      const avgRating = parseFloat(ratingRows[0].avg_rating) || 0
+      const totalRatings = parseInt(ratingRows[0].total_ratings) || 0
+
+      // Update driver table
+      await conn.query(
+        `UPDATE drivers 
+         SET rating = ?, total_ratings = ?
+         WHERE driver_id = ?`,
+        [avgRating.toFixed(2), totalRatings, driverId]
+      )
+    }
+  }
+
+  /**
+   * Get rating for a specific booking
+   */
+  static async getRatingByBooking(bookingId: number): Promise<RatingData | null> {
+    const pool = getPool()
+
+    const [rows] = await pool.query(
+      `SELECT * FROM ratings WHERE booking_id = ? LIMIT 1`,
+      [bookingId]
+    ) as any
+
+    if (!rows || rows.length === 0) {
+      return null
+    }
+
+    return rows[0] as RatingData
+  }
+
+  /**
+   * Get all ratings for a tour guide
+   */
+  static async getTourGuideRatings(guideId: number, limit: number = 10): Promise<RatingData[]> {
+    const pool = getPool()
+
+    const [rows] = await pool.query(
+      `SELECT r.*, u.first_name, u.last_name, b.start_date, b.end_date
+       FROM ratings r
+       JOIN users u ON r.customer_id = u.user_id
+       JOIN bookings b ON r.booking_id = b.booking_id
+       WHERE r.tour_guide_id = ? AND r.rating_tourguide IS NOT NULL
+       ORDER BY r.created_at DESC
+       LIMIT ?`,
+      [guideId, limit]
+    ) as any
+
+    return (rows || []) as RatingData[]
+  }
+
+  /**
+   * Get all ratings for a driver
+   */
+  static async getDriverRatings(driverId: number, limit: number = 10): Promise<RatingData[]> {
+    const pool = getPool()
+
+    const [rows] = await pool.query(
+      `SELECT r.*, u.first_name, u.last_name, b.start_date, b.end_date
+       FROM ratings r
+       JOIN users u ON r.customer_id = u.user_id
+       JOIN bookings b ON r.booking_id = b.booking_id
+       WHERE r.driver_id = ? AND r.rating_driver IS NOT NULL
+       ORDER BY r.created_at DESC
+       LIMIT ?`,
+      [driverId, limit]
+    ) as any
+
+    return (rows || []) as RatingData[]
+  }
+
+  /**
+   * Check if a booking can be rated (completed and not yet rated)
+   */
+  static async canRateBooking(customerId: number, bookingId: number): Promise<boolean> {
+    const pool = getPool()
+
+    // Check if booking is completed and belongs to customer
+    const [bookingRows] = await pool.query(
+      `SELECT booking_id FROM bookings 
+       WHERE booking_id = ? AND user_id = ? AND status = 'completed'
+       LIMIT 1`,
+      [bookingId, customerId]
+    ) as any
+
+    if (!bookingRows || bookingRows.length === 0) {
+      return false
+    }
+
+    // Check if rating already exists
+    const [ratingRows] = await pool.query(
+      `SELECT rating_id FROM ratings WHERE booking_id = ? LIMIT 1`,
+      [bookingId]
+    ) as any
+
+    return !ratingRows || ratingRows.length === 0
   }
 }
