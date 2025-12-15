@@ -864,6 +864,7 @@ export class BookingService {
         p.amount as payment_amount,
         p.status as payment_status,
         p.payment_method,
+        p.refund_request as payment_refund_request,
         tg.first_name as tour_guide_first_name,
         tg.last_name as tour_guide_last_name,
         tg.phone_number as tour_guide_phone,

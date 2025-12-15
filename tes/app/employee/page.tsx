@@ -28,6 +28,7 @@ type Booking = {
   driver_last_name?: string | null
   payment_status?: string | null
   payment_amount?: number | null
+  payment_refund_request?: string | null
 }
 
 type TourGuide = {
@@ -978,11 +979,115 @@ export default function EmployeeDashboard() {
               )}
 
               <div className="space-y-3">
-                {tourGuides.length === 0 && (
-                  <p className="text-sm text-gray-600 text-center py-4">
-                    No tour guides available for the selected dates.
-                  </p>
-                )}
+                {/* Refund action (visible even if guides are available, for testing) */}
+                <div className="space-y-3 text-center py-4">
+                  {tourGuides.length === 0 && (
+                    <p className="text-sm text-gray-600">
+                      No tour guides available for the selected dates.
+                    </p>
+                  )}
+                  {selectedBooking.payment_status === 'completed' && selectedBooking.payment_refund_request == null && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            const response = await fetch('/api/payments/refund-request', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              credentials: 'include',
+                              body: JSON.stringify({ bookingId: selectedBooking.booking_id }),
+                            })
+
+                            const data = await response.json().catch(() => ({}))
+
+                            if (!response.ok) {
+                              throw new Error(data.error || 'Failed to request refund')
+                            }
+
+                            // Update local booking state
+                            setBookings((prev) =>
+                              prev.map((b) =>
+                                b.booking_id === selectedBooking.booking_id
+                                  ? { ...b, payment_refund_request: 'REFUND_REQUESTED' }
+                                  : b
+                              )
+                            )
+
+                            setSelectedBooking((prev) =>
+                              prev
+                                ? { ...prev, payment_refund_request: 'REFUND_REQUESTED' }
+                                : prev
+                            )
+
+                            // Show success popup
+                            setTimeout(() => {
+                              const popup = document.createElement('div')
+                              popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4'
+                              popup.innerHTML = `
+                                <div class="bg-white rounded-lg w-full max-w-md">
+                                  <div class="flex justify-between items-center p-6 border-b border-gray-200">
+                                    <h3 class="text-xl font-semibold text-emerald-800">Refund Requested</h3>
+                                    <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                                      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                      </svg>
+                                    </button>
+                                  </div>
+                                  <div class="p-6">
+                                    <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-4">
+                                      <p class="text-sm text-emerald-800">
+                                        Your refund request has been sent to the admin for approval.
+                                      </p>
+                                    </div>
+                                    <button onclick="this.closest('.fixed').remove()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded-lg transition-colors">
+                                      Close
+                                    </button>
+                                  </div>
+                                </div>
+                              `
+                              document.body.appendChild(popup)
+                            }, 100)
+                          } catch (error: any) {
+                            console.error('Error requesting refund:', error)
+                            setTimeout(() => {
+                              const popup = document.createElement('div')
+                              popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4'
+                              popup.innerHTML = `
+                                <div class="bg-white rounded-lg w-full max-w-md">
+                                  <div class="flex justify-between items-center p-6 border-b border-gray-200">
+                                    <h3 class="text-xl font-semibold text-red-800">Refund Request Failed</h3>
+                                    <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                                      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                      </svg>
+                                    </button>
+                                  </div>
+                                  <div class="p-6">
+                                    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                                      <p class="text-sm text-red-800">
+                                        ${error.message || 'We could not send the refund request. Please try again.'}
+                                      </p>
+                                    </div>
+                                    <button onclick="this.closest('.fixed').remove()" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition-colors">
+                                      Close
+                                    </button>
+                                  </div>
+                                </div>
+                              `
+                              document.body.appendChild(popup)
+                            }, 100)
+                          }
+                        }}
+                        className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium shadow-sm"
+                      >
+                        Request Refund
+                      </button>
+                  )}
+                  {selectedBooking.payment_refund_request === 'REFUND_REQUESTED' && (
+                    <p className="text-xs text-amber-700">
+                      Refund request already sent. Waiting for admin approval.
+                    </p>
+                  )}
+                </div>
                 {tourGuides.map((guide) => (
                     <button
                       key={`assign-guide-${guide.user_id}`}

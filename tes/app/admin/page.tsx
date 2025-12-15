@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Star, UserPlus, Users, X, LogOut, BarChart3, Shield, Lock, Tag, RefreshCcw, CheckCircle, XCircle } from "lucide-react"
+import { Star, UserPlus, Users, X, LogOut, BarChart3, Shield, Lock, Tag, RefreshCcw, CheckCircle, XCircle, Bell } from "lucide-react"
 
 type Employee = {
   id: number
@@ -62,12 +62,26 @@ type ChangeRequest = {
   processed_by_last_name?: string
 }
 
+type RefundRequest = {
+  payment_id: number
+  booking_id: number
+  amount: number
+  payment_status: string
+  payment_method: string
+  refund_request: string
+  booking_status: string
+  start_date: string
+  end_date: string
+  customer_first_name: string
+  customer_last_name: string
+  customer_email: string
+}
+
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<"dashboard" | "ratings" | "customers" | "promotions" | "requests">("dashboard")
+  const [activeTab, setActiveTab] = useState<"dashboard" | "ratings" | "customers" | "promotions" | "requests" | "refunds">("dashboard")
   const [showRegisterModal, setShowRegisterModal] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string>('')
-
   // Check authentication on mount
   useEffect(() => {
     checkAuth()
@@ -157,6 +171,7 @@ export default function AdminDashboard() {
       fetchChangeRequests()
       fetchTours()
       fetchPromotions()
+      fetchRefundRequests()
     } catch (e) {
       // Show error popup before redirecting to login
       setTimeout(() => {
@@ -224,6 +239,8 @@ export default function AdminDashboard() {
   const [selectedNewDriverId, setSelectedNewDriverId] = useState<string>('')
   const [availableGuides, setAvailableGuides] = useState<any[]>([])
   const [availableDrivers, setAvailableDrivers] = useState<any[]>([])
+  const [refundRequests, setRefundRequests] = useState<RefundRequest[]>([])
+  const [loadingRefundRequests, setLoadingRefundRequests] = useState(false)
 
   // Promotion states
   const [promotions, setPromotions] = useState<any[]>([])
@@ -246,6 +263,20 @@ export default function AdminDashboard() {
       setEmployees(Array.isArray(data?.employees) ? data.employees : [])
     } catch (e) {
       // keep empty state on failure
+    }
+  }
+
+  const fetchRefundRequests = async () => {
+    setLoadingRefundRequests(true)
+    try {
+      const res = await fetch('/api/payments/refund-requests', { credentials: 'include' })
+      if (!res.ok) throw new Error('Failed to load refund requests')
+      const data = await res.json()
+      setRefundRequests(Array.isArray(data?.refundRequests) ? data.refundRequests : [])
+    } catch (e) {
+      // keep empty state on failure
+    } finally {
+      setLoadingRefundRequests(false)
     }
   }
 
@@ -817,6 +848,26 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
                 </span>
               </div>
             </button>
+            <button
+              onClick={() => setActiveTab("refunds")}
+              className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === "refunds"
+                  ? "border-green-600 text-green-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <Bell className="w-5 h-5" />
+                <span>
+                  Refund Requests
+                  {refundRequests.length > 0 && (
+                    <span className="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+                      {refundRequests.length}
+                    </span>
+                  )}
+                </span>
+              </div>
+            </button>
           </div>
         </div>
       </nav>
@@ -1307,6 +1358,96 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
                     <RefreshCcw className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-500">No change requests</p>
                     <p className="text-sm text-gray-400">Customer requests will appear here</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Refund Requests Tab */}
+        {activeTab === "refunds" && (
+          <div>
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Refund Requests</h2>
+              <p className="text-gray-600 mt-1">Approve refunds for bookings with no available tour guides.</p>
+            </div>
+
+            {loadingRefundRequests ? (
+              <div className="flex justify-center items-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+              </div>
+            ) : (
+              <div className="bg-white shadow-sm rounded-lg overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Booking</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {refundRequests.map((req) => (
+                      <tr key={req.payment_id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {req.customer_first_name} {req.customer_last_name}
+                          </div>
+                          <div className="text-sm text-gray-500">{req.customer_email}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900">Booking #{req.booking_id}</div>
+                          <div className="text-xs text-gray-500">
+                            {new Date(req.start_date).toLocaleDateString()} - {new Date(req.end_date).toLocaleDateString()}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          ETB {Number(req.amount).toFixed(2)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            {req.refund_request || 'REFUND_REQUESTED'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                          <button
+                            onClick={async () => {
+                              if (!confirm('Approve refund for this payment?')) return
+                              try {
+                                const res = await fetch('/api/payments/refund-approve', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  credentials: 'include',
+                                  body: JSON.stringify({ paymentId: req.payment_id }),
+                                })
+                                const data = await res.json().catch(() => ({}))
+                                if (!res.ok) {
+                                  alert(data.error || 'Failed to approve refund')
+                                  return
+                                }
+                                alert('Refund approved and payment marked as refunded.')
+                                fetchRefundRequests()
+                              } catch {
+                                alert('Failed to approve refund')
+                              }
+                            }}
+                            className="text-green-600 hover:text-green-900 font-medium"
+                          >
+                            Approve
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {refundRequests.length === 0 && (
+                  <div className="text-center py-12">
+                    <Bell className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">No refund requests</p>
+                    <p className="text-sm text-gray-400">Refund requests from employees will appear here.</p>
                   </div>
                 )}
               </div>

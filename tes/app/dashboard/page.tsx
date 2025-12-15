@@ -33,6 +33,7 @@ interface Booking {
   payment_amount?: number
   payment_status?: string
   payment_method?: string
+  payment_refund_request?: string | null
   number_of_people?: number
   has_rating?: boolean
 }
@@ -480,11 +481,28 @@ export default function CustomerDashboard() {
                       )}
                       
                       {booking.payment_status && (
-                        <div className="mt-2 text-sm">
-                          <span className="text-gray-600">Payment: </span>
-                          <span className={`font-medium ${booking.payment_status === 'completed' ? 'text-green-600' : 'text-yellow-600'}`}>
-                            {booking.payment_status} {booking.payment_method && `via ${booking.payment_method}`}
-                          </span>
+                        <div className="mt-2 text-sm space-y-1">
+                          <div>
+                            <span className="text-gray-600">Payment: </span>
+                            <span className={`font-medium ${
+                              booking.payment_status === 'completed'
+                                ? 'text-green-600'
+                                : booking.payment_status === 'refunded'
+                                ? 'text-red-600'
+                                : 'text-yellow-600'
+                            }`}>
+                              {booking.payment_status} {booking.payment_method && `via ${booking.payment_method}`}
+                            </span>
+                          </div>
+                          {booking.payment_status === 'refunded' && (
+                            <div className="mt-1 bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-800">
+                              <p className="font-semibold mb-1">We’re sorry for the inconvenience.</p>
+                              <p>
+                                We could not find available tour guides for your selected dates.
+                                We have returned the money back to you. Thank you for choosing Tes Tour.
+                              </p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
