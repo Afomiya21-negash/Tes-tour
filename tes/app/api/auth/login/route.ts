@@ -10,10 +10,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Missing credentials' }, { status: 400 })
     }
 
-    const result = await AuthService.login(emailOrUsername, password)
-    if (!result) {
+    const detailedResult = await AuthService.loginDetailed(emailOrUsername, password)
+    if (!detailedResult.ok) {
+      if (detailedResult.reason === 'EMAIL_NOT_VERIFIED') {
+        return NextResponse.json({ 
+          message: 'Please verify your email before logging in. Check your inbox for the verification link.' 
+        }, { status: 403 })
+      }
       return NextResponse.json({ message: 'Invalid credentials' }, { status: 401 })
     }
+
+    const result = detailedResult.result
 
     const token = signJwt({ user_id: result.userID, role: result.role })
     const res = NextResponse.json({ user_id: result.userID, username: result.username, role: result.role })
