@@ -103,10 +103,10 @@ export default function SignupForm() {
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">Registration Successful!</h3>
             <p className="text-gray-600 mb-4">
-              A verification email has been sent to your email address.
+              A verification email has been sent to your email address. Please check your inbox (and spam folder) for the verification link.
             </p>
             <p className="text-sm text-gray-500 mb-6">
-              Please check your console logs for the verification link (in local development).
+              Click the link in the email to verify your account. The link will expire in 24 hours.
             </p>
             <button
               onClick={() => router.push('/login')}

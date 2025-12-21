@@ -94,13 +94,13 @@ export class AuthService {
     password: string
   ): Promise<
     | { ok: true; result: LoginResult; rehashed?: boolean }
-    | { ok: false; reason: 'NOT_FOUND' | 'INVALID_PASSWORD' | 'DB_ERROR' }
+    | { ok: false; reason: 'NOT_FOUND' | 'INVALID_PASSWORD' | 'DB_ERROR' | 'EMAIL_NOT_VERIFIED' }
   > {
     try {
       const pool = getPool()
       const id = (emailOrUsername || '').trim()
       const [rows] = (await pool.query(
-        'SELECT user_id, username, email, password_hash, role FROM users WHERE email = ? OR username = ? LIMIT 1',
+        'SELECT user_id, username, email, password_hash, role, email_verified FROM users WHERE email = ? OR username = ? LIMIT 1',
         [id, id]
       )) as any
 
@@ -129,6 +129,11 @@ export class AuthService {
       }
 
       if (!valid) return { ok: false, reason: 'INVALID_PASSWORD' }
+
+      // Check if email is verified (only for customer role)
+      if (user.role === 'customer' && !user.email_verified) {
+        return { ok: false, reason: 'EMAIL_NOT_VERIFIED' }
+      }
 
       return {
         ok: true,
@@ -174,6 +179,10 @@ export class Guest {
 
     const pool = getPool()
     const conn = await pool.getConnection()
+    
+    // Start transaction to ensure atomicity
+    await conn.beginTransaction()
+    
     try {
       await AuthService.ensureUniqueUsernameEmail(conn, username, email)
 
@@ -182,6 +191,8 @@ export class Guest {
       const lName = lastName ?? ''
 
       let result: any
+      let userId: number
+      
       try {
         // Discover available columns to avoid schema mismatches (best-effort)
         const [userColsRows] = (await conn.query(
@@ -202,6 +213,7 @@ export class Guest {
         if (availableCols.has('last_name')) push('last_name', lName)
         if (availableCols.has('phone_number')) push('phone_number', phoneNo || null)
         push('role', 'customer')
+        if (availableCols.has('email_verified')) push('email_verified', false)
 
         const placeholders = cols.map(() => '?').join(', ')
         const [ins] = (await conn.query(
@@ -209,17 +221,36 @@ export class Guest {
           vals
         )) as any
         result = ins
-      } catch {
+        userId = result.insertId as number
+        console.log(`✅ User created in users table with user_id: ${userId}`)
+      } catch (userInsertError: any) {
+        console.error('❌ Error in first user insert attempt:', userInsertError.message)
         // Fallback to known schema from tes_tour.sql
-        const [ins] = (await conn.query(
-          `INSERT INTO users (username, email, password_hash, first_name, last_name, phone_number, role)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [username, email, password_hash, fName, lName, phoneNo || null, 'customer']
-        )) as any
-        result = ins
+        try {
+          const [ins] = (await conn.query(
+            `INSERT INTO users (username, email, password_hash, first_name, last_name, phone_number, role, email_verified)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [username, email, password_hash, fName, lName, phoneNo || null, 'customer', false]
+          )) as any
+          result = ins
+          userId = result.insertId as number
+          console.log(`✅ User created in users table (fallback) with user_id: ${userId}`)
+        } catch (fallbackError: any) {
+          console.error('❌ Error in fallback user insert:', fallbackError.message)
+          throw new Error(`Failed to create user: ${fallbackError.message}`)
+        }
       }
 
-      const userId = result.insertId as number
+      // Verify user was actually inserted
+      const [verifyRows] = (await conn.query(
+        `SELECT user_id, username, email FROM users WHERE user_id = ?`,
+        [userId]
+      )) as any
+      
+      if (!verifyRows || verifyRows.length === 0) {
+        throw new Error(`User was not saved to database. user_id: ${userId}`)
+      }
+      console.log(`✅ Verified user exists in database:`, verifyRows[0])
 
       // Insert into customers table (create table if it doesn't exist)
       try {
@@ -259,12 +290,42 @@ export class Guest {
 
       // Generate and store email verification token
       const verificationToken = generateVerificationToken()
-      await storeVerificationToken(userId, verificationToken)
+      const expiresAt = new Date()
+      expiresAt.setHours(expiresAt.getHours() + 24) // 24 hour expiry
       
-      // Send verification email
-      await sendVerificationEmail(email, verificationToken, 'customer')
+      // Store token using the same connection (within transaction)
+      await conn.query(
+        `UPDATE users 
+         SET verification_token = ?, 
+             verification_token_expires = ?,
+             email_verified = FALSE
+         WHERE user_id = ?`,
+        [verificationToken, expiresAt, userId]
+      )
+      console.log(`✅ Verification token stored for user_id: ${userId}`)
 
+      // Commit transaction FIRST - ensure user is saved before sending email
+      await conn.commit()
+      console.log(`✅ Transaction committed successfully for user_id: ${userId}`)
+      
+      // Send verification email AFTER commit (don't let email errors prevent user creation)
+      try {
+        await sendVerificationEmail(email, verificationToken, 'customer')
+      } catch (emailError: any) {
+        // Log but don't fail - user is already created and committed
+        console.error('⚠️ Email sending failed, but user was created:', emailError.message)
+      }
+      
       return { user_id: userId, username, email, role: 'customer' }
+    } catch (error: any) {
+      // Rollback on any error
+      try {
+        await conn.rollback()
+        console.error('❌ Transaction rolled back due to error:', error.message)
+      } catch (rollbackError) {
+        console.error('❌ Error during rollback:', rollbackError)
+      }
+      throw error
     } finally {
       conn.release()
     }

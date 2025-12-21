@@ -148,13 +148,16 @@ export async function isEmailVerified(userId: number): Promise<boolean> {
 }
 
 // Create email transporter
-// Option 1: Use Gmail (requires App Password)
-// Option 2: Use Mailtrap for testing (recommended for development)
+// Supports multiple email service configurations:
+// Option 1: Gmail (requires App Password)
+// Option 2: Generic SMTP (for any email provider)
+// Option 3: Mailtrap for testing
 function createTransporter() {
-  // For Gmail: Set up an App Password at https://myaccount.google.com/apppasswords
+  // Option 1: Gmail with App Password
+  // Set up an App Password at https://myaccount.google.com/apppasswords
   // Then set GMAIL_USER and GMAIL_APP_PASSWORD in your .env.local
-  
   if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+    console.log('📧 Using Gmail transporter')
     return nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -164,9 +167,34 @@ function createTransporter() {
     })
   }
   
-  // Fallback to Mailtrap for testing
+  // Option 2: Generic SMTP (works with Gmail, Outlook, Yahoo, custom SMTP, etc.)
+  // Configure these in .env.local:
+  // SMTP_HOST=smtp.gmail.com (or smtp.office365.com, smtp.mail.yahoo.com, etc.)
+  // SMTP_PORT=587 (or 465 for SSL)
+  // SMTP_SECURE=false (or true for port 465)
+  // SMTP_USER=your-email@gmail.com
+  // SMTP_PASS=your-app-password-or-password
+  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+    console.log('📧 Using generic SMTP transporter:', process.env.SMTP_HOST)
+    return nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: process.env.SMTP_SECURE === 'true' || process.env.SMTP_PORT === '465',
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+      },
+      // For Gmail and some providers, you may need these options
+      tls: {
+        rejectUnauthorized: false
+      }
+    })
+  }
+  
+  // Option 3: Mailtrap for testing
   // Sign up at https://mailtrap.io/ and get your credentials
   if (process.env.MAILTRAP_USER && process.env.MAILTRAP_PASS) {
+    console.log('📧 Using Mailtrap transporter')
     return nodemailer.createTransport({
       host: 'sandbox.smtp.mailtrap.io',
       port: 2525,
@@ -178,6 +206,11 @@ function createTransporter() {
   }
   
   // If no credentials, return null (will fallback to console logging)
+  console.warn('⚠️ No email service configured. Emails will be logged to console only.')
+  console.warn('⚠️ To send real emails, configure one of the following in .env.local:')
+  console.warn('   - Gmail: GMAIL_USER and GMAIL_APP_PASSWORD')
+  console.warn('   - Generic SMTP: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS')
+  console.warn('   - Mailtrap: MAILTRAP_USER and MAILTRAP_PASS')
   return null
 }
 
@@ -185,10 +218,24 @@ function createTransporter() {
 export async function sendVerificationEmail(email: string, token: string, role: string) {
   const verificationUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/verify-email?token=${token}`
   
+  // Debug: Log environment variables (without exposing passwords)
+  console.log('\n📧 Email Configuration Check:')
+  console.log('  GMAIL_USER:', process.env.GMAIL_USER ? '✅ Set' : '❌ Not set')
+  console.log('  GMAIL_APP_PASSWORD:', process.env.GMAIL_APP_PASSWORD ? '✅ Set' : '❌ Not set')
+  console.log('  SMTP_HOST:', process.env.SMTP_HOST || '❌ Not set')
+  console.log('  SMTP_USER:', process.env.SMTP_USER ? '✅ Set' : '❌ Not set')
+  console.log('  SMTP_PASS:', process.env.SMTP_PASS ? '✅ Set' : '❌ Not set')
+  console.log('  MAILTRAP_USER:', process.env.MAILTRAP_USER ? '✅ Set' : '❌ Not set')
+  console.log('  MAILTRAP_PASS:', process.env.MAILTRAP_PASS ? '✅ Set' : '❌ Not set')
+  console.log('')
+  
   const transporter = createTransporter()
   
   if (!transporter) {
     // Fallback to console logging if no email service configured
+    console.error('\n❌ ERROR: No email service configured!')
+    console.error('   The verification link is shown below, but no email was sent.')
+    console.error('   Please configure email settings in .env.local file.\n')
     logVerificationEmail(email, token, role)
     return
   }
@@ -279,10 +326,59 @@ export async function sendVerificationEmail(email: string, token: string, role: 
     if (process.env.MAILTRAP_USER) {
       console.log('Preview URL:', nodemailer.getTestMessageUrl(info))
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error sending verification email:', error)
-    // Fallback to console logging
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      command: error.command,
+      response: error.response,
+      responseCode: error.responseCode
+    })
+    
+    // If it's an authentication error, provide helpful guidance
+    if (error.code === 'EAUTH' || error.responseCode === 535 || error.message?.includes('BadCredentials') || error.message?.includes('Invalid login')) {
+      console.error('\n⚠️ GMAIL AUTHENTICATION FAILED - Troubleshooting Steps:')
+      console.error('')
+      console.error('1. ✅ Verify 2-Step Verification is ENABLED:')
+      console.error('   → Go to: https://myaccount.google.com/security')
+      console.error('   → Make sure "2-Step Verification" is ON')
+      console.error('')
+      console.error('2. ✅ Generate a NEW App Password:')
+      console.error('   → Go to: https://myaccount.google.com/apppasswords')
+      console.error('   → Select "Mail" and "Other (Custom name)"')
+      console.error('   → Name it "Tes Tour" and click Generate')
+      console.error('   → Copy the 16-character password (no spaces)')
+      console.error('')
+      console.error('3. ✅ Update .env.local file:')
+      console.error('   → Make sure GMAIL_USER=your-email@gmail.com')
+      console.error('   → Make sure GMAIL_APP_PASSWORD=the-16-char-password (NO SPACES)')
+      console.error('   → Restart your server after updating')
+      console.error('')
+      console.error('4. ✅ Common mistakes to avoid:')
+      console.error('   → Don\'t use your regular Gmail password')
+      console.error('   → Don\'t include spaces in the App Password')
+      console.error('   → Make sure the email matches the account with 2-Step enabled')
+      console.error('')
+      console.error('📧 For now, the verification link is shown in console below:')
+      console.error('')
+      
+      // Still log the email so user can verify manually
+      logVerificationEmail(email, token, role)
+      
+      // Don't throw error - allow signup to succeed, user can verify via console link
+      // This prevents blocking user registration if email config is wrong
+      return
+    }
+    
+    // For other errors, still log but don't block signup
+    console.error('\n⚠️ Email sending failed, but user registration succeeded.')
+    console.error('📧 Verification link is shown below:')
+    console.error('')
     logVerificationEmail(email, token, role)
+    
+    // Don't throw error - allow signup to complete
+    return
   }
 }
 
