@@ -2,9 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Leaflet CSS for OpenStreetMap */
-@import 'leaflet/dist/leaflet.css';
-
 
 @custom-variant dark (&:is(.dark *));
 
