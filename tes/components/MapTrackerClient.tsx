@@ -71,6 +71,8 @@ export default function MapTrackerClient({
   const [wasReplaced, setWasReplaced] = useState(false)
   const [replacementInfo, setReplacementInfo] = useState<any>(null)
   const [checkingAssignment, setCheckingAssignment] = useState(true)
+  const [destinationCoords, setDestinationCoords] = useState<{ latitude: number; longitude: number } | null>(null)
+  const [destinationName, setDestinationName] = useState<string>('')
 
   // Custom marker icons
   const createCustomIcon = (color: string) => {
@@ -85,6 +87,27 @@ export default function MapTrackerClient({
   const tourGuideIcon = createCustomIcon('#10B981') // Green
   const customerIcon = createCustomIcon('#3B82F6') // Blue
   const driverIcon = createCustomIcon('#EF4444') // Red
+
+  // Fetch destination coordinates from tours table
+  useEffect(() => {
+    const fetchDestination = async () => {
+      try {
+        const response = await fetch(`/api/tour/destination/${bookingId}`, {
+          credentials: 'include'
+        })
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.destination?.coordinates) {
+            setDestinationCoords(data.destination.coordinates)
+            setDestinationName(data.destination.name || 'Destination')
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching destination:', error)
+      }
+    }
+    fetchDestination()
+  }, [bookingId])
 
   // Check if tour guide or driver has been replaced
   useEffect(() => {
@@ -178,17 +201,19 @@ export default function MapTrackerClient({
           }
         }
         
-        // Update map center ONLY if:
-        // 1. Not actively tracking own location
-        // 2. Not following own location
-        // 3. Don't have own current position
-        if (centerLocation && !isTracking && !myCurrentPosition) {
+        // Update map center based on priority:
+        // 1. If tracking own location and following it, use own position
+        // 2. Otherwise use fetched participant location
+        if (isTracking && myCurrentPosition && followMyLocation) {
+          // Don't update center here - it's handled by updateMyLocation
+          console.log('Following own location, not updating from fetched data')
+        } else if (centerLocation && !isTracking && !myCurrentPosition) {
           setMapCenter([centerLocation.lat, centerLocation.lng])
           setHasSetInitialCenter(true)
           console.log('Map centered at other participant:', centerLocation)
         } else if (centerLocation && !isTracking && myCurrentPosition) {
           console.log('Ignoring fetched location - using own position')
-        } else if (!centerLocation) {
+        } else if (!centerLocation && !myCurrentPosition) {
           console.log('No participant locations available yet')
         }
       } else {
@@ -218,6 +243,7 @@ export default function MapTrackerClient({
       // Always update map center to follow current location when tracking
       if (isTracking && followMyLocation) {
         setMapCenter([currentLat, currentLng])
+        setHasSetInitialCenter(true)
         console.log('Map center updated to current position:', currentLat, currentLng)
       }
       
@@ -267,12 +293,12 @@ export default function MapTrackerClient({
 
   // Retry with lower accuracy if high accuracy fails
   const retryWithLowerAccuracy = () => {
-    console.log('Retrying location with lower accuracy (WiFi/Cell towers)...')
+    console.log('🔄 Retrying location with lower accuracy (WiFi/Cell towers)...')
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const lat = position.coords.latitude
         const lng = position.coords.longitude
-        console.log('Position obtained with lower accuracy:', {
+        console.log('✅ Position obtained with lower accuracy:', {
           lat: lat,
           lng: lng,
           accuracy: position.coords.accuracy
@@ -288,7 +314,7 @@ export default function MapTrackerClient({
         // Safe error logging
         try {
           if (error && typeof error === 'object' && Object.keys(error).length > 0) {
-            console.log('Lower accuracy failed:', {
+            console.log('❌ Lower accuracy failed:', {
               code: error?.code,
               message: error?.message
             })
@@ -296,23 +322,23 @@ export default function MapTrackerClient({
         } catch (logError) {
           // Ignore logging errors
         }
-        
+
         // Handle error
         if (error?.code === 1) {
-          setError('Location permission denied. Please enable location access in your browser settings.')
+          setError('🚫 Location permission denied. Click the location icon 📍 in your browser address bar and select "Allow".')
         } else if (error?.code === 2) {
-          setError('Location information unavailable. Please check your device settings and ensure GPS is enabled.')
+          setError('📍 Location unavailable. Please check: 1) Device location is ON in system settings, 2) Browser has location permission.')
         } else if (error?.code === 3) {
-          setError('Unable to get location. Please ensure location services are enabled and try moving outdoors.')
+          setError('⏱️ Location timeout. Try: 1) Move outdoors, 2) Wait 30 seconds, 3) Use a mobile phone instead of laptop.')
         } else {
-          setError('Unable to access location. Please ensure location services are enabled and try again.')
+          setError('❌ Cannot access location. Please enable location services in your device settings and browser.')
         }
         setIsTracking(false)
       },
       {
         enableHighAccuracy: false,  // Use WiFi/cell towers (faster but less accurate)
-        timeout: 10000,             // 10 second timeout
-        maximumAge: 10000           // Accept cached position up to 10 seconds old
+        timeout: 15000,             // 15 second timeout (more generous)
+        maximumAge: 60000           // Accept cached position up to 60 seconds old
       }
     )
   }
@@ -333,7 +359,7 @@ export default function MapTrackerClient({
     setIsTracking(true)
     setError('')
     setJourneyStartTime(new Date())
-    
+
     console.log('Starting location tracking...')
 
     // Check if geolocation is available
@@ -345,12 +371,12 @@ export default function MapTrackerClient({
       return
     }
 
-    // Get initial position
+    // Get initial position with LOWER accuracy first (faster, more reliable)
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const lat = position.coords.latitude
         const lng = position.coords.longitude
-        console.log('Initial position obtained:', {
+        console.log('✅ Initial position obtained:', {
           lat: lat,
           lng: lng,
           accuracy: position.coords.accuracy
@@ -360,12 +386,13 @@ export default function MapTrackerClient({
         setMapCenter([lat, lng])
         setHasSetInitialCenter(true)
         updateMyLocation(position)
+        setError('') // Clear any errors
       },
       (error) => {
         // Enhanced error logging for debugging - wrapped in try-catch
         try {
           if (error && typeof error === 'object' && Object.keys(error).length > 0) {
-            console.log('Geolocation error details:', {
+            console.log('❌ Geolocation error details:', {
               code: error?.code,
               message: error?.message,
               type: typeof error
@@ -374,51 +401,66 @@ export default function MapTrackerClient({
         } catch (logError) {
           // Ignore logging errors
         }
-        
+
         // Handle the actual error
         // If timeout, retry with lower accuracy (WiFi/cell towers instead of GPS)
         if (error?.code === 3) {
+          console.log('⏱️ Timeout - retrying with lower accuracy...')
           const errorMessage = getGeolocationErrorMessage(error)
           setError(errorMessage)
           retryWithLowerAccuracy()
         } else if (error?.code === 1) {
           // Permission denied
+          console.log('🚫 Permission denied')
           setError('Location permission denied. Please enable location access in your browser settings.')
           setIsTracking(false)
         } else if (error?.code === 2) {
           // Position unavailable
+          console.log('📍 Position unavailable')
           setError('Location information unavailable. Please check your device settings and ensure GPS is enabled.')
           setIsTracking(false)
         } else {
           // Unknown error or empty error object
+          console.log('❓ Unknown error')
           setError('Unable to access location. Please ensure location services are enabled and try again.')
           setIsTracking(false)
         }
       },
       {
-        enableHighAccuracy: true,  // Force GPS instead of WiFi/cell towers
-        timeout: 20000,            // Wait up to 20 seconds for GPS lock
-        maximumAge: 0              // Never use cached position
+        enableHighAccuracy: false,  // Start with WiFi/cell towers (faster!)
+        timeout: 10000,             // Wait up to 10 seconds
+        maximumAge: 30000           // Accept cached position up to 30 seconds old
       }
     )
 
     // Watch position changes - this continuously tracks movement
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
-        console.log('Position update received:', {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
+        const lat = position.coords.latitude
+        const lng = position.coords.longitude
+        console.log('📍 Position update received:', {
+          lat: lat,
+          lng: lng,
           accuracy: position.coords.accuracy,
           speed: position.coords.speed
         })
         setCurrentLocation(position)
+        setMyCurrentPosition([lat, lng])
+        // Update map center if following location
+        if (followMyLocation) {
+          setMapCenter([lat, lng])
+        }
         updateMyLocation(position)
+        // Clear any previous errors on successful update
+        if (error) {
+          setError('')
+        }
       },
       (error) => {
         // Enhanced error logging for debugging - wrapped in try-catch
         try {
           if (error && typeof error === 'object' && Object.keys(error).length > 0) {
-            console.log('Watch position error details:', {
+            console.log('⚠️ Watch position error details:', {
               code: error?.code,
               message: error?.message,
               type: typeof error
@@ -427,22 +469,25 @@ export default function MapTrackerClient({
         } catch (logError) {
           // Ignore logging errors
         }
-        
-        // Handle the actual error
+
+        // Handle the actual error - but don't stop tracking on timeout
         if (error?.code === 1) {
           setError('Location permission denied. Please enable location access in your browser settings.')
+          setIsTracking(false)
         } else if (error?.code === 2) {
-          setError('Location information unavailable. Please check your device settings and ensure GPS is enabled.')
+          console.log('⚠️ Position unavailable - continuing to try...')
+          // Don't show error, just log it - GPS might come back
         } else if (error?.code === 3) {
-          setError('Location tracking timeout. Please ensure GPS is enabled.')
+          console.log('⏱️ Timeout - continuing to try...')
+          // Don't show error on timeout - GPS might be slow
         } else {
-          setError('Unable to track location. Please ensure location services are enabled and try again.')
+          console.log('❓ Unknown watch error - continuing to try...')
         }
       },
       {
-        enableHighAccuracy: true,  // Force GPS instead of WiFi/cell towers
-        timeout: 10000,            // Wait up to 10 seconds for position updates
-        maximumAge: 5000           // Accept positions up to 5 seconds old for smoother tracking
+        enableHighAccuracy: false,  // Use WiFi/cell towers (more reliable)
+        timeout: 15000,             // Wait up to 15 seconds for position updates
+        maximumAge: 10000           // Accept positions up to 10 seconds old for smoother tracking
       }
     )
 
@@ -480,6 +525,7 @@ export default function MapTrackerClient({
   // Auto-start tracking for tour guide when journey is active
   useEffect(() => {
     if (userRole === 'tourguide' && isJourneyActive && !isTracking) {
+      console.log('Journey is active, auto-starting location tracking for tourguide...')
       startTracking()
     }
   }, [userRole, isJourneyActive])
@@ -804,9 +850,41 @@ export default function MapTrackerClient({
           
           <MapRecenter center={mapCenter} />
 
+          {/* Show tourguide's own location marker when tracking */}
+          {userRole === 'tourguide' && isTracking && myCurrentPosition && (
+            <Marker
+              key="tourguide-own-location"
+              position={myCurrentPosition}
+              icon={tourGuideIcon}
+            >
+              <Popup>
+                <div className="text-center">
+                  <p className="font-semibold text-green-600">Your Location (Live)</p>
+                  <p className="text-sm text-gray-600">Tour Guide</p>
+                  {currentLocation?.coords.accuracy && (
+                    <p className="text-xs text-gray-500">
+                      Accuracy: ±{currentLocation.coords.accuracy.toFixed(0)}m
+                    </p>
+                  )}
+                  {currentLocation?.coords.speed !== null && currentLocation?.coords.speed !== undefined && (
+                    <p className="text-xs text-gray-500">
+                      Speed: {(currentLocation.coords.speed * 3.6).toFixed(1)} km/h
+                    </p>
+                  )}
+                  <p className="text-xs text-green-600 mt-1">📍 Tracking Active</p>
+                </div>
+              </Popup>
+            </Marker>
+          )}
+
           {/* Markers for all participants */}
           {participants.map((participant) => {
             if (!participant.latest_location) return null
+            
+            // Skip showing tourguide in participants list if we're already showing their own location marker above
+            if (userRole === 'tourguide' && participant.user_type === 'tourguide' && isTracking && myCurrentPosition) {
+              return null
+            }
             
             const position: [number, number] = [
               parseFloat(participant.latest_location.latitude.toString()),
@@ -832,14 +910,74 @@ export default function MapTrackerClient({
             )
           })}
 
-          {/* Route path (polyline) */}
+          {/* Destination marker */}
+          {destinationCoords && (
+            <Marker
+              position={[destinationCoords.latitude, destinationCoords.longitude]}
+              icon={L.divIcon({
+                className: 'destination-marker',
+                html: `<div style="background-color: #EF4444; width: 30px; height: 30px; border-radius: 50%; border: 4px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;">
+                  <span style="color: white; font-size: 16px; font-weight: bold;">📍</span>
+                </div>`,
+                iconSize: [30, 30],
+                iconAnchor: [15, 15],
+              })}
+            >
+              <Popup>
+                <div className="text-center">
+                  <p className="font-semibold text-red-600">Destination</p>
+                  <p className="text-sm text-gray-600">{destinationName}</p>
+                </div>
+              </Popup>
+            </Marker>
+          )}
+
+          {/* Route path from tourguide to destination */}
+          {destinationCoords && (
+            (() => {
+              // Get tourguide location - prefer own tracked location, fallback to participants
+              let tourguideLat: number | null = null
+              let tourguideLng: number | null = null
+              
+              if (userRole === 'tourguide' && isTracking && myCurrentPosition) {
+                tourguideLat = myCurrentPosition[0]
+                tourguideLng = myCurrentPosition[1]
+              } else {
+                const tourguide = participants.find(p => p.user_type === 'tourguide' && p.latest_location)
+                if (tourguide?.latest_location) {
+                  tourguideLat = parseFloat(tourguide.latest_location.latitude.toString())
+                  tourguideLng = parseFloat(tourguide.latest_location.longitude.toString())
+                }
+              }
+              
+              if (tourguideLat !== null && tourguideLng !== null) {
+                return (
+                  <Polyline
+                    positions={[
+                      [tourguideLat, tourguideLng],
+                      [destinationCoords.latitude, destinationCoords.longitude]
+                    ] as [number, number][]}
+                    pathOptions={{
+                      color: '#3B82F6',
+                      weight: 4,
+                      opacity: 0.7,
+                      dashArray: '10, 10'
+                    }}
+                  />
+                )
+              }
+              return null
+            })()
+          )}
+
+          {/* Route path (polyline) - historical path */}
           {routePath.length > 1 && (
             <Polyline
               positions={routePath.map(p => [p.lat, p.lng] as [number, number])}
               pathOptions={{
                 color: '#10B981',
-                weight: 4,
-                opacity: 0.8
+                weight: 3,
+                opacity: 0.6
               }}
             />
           )}

@@ -52,7 +52,9 @@ export async function GET(request: NextRequest) {
         tg.last_name as tour_guide_last_name,
         tg.email as tour_guide_email,
         p.status as payment_status,
-        p.amount as payment_amount
+        p.amount as payment_amount,
+        p.refund_request as payment_refund_request,
+        b.booking_date
       FROM bookings b
       LEFT JOIN users u ON b.user_id = u.user_id
       LEFT JOIN tours t ON b.tour_id = t.tour_id

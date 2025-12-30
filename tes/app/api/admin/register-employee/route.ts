@@ -11,12 +11,11 @@ function genUsername(name: string, email: string) {
 }
 
 function genTempPassword() {
-  // 12 chars mixed, restricted to specials recognized by Validators.isStrongPassword
+  // 12 chars mixed, meets Validators.isStrongPassword
   const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
   const lower = 'abcdefghijkmnopqrstuvwxyz'
   const digits = '23456789'
-  // Must match /[!@#$%^&*(),.?":{}|<>]/ in Validators.isStrongPassword
-  const specials = '!@#$%^&*(),.?":{}|<>'
+  const specials = '!@#$%^&*()_+[]{}~'
   const all = upper + lower + digits + specials
   const pick = (s: string) => s[Math.floor(Math.random() * s.length)]
   const ensure = [pick(upper), pick(lower), pick(digits), pick(specials)]

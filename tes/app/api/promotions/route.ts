@@ -77,20 +77,14 @@ export async function POST(request: NextRequest) {
       discountValue = 0
     }
 
-    // Generate next promoid explicitly (schema may not auto-increment)
-    const [idRows] = await pool.execute('SELECT COALESCE(MAX(promoid), 0) + 1 AS nextId FROM promotion') as any
-    const nextId = (Array.isArray(idRows) && idRows[0] && idRows[0].nextId) ? idRows[0].nextId : 1
-
-    // Insert promotion with explicit promoid
+    // Insert promotion
     const [result] = await pool.execute(`
       INSERT INTO promotion (
-        promoid,
         tour_id,
         dis,
         date
-      ) VALUES (?, ?, ?, ?)
+      ) VALUES (?, ?, ?)
     `, [
-      nextId,
       tour_id,
       discountValue,
       start_date || new Date().toISOString().split('T')[0]

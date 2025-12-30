@@ -1,6 +1,5 @@
 import { getPool } from '@/lib/db'
 import { hashPassword, verifyPassword, signJwt } from '@/lib/auth'
-import { cache } from '@/lib/cache'
 
 // Shared types
 export type UserRole = 'customer' | 'admin' | 'employee' | 'tourguide' | 'driver'
@@ -180,43 +179,11 @@ export class Guest {
       const fName = firstName ?? ''
       const lName = lastName ?? ''
 
-      let result: any
-      try {
-        // Discover available columns to avoid schema mismatches (best-effort)
-        const [userColsRows] = (await conn.query(
-          `SELECT column_name FROM information_schema.columns
-           WHERE table_schema = DATABASE() AND table_name = 'users'`
-        )) as any
-        const availableCols = new Set((userColsRows || []).map((r: any) => String(r.column_name)))
-
-        const cols: string[] = []
-        const vals: any[] = []
-
-        const push = (col: string, val: any) => { cols.push(col); vals.push(val) }
-
-        push('username', username)
-        push('email', email)
-        push('password_hash', password_hash)
-        if (availableCols.has('first_name')) push('first_name', fName)
-        if (availableCols.has('last_name')) push('last_name', lName)
-        if (availableCols.has('phone_number')) push('phone_number', phoneNo || null)
-        push('role', 'customer')
-
-        const placeholders = cols.map(() => '?').join(', ')
-        const [ins] = (await conn.query(
-          `INSERT INTO users (${cols.join(', ')}) VALUES (${placeholders})`,
-          vals
-        )) as any
-        result = ins
-      } catch {
-        // Fallback to known schema from tes_tour.sql
-        const [ins] = (await conn.query(
-          `INSERT INTO users (username, email, password_hash, first_name, last_name, phone_number, role)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [username, email, password_hash, fName, lName, phoneNo || null, 'customer']
-        )) as any
-        result = ins
-      }
+      const [result] = (await conn.query(
+        `INSERT INTO users (username, email, password_hash, first_name, last_name, phone_number, date_of_birth, role)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [username, email, password_hash, fName, lName, phoneNo || null, DOB || null, 'customer']
+      )) as any
 
       const userId = result.insertId as number
 
@@ -522,16 +489,34 @@ export class Employee {
   static async isHR(userID: number): Promise<boolean> {
     try {
       const pool = getPool()
-      // TASK 1 FIX: Check both position AND department for "Human Resource" (from dropdown)
       const [rows] = (await pool.query('SELECT position, department FROM employees WHERE employee_id = ? LIMIT 1', [userID])) as any
-      if (!rows || rows.length === 0) return false
+      if (!rows || rows.length === 0) {
+        console.warn(`Employee ${userID} not found in employees table`)
+        return false
+      }
+      const pos = (rows[0].position || '').toLowerCase().trim()
+      const dept = (rows[0].department || '').toLowerCase().trim()
       
-      const position = (rows[0].position || '').toLowerCase()
-      const department = (rows[0].department || '').toLowerCase()
+      // Check position field
+      const hrTitles = ['hr', 'human resources', 'human resource', 'hr manager', 'hr officer', 'hr specialist']
+      if (hrTitles.includes(pos)) {
+        return true
+      }
       
-      // Check if position OR department is "Human Resource" (matches dropdown value)
-      return position.includes('human resource') || department.includes('human resource')
+      // Check department field as fallback
+      const hrDepartments = ['hr', 'human resources', 'human resource']
+      if (hrDepartments.includes(dept)) {
+        return true
+      }
+      
+      // Also check if position contains "hr" or department contains "hr"
+      if (pos.includes('hr') || dept.includes('hr')) {
+        return true
+      }
+      
+      return false
     } catch (e) {
+      console.error('Error checking HR status:', e)
       return false
     }
   }
@@ -845,16 +830,11 @@ export class BookingService {
       `SELECT
         b.booking_id,
         b.tour_id,
-        b.vehicle_id,
-        b.driver_id,
-        b.tour_guide_id,
         b.start_date,
         b.end_date,
         b.total_price,
         b.booking_date,
         b.status,
-        b.id_picture as id_pictures,
-        b.number_of_people,
         t.name as tour_name,
         t.destination,
         t.duration_days,
@@ -863,24 +843,11 @@ export class BookingService {
         v.capacity as vehicle_capacity,
         p.amount as payment_amount,
         p.status as payment_status,
-        p.payment_method,
-        p.refund_request as payment_refund_request,
-        tg.first_name as tour_guide_first_name,
-        tg.last_name as tour_guide_last_name,
-        tg.phone_number as tour_guide_phone,
-        tg.email as tour_guide_email,
-        d.first_name as driver_first_name,
-        d.last_name as driver_last_name,
-        d.phone_number as driver_phone,
-        d.email as driver_email,
-        IF(r.rating_id IS NOT NULL, true, false) as has_rating
+        p.payment_method
       FROM bookings b
       LEFT JOIN tours t ON b.tour_id = t.tour_id
       LEFT JOIN vehicles v ON b.vehicle_id = v.vehicle_id
       LEFT JOIN payments p ON b.booking_id = p.booking_id
-      LEFT JOIN users tg ON b.tour_guide_id = tg.user_id
-      LEFT JOIN users d ON b.driver_id = d.user_id
-      LEFT JOIN ratings r ON b.booking_id = r.booking_id
       WHERE b.user_id = ?
       ORDER BY b.booking_date DESC`,
       [userId]
@@ -928,20 +895,12 @@ export class BookingService {
 // Tour Service for handling tour operations
 export class TourService {
   static async getAllTours(): Promise<Tour[]> {
-    // Check cache first
-    const cacheKey = 'all_tours';
-    const cached = cache.get(cacheKey);
-    if (cached) {
-      console.log('✅ Returning cached tours data');
-      return cached;
-    }
-
     const pool = getPool()
     const [rows] = (await pool.query(
       'SELECT tour_id, tour_guide_id, name, description, destination, duration_days, price, availability FROM tours WHERE availability = 1'
     )) as any
 
-    const tours = (rows || []).map((row: any) => new Tour(
+    return (rows || []).map((row: any) => new Tour(
       row.tour_id,
       row.tour_guide_id,
       row.name,
@@ -950,24 +909,10 @@ export class TourService {
       row.duration_days,
       row.price,
       row.availability
-    ));
-
-    // Cache for 5 minutes
-    cache.set(cacheKey, tours, 300000);
-    console.log('💾 Cached tours data');
-    
-    return tours;
+    ))
   }
 
   static async getAllToursWithPromotions(): Promise<any[]> {
-    // Check cache first
-    const cacheKey = 'all_tours_with_promotions';
-    const cached = cache.get(cacheKey);
-    if (cached) {
-      console.log('✅ Returning cached tours with promotions data');
-      return cached;
-    }
-
     const pool = getPool()
     const [rows] = (await pool.query(`
       SELECT
@@ -1019,38 +964,20 @@ export class TourService {
       }
     }
 
-    const result = Array.from(toursMap.values());
-    
-    // Cache for 3 minutes (shorter due to promotions)
-    cache.set(cacheKey, result, 180000);
-    console.log('💾 Cached tours with promotions data');
-    
-    return result;
+    return Array.from(toursMap.values())
   }
 
   static async getTourById(tourId: number): Promise<Tour | null> {
-    // Check cache first
-    const cacheKey = `tour_${tourId}`;
-    const cached = cache.get(cacheKey);
-    if (cached) {
-      console.log(`✅ Returning cached tour data for ID: ${tourId}`);
-      return cached;
-    }
-
     const pool = getPool()
     const [rows] = (await pool.query(
       'SELECT tour_id, tour_guide_id, name, description, destination, duration_days, price, availability FROM tours WHERE tour_id = ? LIMIT 1',
       [tourId]
     )) as any
 
-    if (!rows || rows.length === 0) {
-      // Cache null result for 1 minute to prevent repeated queries
-      cache.set(cacheKey, null, 60000);
-      return null;
-    }
+    if (!rows || rows.length === 0) return null
 
     const row = rows[0]
-    const tour = new Tour(
+    return new Tour(
       row.tour_id,
       row.tour_guide_id,
       row.name,
@@ -1059,19 +986,7 @@ export class TourService {
       row.duration_days,
       row.price,
       row.availability
-    );
-
-    // Cache for 10 minutes
-    cache.set(cacheKey, tour, 600000);
-    console.log(`💾 Cached tour data for ID: ${tourId}`);
-    
-    return tour;
-  }
-
-  // Method to clear tour-related cache when tours are updated
-  static clearTourCache(): void {
-    cache.clear();
-    console.log('🗑️ Tour cache cleared');
+    )
   }
 }
 
@@ -1189,306 +1104,6 @@ export interface ItineraryRequest {
   processed_by?: number
   processed_at?: string
   created_at: string
-}
-
-// Location tracking types and interfaces
-export type UserType = 'customer' | 'tourguide' | 'driver'
-
-export interface LocationData {
-  location_id?: number
-  booking_id: number
-  user_id: number
-  user_type: UserType
-  latitude: number
-  longitude: number
-  accuracy?: number
-  altitude?: number
-  speed?: number
-  heading?: number
-  timestamp?: Date
-  created_at?: Date
-}
-
-export interface LocationUpdate {
-  booking_id: number
-  latitude: number
-  longitude: number
-  accuracy?: number
-  altitude?: number
-  speed?: number
-  heading?: number
-}
-
-export interface TrackingParticipant {
-  user_id: number
-  user_type: UserType
-  first_name: string
-  last_name: string
-  email: string
-  phone_number?: string
-  latest_location?: {
-    latitude: number
-    longitude: number
-    accuracy?: number
-    timestamp: Date
-  }
-}
-
-// Location Tracking Service
-export class LocationTrackingService {
-  // Update location for a user on a booking
-  static async updateLocation(
-    userId: number,
-    userType: UserType,
-    locationUpdate: LocationUpdate
-  ): Promise<{ location_id: number }> {
-    const pool = getPool()
-    const conn = await pool.getConnection()
-
-    try {
-      await conn.beginTransaction()
-
-      // Verify booking exists and user is part of it
-      const [bookingRows] = await conn.query(
-        `SELECT b.booking_id, b.user_id, b.tour_guide_id, b.driver_id, b.status
-         FROM bookings b
-         WHERE b.booking_id = ? AND b.status IN ('confirmed', 'in-progress')
-         LIMIT 1`,
-        [locationUpdate.booking_id]
-      ) as any
-
-      if (!bookingRows || bookingRows.length === 0) {
-        throw new Error('Booking not found or not active')
-      }
-
-      const booking = bookingRows[0]
-      
-      // Verify user is authorized (customer, assigned tour guide, or assigned driver)
-      const isAuthorized = 
-        (userType === 'customer' && booking.user_id === userId) ||
-        (userType === 'tourguide' && booking.tour_guide_id === userId) ||
-        (userType === 'driver' && booking.driver_id === userId)
-
-      if (!isAuthorized) {
-        throw new Error('User not authorized for this booking')
-      }
-
-      // Insert location update
-      const [result] = await conn.query(
-        `INSERT INTO location_tracking 
-         (booking_id, user_id, user_type, latitude, longitude, accuracy, altitude, speed, heading, timestamp)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-        [
-          locationUpdate.booking_id,
-          userId,
-          userType,
-          locationUpdate.latitude,
-          locationUpdate.longitude,
-          locationUpdate.accuracy || null,
-          locationUpdate.altitude || null,
-          locationUpdate.speed || null,
-          locationUpdate.heading || null
-        ]
-      ) as any
-
-      await conn.commit()
-      return { location_id: result.insertId }
-    } catch (error) {
-      await conn.rollback()
-      throw error
-    } finally {
-      conn.release()
-    }
-  }
-
-  // Get latest locations for all participants in a booking
-  static async getBookingLocations(
-    bookingId: number,
-    requestingUserId: number
-  ): Promise<TrackingParticipant[]> {
-    const pool = getPool()
-
-    // First verify the requesting user is part of this booking
-    const [bookingRows] = await pool.query(
-      `SELECT b.booking_id, b.user_id, b.tour_guide_id, b.driver_id, b.status
-       FROM bookings b
-       WHERE b.booking_id = ? AND b.status IN ('confirmed', 'in-progress')
-       LIMIT 1`,
-      [bookingId]
-    ) as any
-
-    if (!bookingRows || bookingRows.length === 0) {
-      throw new Error('Booking not found or not active')
-    }
-
-    const booking = bookingRows[0]
-    const isAuthorized = 
-      booking.user_id === requestingUserId ||
-      booking.tour_guide_id === requestingUserId ||
-      booking.driver_id === requestingUserId
-
-    if (!isAuthorized) {
-      throw new Error('User not authorized to view this booking')
-    }
-
-    // Get all participants with their latest locations
-    const participants: TrackingParticipant[] = []
-
-    // Get customer info
-    const [customerRows] = await pool.query(
-      `SELECT u.user_id, u.first_name, u.last_name, u.email, u.phone_number,
-              lt.latitude, lt.longitude, lt.accuracy, lt.timestamp
-       FROM users u
-       LEFT JOIN (
-         SELECT user_id, latitude, longitude, accuracy, timestamp
-         FROM location_tracking
-         WHERE booking_id = ? AND user_id = ?
-         ORDER BY timestamp DESC
-         LIMIT 1
-       ) lt ON u.user_id = lt.user_id
-       WHERE u.user_id = ?`,
-      [bookingId, booking.user_id, booking.user_id]
-    ) as any
-
-    if (customerRows && customerRows.length > 0) {
-      const customer = customerRows[0]
-      participants.push({
-        user_id: customer.user_id,
-        user_type: 'customer',
-        first_name: customer.first_name,
-        last_name: customer.last_name,
-        email: customer.email,
-        phone_number: customer.phone_number,
-        latest_location: customer.latitude ? {
-          latitude: parseFloat(customer.latitude),
-          longitude: parseFloat(customer.longitude),
-          accuracy: customer.accuracy ? parseFloat(customer.accuracy) : undefined,
-          timestamp: customer.timestamp
-        } : undefined
-      })
-    }
-
-    // Get tour guide info if assigned
-    if (booking.tour_guide_id) {
-      const [guideRows] = await pool.query(
-        `SELECT u.user_id, u.first_name, u.last_name, u.email, u.phone_number,
-                lt.latitude, lt.longitude, lt.accuracy, lt.timestamp
-         FROM users u
-         LEFT JOIN (
-           SELECT user_id, latitude, longitude, accuracy, timestamp
-           FROM location_tracking
-           WHERE booking_id = ? AND user_id = ?
-           ORDER BY timestamp DESC
-           LIMIT 1
-         ) lt ON u.user_id = lt.user_id
-         WHERE u.user_id = ?`,
-        [bookingId, booking.tour_guide_id, booking.tour_guide_id]
-      ) as any
-
-      if (guideRows && guideRows.length > 0) {
-        const guide = guideRows[0]
-        participants.push({
-          user_id: guide.user_id,
-          user_type: 'tourguide',
-          first_name: guide.first_name,
-          last_name: guide.last_name,
-          email: guide.email,
-          phone_number: guide.phone_number,
-          latest_location: guide.latitude ? {
-            latitude: parseFloat(guide.latitude),
-            longitude: parseFloat(guide.longitude),
-            accuracy: guide.accuracy ? parseFloat(guide.accuracy) : undefined,
-            timestamp: guide.timestamp
-          } : undefined
-        })
-      }
-    }
-
-    // Get driver info if assigned
-    if (booking.driver_id) {
-      const [driverRows] = await pool.query(
-        `SELECT u.user_id, u.first_name, u.last_name, u.email, u.phone_number,
-                lt.latitude, lt.longitude, lt.accuracy, lt.timestamp
-         FROM users u
-         LEFT JOIN (
-           SELECT user_id, latitude, longitude, accuracy, timestamp
-           FROM location_tracking
-           WHERE booking_id = ? AND user_id = ?
-           ORDER BY timestamp DESC
-           LIMIT 1
-         ) lt ON u.user_id = lt.user_id
-         WHERE u.user_id = ?`,
-        [bookingId, booking.driver_id, booking.driver_id]
-      ) as any
-
-      if (driverRows && driverRows.length > 0) {
-        const driver = driverRows[0]
-        participants.push({
-          user_id: driver.user_id,
-          user_type: 'driver',
-          first_name: driver.first_name,
-          last_name: driver.last_name,
-          email: driver.email,
-          phone_number: driver.phone_number,
-          latest_location: driver.latitude ? {
-            latitude: parseFloat(driver.latitude),
-            longitude: parseFloat(driver.longitude),
-            accuracy: driver.accuracy ? parseFloat(driver.accuracy) : undefined,
-            timestamp: driver.timestamp
-          } : undefined
-        })
-      }
-    }
-
-    return participants
-  }
-
-  // Get location history for a specific user on a booking
-  static async getLocationHistory(
-    bookingId: number,
-    userId: number,
-    limit: number = 50
-  ): Promise<LocationData[]> {
-    const pool = getPool()
-
-    const [rows] = await pool.query(
-      `SELECT location_id, booking_id, user_id, user_type, 
-              latitude, longitude, accuracy, altitude, speed, heading, 
-              timestamp, created_at
-       FROM location_tracking
-       WHERE booking_id = ? AND user_id = ?
-       ORDER BY timestamp DESC
-       LIMIT ?`,
-      [bookingId, userId, limit]
-    ) as any
-
-    return (rows || []).map((row: any) => ({
-      location_id: row.location_id,
-      booking_id: row.booking_id,
-      user_id: row.user_id,
-      user_type: row.user_type,
-      latitude: parseFloat(row.latitude),
-      longitude: parseFloat(row.longitude),
-      accuracy: row.accuracy ? parseFloat(row.accuracy) : undefined,
-      altitude: row.altitude ? parseFloat(row.altitude) : undefined,
-      speed: row.speed ? parseFloat(row.speed) : undefined,
-      heading: row.heading ? parseFloat(row.heading) : undefined,
-      timestamp: row.timestamp,
-      created_at: row.created_at
-    }))
-  }
-
-  // Delete old location data (cleanup - keep only last 7 days)
-  static async cleanupOldLocations(): Promise<number> {
-    const pool = getPool()
-
-    const [result] = await pool.query(
-      `DELETE FROM location_tracking 
-       WHERE timestamp < DATE_SUB(NOW(), INTERVAL 7 DAY)`
-    ) as any
-
-    return result.affectedRows
-  }
 }
 
 export class ItineraryService {
@@ -1632,243 +1247,5 @@ export class ItineraryService {
         values
       )
     }
-  }
-}
-
-// Rating types
-export interface RatingData {
-  rating_id?: number
-  booking_id: number
-  customer_id: number
-  tour_guide_id?: number | null
-  driver_id?: number | null
-  rating_tourguide?: number | null
-  rating_driver?: number | null
-  review_tourguide?: string | null
-  review_driver?: string | null
-  created_at?: Date
-}
-
-export interface RatingSubmission {
-  booking_id: number
-  rating_tourguide?: number
-  rating_driver?: number
-  review_tourguide?: string
-  review_driver?: string
-}
-
-// Rating Service
-export class RatingService {
-  /**
-   * Submit a rating for a completed booking
-   * Calculates and updates average ratings for tour guide and driver
-   */
-  static async submitRating(
-    customerId: number,
-    ratingData: RatingSubmission
-  ): Promise<{ rating_id: number }> {
-    const pool = getPool()
-    const conn = await pool.getConnection()
-
-    try {
-      await conn.beginTransaction()
-
-      // Verify booking exists, belongs to customer, and is completed
-      const [bookingRows] = await conn.query(
-        `SELECT b.booking_id, b.user_id, b.tour_guide_id, b.driver_id, b.status
-         FROM bookings b
-         WHERE b.booking_id = ? AND b.user_id = ? AND b.status = 'completed'
-         LIMIT 1`,
-        [ratingData.booking_id, customerId]
-      ) as any
-
-      if (!bookingRows || bookingRows.length === 0) {
-        throw new Error('Booking not found, does not belong to you, or is not completed')
-      }
-
-      const booking = bookingRows[0]
-
-      // Check if rating already exists
-      const [existingRating] = await conn.query(
-        `SELECT rating_id FROM ratings WHERE booking_id = ? LIMIT 1`,
-        [ratingData.booking_id]
-      ) as any
-
-      if (existingRating && existingRating.length > 0) {
-        throw new Error('Rating already submitted for this booking')
-      }
-
-      // Insert rating
-      const [result] = await conn.query(
-        `INSERT INTO ratings 
-         (booking_id, customer_id, tour_guide_id, driver_id, rating_tourguide, rating_driver, review_tourguide, review_driver)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          ratingData.booking_id,
-          customerId,
-          booking.tour_guide_id,
-          booking.driver_id,
-          ratingData.rating_tourguide || null,
-          ratingData.rating_driver || null,
-          ratingData.review_tourguide || null,
-          ratingData.review_driver || null
-        ]
-      ) as any
-
-      // Update tour guide average rating if rated
-      if (booking.tour_guide_id && ratingData.rating_tourguide) {
-        await this.updateTourGuideRating(conn, booking.tour_guide_id)
-      }
-
-      // Update driver average rating if rated
-      if (booking.driver_id && ratingData.rating_driver) {
-        await this.updateDriverRating(conn, booking.driver_id)
-      }
-
-      await conn.commit()
-      return { rating_id: result.insertId }
-    } catch (error) {
-      await conn.rollback()
-      throw error
-    } finally {
-      conn.release()
-    }
-  }
-
-  /**
-   * Calculate and update average rating for a tour guide
-   */
-  private static async updateTourGuideRating(conn: any, guideId: number): Promise<void> {
-    // Calculate average rating from all ratings
-    const [ratingRows] = await conn.query(
-      `SELECT AVG(rating_tourguide) as avg_rating, COUNT(*) as total_ratings
-       FROM ratings
-       WHERE tour_guide_id = ? AND rating_tourguide IS NOT NULL`,
-      [guideId]
-    ) as any
-
-    if (ratingRows && ratingRows.length > 0) {
-      const avgRating = parseFloat(ratingRows[0].avg_rating) || 0
-      const totalRatings = parseInt(ratingRows[0].total_ratings) || 0
-
-      // Update tourguides table
-      await conn.query(
-        `UPDATE tourguides 
-         SET rating = ?, total_ratings = ?
-         WHERE tour_guide_id = ?`,
-        [avgRating.toFixed(2), totalRatings, guideId]
-      )
-    }
-  }
-
-  /**
-   * Calculate and update average rating for a driver
-   */
-  private static async updateDriverRating(conn: any, driverId: number): Promise<void> {
-    // Calculate average rating from all ratings
-    const [ratingRows] = await conn.query(
-      `SELECT AVG(rating_driver) as avg_rating, COUNT(*) as total_ratings
-       FROM ratings
-       WHERE driver_id = ? AND rating_driver IS NOT NULL`,
-      [driverId]
-    ) as any
-
-    if (ratingRows && ratingRows.length > 0) {
-      const avgRating = parseFloat(ratingRows[0].avg_rating) || 0
-      const totalRatings = parseInt(ratingRows[0].total_ratings) || 0
-
-      // Update driver table
-      await conn.query(
-        `UPDATE drivers 
-         SET rating = ?, total_ratings = ?
-         WHERE driver_id = ?`,
-        [avgRating.toFixed(2), totalRatings, driverId]
-      )
-    }
-  }
-
-  /**
-   * Get rating for a specific booking
-   */
-  static async getRatingByBooking(bookingId: number): Promise<RatingData | null> {
-    const pool = getPool()
-
-    const [rows] = await pool.query(
-      `SELECT * FROM ratings WHERE booking_id = ? LIMIT 1`,
-      [bookingId]
-    ) as any
-
-    if (!rows || rows.length === 0) {
-      return null
-    }
-
-    return rows[0] as RatingData
-  }
-
-  /**
-   * Get all ratings for a tour guide
-   */
-  static async getTourGuideRatings(guideId: number, limit: number = 10): Promise<RatingData[]> {
-    const pool = getPool()
-
-    const [rows] = await pool.query(
-      `SELECT r.*, u.first_name, u.last_name, b.start_date, b.end_date
-       FROM ratings r
-       JOIN users u ON r.customer_id = u.user_id
-       JOIN bookings b ON r.booking_id = b.booking_id
-       WHERE r.tour_guide_id = ? AND r.rating_tourguide IS NOT NULL
-       ORDER BY r.created_at DESC
-       LIMIT ?`,
-      [guideId, limit]
-    ) as any
-
-    return (rows || []) as RatingData[]
-  }
-
-  /**
-   * Get all ratings for a driver
-   */
-  static async getDriverRatings(driverId: number, limit: number = 10): Promise<RatingData[]> {
-    const pool = getPool()
-
-    const [rows] = await pool.query(
-      `SELECT r.*, u.first_name, u.last_name, b.start_date, b.end_date
-       FROM ratings r
-       JOIN users u ON r.customer_id = u.user_id
-       JOIN bookings b ON r.booking_id = b.booking_id
-       WHERE r.driver_id = ? AND r.rating_driver IS NOT NULL
-       ORDER BY r.created_at DESC
-       LIMIT ?`,
-      [driverId, limit]
-    ) as any
-
-    return (rows || []) as RatingData[]
-  }
-
-  /**
-   * Check if a booking can be rated (completed and not yet rated)
-   */
-  static async canRateBooking(customerId: number, bookingId: number): Promise<boolean> {
-    const pool = getPool()
-
-    // Check if booking is completed and belongs to customer
-    const [bookingRows] = await pool.query(
-      `SELECT booking_id FROM bookings 
-       WHERE booking_id = ? AND user_id = ? AND status = 'completed'
-       LIMIT 1`,
-      [bookingId, customerId]
-    ) as any
-
-    if (!bookingRows || bookingRows.length === 0) {
-      return false
-    }
-
-    // Check if rating already exists
-    const [ratingRows] = await pool.query(
-      `SELECT rating_id FROM ratings WHERE booking_id = ? LIMIT 1`,
-      [bookingId]
-    ) as any
-
-    return !ratingRows || ratingRows.length === 0
   }
 }

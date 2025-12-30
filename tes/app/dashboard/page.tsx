@@ -5,6 +5,10 @@ import { Calendar, MapPin, Users, CreditCard, Clock, CheckCircle, XCircle, Edit3
 import ItineraryCustomization from "@/components/ItineraryCustomization"
 import FreeMapTracker from "@/components/FreeMapTracker"
 import RatingPopup from "@/components/RatingPopup"
+import dynamic from 'next/dynamic'
+
+// Dynamically import RouteTrackingMap to avoid SSR issues with Leaflet
+const RouteTrackingMap = dynamic(() => import('@/components/RouteTrackingMap'), { ssr: false })
 
 interface Booking {
   booking_id: number
@@ -36,6 +40,7 @@ interface Booking {
   payment_refund_request?: string | null
   number_of_people?: number
   has_rating?: boolean
+  booking_date?: string
 }
 
 export default function CustomerDashboard() {
@@ -496,11 +501,84 @@ export default function CustomerDashboard() {
                           </div>
                           {booking.payment_status === 'refunded' && (
                             <div className="mt-1 bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-800">
-                              <p className="font-semibold mb-1">We’re sorry for the inconvenience.</p>
+                              <p className="font-semibold mb-1">We're sorry for the inconvenience.</p>
                               <p>
                                 We could not find available tour guides for your selected dates.
                                 We have returned the money back to you. Thank you for choosing Tes Tour.
                               </p>
+                            </div>
+                          )}
+                          {booking.payment_status === 'completed' && booking.payment_refund_request !== 'REFUND_REQUESTED' && (
+                            (() => {
+                              // Check if booking is within 24 hours
+                              if (!booking.booking_date) return null
+                              const bookingDate = new Date(booking.booking_date)
+                              const now = new Date()
+                              const hoursSinceBooking = (now.getTime() - bookingDate.getTime()) / (1000 * 60 * 60)
+                              const canRequestRefund = hoursSinceBooking <= 24
+                              const hoursRemaining = Math.max(0, 24 - hoursSinceBooking)
+
+                              if (!canRequestRefund) {
+                                return (
+                                  <div className="mt-2 bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm text-gray-600">
+                                    <p className="font-semibold text-gray-700">Refund Request</p>
+                                    <p className="mt-1">Refund requests must be made within 24 hours of booking.</p>
+                                    <p className="text-xs mt-1 text-gray-500">
+                                      Booking was made {Math.round(hoursSinceBooking)} hours ago.
+                                    </p>
+                                  </div>
+                                )
+                              }
+
+                              return (
+                                <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                      <p className="font-semibold text-blue-900 text-sm">Request Refund</p>
+                                      <p className="text-xs text-blue-700 mt-1">
+                                        You have {Math.round(hoursRemaining * 10) / 10} hours remaining to request a refund.
+                                      </p>
+                                    </div>
+                                    <button
+                                      onClick={async () => {
+                                        if (!confirm('Are you sure you want to request a refund? This action cannot be undone.')) {
+                                          return
+                                        }
+                                        try {
+                                          const response = await fetch('/api/payments/customer-refund-request', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            credentials: 'include',
+                                            body: JSON.stringify({
+                                              bookingId: booking.booking_id,
+                                              reason: 'Customer requested refund'
+                                            })
+                                          })
+                                          const data = await response.json()
+                                          if (response.ok) {
+                                            alert('✅ Refund request submitted successfully! An employee will review your request.')
+                                            fetchBookings() // Refresh bookings
+                                          } else {
+                                            alert(`❌ ${data.error || 'Failed to submit refund request'}`)
+                                          }
+                                        } catch (error) {
+                                          console.error('Error requesting refund:', error)
+                                          alert('Failed to submit refund request. Please try again.')
+                                        }
+                                      }}
+                                      className="ml-3 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors"
+                                    >
+                                      Request Refund
+                                    </button>
+                                  </div>
+                                </div>
+                              )
+                            })()
+                          )}
+                          {booking.payment_refund_request === 'REFUND_REQUESTED' && (
+                            <div className="mt-2 bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
+                              <p className="font-semibold">⏳ Refund Request Pending</p>
+                              <p className="mt-1 text-xs">Your refund request is being reviewed by our team. You will be notified once it's processed.</p>
                             </div>
                           )}
                         </div>
@@ -565,15 +643,15 @@ export default function CustomerDashboard() {
         </div>
       )}
 
-      {/* GPS Tracker Modal */}
+      {/* Live Route Tracking Modal */}
       {showGPSTracker && selectedBookingForTracking && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">GPS Location Tracking</h2>
+                <h2 className="text-2xl font-bold text-gray-900">🚗 Live Tour Tracking</h2>
                 <p className="text-sm text-gray-600 mt-1">
-                  {selectedBookingForTracking.tour_name || 'Custom Booking'} - Booking #{selectedBookingForTracking.booking_id}
+                  Track your journey to the destination in real-time
                 </p>
               </div>
               <button
@@ -583,12 +661,40 @@ export default function CustomerDashboard() {
                 <XCircle className="h-8 w-8" />
               </button>
             </div>
-            <div className="p-6">
-              <FreeMapTracker 
+
+            <div className="flex-1 overflow-hidden">
+              <RouteTrackingMap
                 bookingId={selectedBookingForTracking.booking_id}
-                userRole="customer"
-                isJourneyActive={selectedBookingForTracking.status === 'in-progress'}
+                tourName={selectedBookingForTracking.tour_name || 'Your Tour'}
+                destination={selectedBookingForTracking.destination || 'Destination'}
               />
+            </div>
+
+            {/* Info Box */}
+            <div className="bg-gradient-to-r from-blue-50 to-green-50 border-t border-blue-200 p-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                <div>
+                  <h4 className="font-semibold text-gray-800 mb-1 flex items-center">
+                    <Navigation className="w-3 h-3 mr-1 text-blue-600" />
+                    Live Tracking
+                  </h4>
+                  <p className="text-gray-700">Green marker shows your tour guide's current location</p>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-gray-800 mb-1 flex items-center">
+                    <MapPin className="w-3 h-3 mr-1 text-red-600" />
+                    Destination
+                  </h4>
+                  <p className="text-gray-700">Red marker shows where you're heading</p>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-gray-800 mb-1 flex items-center">
+                    <Clock className="w-3 h-3 mr-1 text-green-600" />
+                    Updates
+                  </h4>
+                  <p className="text-gray-700">Location updates every 5 seconds automatically</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>

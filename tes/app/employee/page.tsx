@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Star, UserPlus, BarChart3, Calendar, LogOut, Briefcase, X, Check, Lock } from "lucide-react"
+import { Star, UserPlus, BarChart3, Calendar, LogOut, Briefcase, X, Check, Lock, Bell, DollarSign } from "lucide-react"
 
 type Booking = {
   booking_id: number
@@ -53,8 +53,23 @@ type Rating = {
   tour_name: string
 }
 
+type RefundNotification = {
+  notification_id: number
+  type: string
+  booking_id: number
+  customer_id: number
+  customer_name: string
+  customer_email: string
+  message: string
+  is_read: boolean
+  created_at: string
+  tour_name?: string
+  payment_amount?: number
+  booking_date?: string
+}
+
 export default function EmployeeDashboard() {
-  const [activeTab, setActiveTab] = useState<"bookings" | "assign" | "ratings">("bookings")
+  const [activeTab, setActiveTab] = useState<"bookings" | "assign" | "ratings" | "notifications">("bookings")
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [loading, setLoading] = useState(true)
@@ -64,6 +79,8 @@ export default function EmployeeDashboard() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [tourGuides, setTourGuides] = useState<TourGuide[]>([])
   const [ratings, setRatings] = useState<Rating[]>([])
+  const [refundNotifications, setRefundNotifications] = useState<RefundNotification[]>([])
+  const [unreadRefundCount, setUnreadRefundCount] = useState(0)
 
   // Removed edit form states (Edit Details feature removed)
 
@@ -71,6 +88,16 @@ export default function EmployeeDashboard() {
   useEffect(() => {
     checkAuth()
   }, [])
+
+  // Auto-refresh notifications every 30 seconds
+  useEffect(() => {
+    if (!loading) {
+      const interval = setInterval(() => {
+        fetchRefundNotifications()
+      }, 30000) // Every 30 seconds
+      return () => clearInterval(interval)
+    }
+  }, [loading])
 
   const checkAuth = async () => {
     try {
@@ -151,7 +178,14 @@ export default function EmployeeDashboard() {
 
       //  Check if employee has HR access using the isHR flag from API
       // The API uses Employee.isHR() method from domain.ts which checks position and department
-      if (!data.user.isHR) {
+      // Debug: Log the user data to help troubleshoot
+      console.log('Employee auth check:', { 
+        user_id: data.user.user_id, 
+        role: data.user.role, 
+        isHR: data.user.isHR 
+      })
+      
+      if (data.user.isHR === undefined || data.user.isHR === false) {
         // Show access denied popup for non-HR employees (e.g., Accountant)
         setTimeout(() => {
           const popup = document.createElement('div')
@@ -232,13 +266,54 @@ export default function EmployeeDashboard() {
       await Promise.all([
         fetchBookings(),
         fetchTourGuides(),
-        fetchRatings()
+        fetchRatings(),
+        fetchRefundNotifications()
       ])
     } catch (error) {
       console.error('Error fetching data:', error)
       setError('Failed to load dashboard data')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchRefundNotifications = async () => {
+    try {
+      const response = await fetch('/api/employee/notifications', {
+        credentials: 'include'
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setRefundNotifications(data.notifications || [])
+        setUnreadRefundCount(data.unreadCount || 0)
+      } else if (response.status === 403) {
+        // Not HR, no notifications
+        setRefundNotifications([])
+        setUnreadRefundCount(0)
+      }
+    } catch (error) {
+      console.error('Error fetching refund notifications:', error)
+    }
+  }
+
+  const markNotificationAsRead = async (notificationId: number) => {
+    try {
+      const response = await fetch('/api/employee/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ notificationId })
+      })
+      if (response.ok) {
+        setRefundNotifications(prev =>
+          prev.map(n =>
+            n.notification_id === notificationId ? { ...n, is_read: true } : n
+          )
+        )
+        setUnreadRefundCount(prev => Math.max(0, prev - 1))
+      }
+    } catch (error) {
+      console.error('Error marking notification as read:', error)
     }
   }
 
@@ -495,6 +570,14 @@ export default function EmployeeDashboard() {
               </div>
             </div>
             <div className="flex items-center space-x-3">
+              {unreadRefundCount > 0 && (
+                <div className="relative">
+                  <Bell className="w-6 h-6 text-white" />
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {unreadRefundCount > 9 ? '9+' : unreadRefundCount}
+                  </span>
+                </div>
+              )}
               <button
                 onClick={() => window.location.href = '/change-password'}
                 className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors text-white"
@@ -566,6 +649,24 @@ export default function EmployeeDashboard() {
                 <span>View Ratings</span>
               </div>
             </button>
+            <button
+              onClick={() => setActiveTab("notifications")}
+              className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors relative ${
+                activeTab === "notifications"
+                  ? "border-green-600 text-green-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <Bell className="w-5 h-5" />
+                <span>Notifications</span>
+                {unreadRefundCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {unreadRefundCount > 9 ? '9+' : unreadRefundCount}
+                  </span>
+                )}
+              </div>
+            </button>
           </div>
         </div>
       </nav>
@@ -586,6 +687,7 @@ export default function EmployeeDashboard() {
               <div className="space-y-4">
                 {bookings.map((booking) => (
                   <div
+                    id={`booking-${booking.booking_id}`}
                     key={`booking-${booking.booking_id}`}
                     className="bg-white border-2 border-green-200 rounded-lg p-6 hover:shadow-lg transition-shadow"
                   >
@@ -917,6 +1019,147 @@ export default function EmployeeDashboard() {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Notifications Tab */}
+        {activeTab === "notifications" && (
+          <div>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Refund Notifications</h2>
+              {unreadRefundCount > 0 && (
+                <button
+                  onClick={async () => {
+                    try {
+                      const response = await fetch('/api/employee/notifications', {
+                        method: 'DELETE',
+                        credentials: 'include'
+                      })
+                      if (response.ok) {
+                        setRefundNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+                        setUnreadRefundCount(0)
+                      }
+                    } catch (error) {
+                      console.error('Error marking all as read:', error)
+                    }
+                  }}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                >
+                  Mark All as Read
+                </button>
+              )}
+            </div>
+
+            {refundNotifications.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Bell className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                <p>No refund notifications.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {refundNotifications.map((notification) => (
+                  <div
+                    key={notification.notification_id}
+                    className={`bg-white border-2 rounded-lg p-6 hover:shadow-lg transition-shadow ${
+                      !notification.is_read ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <DollarSign className={`w-6 h-6 ${!notification.is_read ? 'text-blue-600' : 'text-gray-400'}`} />
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              Refund Request
+                              {!notification.is_read && (
+                                <span className="ml-2 bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                  New
+                                </span>
+                              )}
+                            </h3>
+                            <p className="text-sm text-gray-600">
+                              Booking #{notification.booking_id}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="ml-9 space-y-2">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="font-medium text-gray-700">Customer: </span>
+                              <span className="text-gray-900">{notification.customer_name}</span>
+                            </div>
+                            <div>
+                              <span className="font-medium text-gray-700">Email: </span>
+                              <span className="text-gray-900">{notification.customer_email}</span>
+                            </div>
+                            {notification.tour_name && (
+                              <div>
+                                <span className="font-medium text-gray-700">Tour: </span>
+                                <span className="text-gray-900">{notification.tour_name}</span>
+                              </div>
+                            )}
+                            {notification.payment_amount && (
+                              <div>
+                                <span className="font-medium text-gray-700">Amount: </span>
+                                <span className="text-gray-900">ETB {Number(notification.payment_amount).toFixed(2)}</span>
+                              </div>
+                            )}
+                            {notification.booking_date && (
+                              <div>
+                                <span className="font-medium text-gray-700">Booking Date: </span>
+                                <span className="text-gray-900">{formatDate(notification.booking_date)}</span>
+                              </div>
+                            )}
+                            <div>
+                              <span className="font-medium text-gray-700">Requested: </span>
+                              <span className="text-gray-900">{formatDate(notification.created_at)}</span>
+                            </div>
+                          </div>
+                          
+                          {notification.message && (
+                            <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                              <p className="text-sm text-gray-700">{notification.message}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-col gap-2 ml-4">
+                        {!notification.is_read && (
+                          <button
+                            onClick={() => markNotificationAsRead(notification.notification_id)}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                          >
+                            Mark Read
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            // Navigate to bookings tab and highlight this booking
+                            setActiveTab('bookings')
+                            // Scroll to booking if possible
+                            setTimeout(() => {
+                              const bookingElement = document.getElementById(`booking-${notification.booking_id}`)
+                              if (bookingElement) {
+                                bookingElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                                bookingElement.classList.add('ring-4', 'ring-blue-500')
+                                setTimeout(() => {
+                                  bookingElement.classList.remove('ring-4', 'ring-blue-500')
+                                }, 3000)
+                              }
+                            }, 100)
+                          }}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                        >
+                          View Booking
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </main>

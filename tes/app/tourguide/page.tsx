@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { MapPin, Calendar, Users, Star, LogOut, User, Clock, Navigation, Lock } from "lucide-react"
+import { MapPin, Calendar, Users, Star, LogOut, User, Clock, Navigation, Lock, XCircle } from "lucide-react"
 import FreeMapTracker from "@/components/FreeMapTracker"
 import ItineraryNotifications from "@/components/ItineraryNotifications"
 import TourGuideItineraryView from "@/components/TourGuideItineraryView"
@@ -673,18 +673,114 @@ export default function TourGuideDashboard() {
               </div>
             )}
 
-            {/* Free Map Tracker Component */}
+            {/* Tour Control & Map Tracker */}
             {selectedBookingForTracking ? (
-              <FreeMapTracker 
-                bookingId={selectedBookingForTracking} 
-                userRole="tourguide"
-              />
+              <div className="space-y-4">
+                {/* Tour Control Buttons */}
+                <div className="bg-white border-2 border-green-200 rounded-lg p-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="font-semibold text-gray-900">
+                        {tours.find(t => t.booking_id === selectedBookingForTracking)?.tour_name || 'Tour'}
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Customer: {tours.find(t => t.booking_id === selectedBookingForTracking)?.customer_first_name} {tours.find(t => t.booking_id === selectedBookingForTracking)?.customer_last_name}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Status: <span className="font-semibold capitalize">
+                          {tours.find(t => t.booking_id === selectedBookingForTracking)?.status}
+                        </span>
+                      </p>
+                    </div>
+
+                    {/* Start/End Tour Buttons */}
+                    <div className="flex gap-2">
+                      {tours.find(t => t.booking_id === selectedBookingForTracking)?.status.toLowerCase() === 'confirmed' && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              const response = await fetch('/api/tour/start', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ bookingId: selectedBookingForTracking })
+                              })
+                              const data = await response.json()
+                              if (data.success) {
+                                alert('✅ Tour started! Please click "Start Journey" on the map below to begin sharing your location.')
+                                fetchTours() // Refresh tours - this will update status to in-progress
+                                // The map component will auto-start tracking when isJourneyActive becomes true
+                              } else {
+                                alert('❌ ' + data.message)
+                              }
+                            } catch (err) {
+                              alert('Failed to start tour')
+                            }
+                          }}
+                          className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors font-semibold flex items-center gap-2"
+                        >
+                          <Navigation className="w-4 h-4" />
+                          Start Tour
+                        </button>
+                      )}
+
+                      {tours.find(t => t.booking_id === selectedBookingForTracking)?.status.toLowerCase() === 'in-progress' && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              const response = await fetch('/api/tour/end', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ bookingId: selectedBookingForTracking })
+                              })
+                              const data = await response.json()
+                              if (data.success) {
+                                alert('✅ Tour ended successfully!')
+                                fetchTours() // Refresh tours
+                              } else {
+                                alert('❌ ' + data.message)
+                              }
+                            } catch (err) {
+                              alert('Failed to end tour')
+                            }
+                          }}
+                          className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors font-semibold flex items-center gap-2"
+                        >
+                          <XCircle className="w-4 h-4" />
+                          End Tour
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Instructions */}
+                  <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <h4 className="font-semibold text-blue-900 text-sm mb-2">🚗 How to use:</h4>
+                    <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                      <li><strong>Step 1:</strong> Click "Start Tour" to begin the journey</li>
+                      <li><strong>Step 2:</strong> Click "Start Sharing" on the map below</li>
+                      <li>Customer will see your live location and route to destination</li>
+                      <li>Click "End Tour" when you reach the destination</li>
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Map Tracker */}
+                <FreeMapTracker
+                  bookingId={selectedBookingForTracking}
+                  userRole="tourguide"
+                  isJourneyActive={tours.find(t => t.booking_id === selectedBookingForTracking)?.status.toLowerCase() === 'in-progress'}
+                  onStartJourney={() => {
+                    // This will be called when user clicks "Start Journey" in the map component
+                    console.log('Journey started from map component')
+                  }}
+                />
+              </div>
             ) : (
               <div className="bg-gray-50 border-2 border-gray-200 rounded-lg p-8 text-center">
                 <Navigation className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600 text-lg">Select a tour above to start live tracking</p>
                 <p className="text-gray-500 text-sm mt-2">
-                  Track your journey in real-time on Google Maps and share your location with customers
+                  Track your journey in real-time and share your location with customers
                 </p>
               </div>
             )}

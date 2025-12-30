@@ -21,7 +21,14 @@ export async function GET(req: NextRequest) {
       }, { status: 200 })
     } catch (e) {
       console.error('Error checking HR status:', e)
-      // Continue with basic payload if check fails
+      // Return with isHR: false if check fails
+      return NextResponse.json({ 
+        authenticated: true, 
+        user: {
+          ...payload,
+          isHR: false
+        }
+      }, { status: 200 })
     }
   }
   
