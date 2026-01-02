@@ -340,6 +340,7 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
       bookingFormData.append('tourId', selectedTour?.id?.toString() || '')
       bookingFormData.append('vehicleId', selectedVehicleData?.id?.toString() || '')
       bookingFormData.append('driverId', selectedDriverData?.user_id?.toString() || '')
+      bookingFormData.append('tourGuideId', selectedTour?.tour_guide_id?.toString() || '') // ✅ FIX: Pass tour guide ID from tour
       bookingFormData.append('startDate', formData.startDate)
       bookingFormData.append('endDate', formData.endDate)
       bookingFormData.append('totalPrice', totalPrice.toString())

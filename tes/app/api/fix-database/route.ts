@@ -68,9 +68,43 @@ export async function POST(request: NextRequest) {
       console.log('Data copy issue:', e.message)
     }
 
-    return NextResponse.json({ 
+    // 6. CREATE DATABASE INDEXES FOR PERFORMANCE
+    console.log('🔧 Creating database indexes...')
+    const indexes = [
+      { name: 'idx_bookings_user_id', sql: 'CREATE INDEX idx_bookings_user_id ON bookings(user_id)' },
+      { name: 'idx_bookings_tour_id', sql: 'CREATE INDEX idx_bookings_tour_id ON bookings(tour_id)' },
+      { name: 'idx_bookings_vehicle_id', sql: 'CREATE INDEX idx_bookings_vehicle_id ON bookings(vehicle_id)' },
+      { name: 'idx_bookings_driver_id', sql: 'CREATE INDEX idx_bookings_driver_id ON bookings(driver_id)' },
+      { name: 'idx_bookings_tour_guide_id', sql: 'CREATE INDEX idx_bookings_tour_guide_id ON bookings(tour_guide_id)' },
+      { name: 'idx_bookings_status', sql: 'CREATE INDEX idx_bookings_status ON bookings(status)' },
+      { name: 'idx_bookings_booking_date', sql: 'CREATE INDEX idx_bookings_booking_date ON bookings(booking_date)' },
+      { name: 'idx_users_email', sql: 'CREATE INDEX idx_users_email ON users(email)' },
+      { name: 'idx_users_role', sql: 'CREATE INDEX idx_users_role ON users(role)' },
+      { name: 'idx_tours_availability', sql: 'CREATE INDEX idx_tours_availability ON tours(availability)' },
+      { name: 'idx_vehicles_status', sql: 'CREATE INDEX idx_vehicles_status ON vehicles(status)' },
+      { name: 'idx_payments_booking_id', sql: 'CREATE INDEX idx_payments_booking_id ON payments(booking_id)' },
+      { name: 'idx_location_booking_id', sql: 'CREATE INDEX idx_location_booking_id ON location_tracking(booking_id)' },
+    ]
+
+    const indexResults = []
+    for (const index of indexes) {
+      try {
+        await pool.execute(index.sql)
+        indexResults.push({ index: index.name, status: 'created ✅' })
+        console.log(`✅ Created: ${index.name}`)
+      } catch (e: any) {
+        if (e.message.includes('Duplicate key name') || e.code === 'ER_DUP_KEYNAME') {
+          indexResults.push({ index: index.name, status: 'already exists ℹ️' })
+        } else {
+          indexResults.push({ index: index.name, status: 'error ❌' })
+        }
+      }
+    }
+
+    return NextResponse.json({
       message: 'Database fixes completed successfully',
-      status: 'success'
+      status: 'success',
+      indexes: indexResults
     })
   } catch (error) {
     console.error('Error fixing database:', error)

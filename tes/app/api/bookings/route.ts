@@ -18,6 +18,7 @@ export async function POST(req: NextRequest) {
     const tourId = formData.get('tourId') as string
     const vehicleId = formData.get('vehicleId') as string
     const driverId = formData.get('driverId') as string
+    const tourGuideId = formData.get('tourGuideId') as string // ✅ FIX: Get tour guide ID
     const startDate = formData.get('startDate') as string
     const endDate = formData.get('endDate') as string
     const totalPrice = parseFloat(formData.get('totalPrice') as string)
@@ -66,6 +67,7 @@ export async function POST(req: NextRequest) {
       tourId: tourId ? parseInt(tourId) : null,
       vehicleId: vehicleId ? parseInt(vehicleId) : null,
       driverId: driverId ? parseInt(driverId) : null,
+      tourGuideId: tourGuideId ? parseInt(tourGuideId) : null, // ✅ FIX: Pass tour guide ID
       startDate,
       endDate,
       totalPrice,

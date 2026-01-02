@@ -720,6 +720,7 @@ export class BookingService {
     tourId?: number | null
     vehicleId?: number | null
     driverId?: number | null
+    tourGuideId?: number | null // ✅ FIX: Add tour guide ID parameter
     startDate: string
     endDate: string
     totalPrice: number
@@ -735,7 +736,7 @@ export class BookingService {
     try {
       await conn.beginTransaction()
 
-      const { userId, tourId, vehicleId, driverId, startDate, endDate, totalPrice, peopleCount, specialRequests, customerName, customerPhone, idPictures } = input
+      const { userId, tourId, vehicleId, driverId, tourGuideId, startDate, endDate, totalPrice, peopleCount, specialRequests, customerName, customerPhone, idPictures } = input
 
       // Validate dates
       const start = new Date(startDate)
@@ -807,9 +808,9 @@ export class BookingService {
 
       // Create booking (match existing schema - no special_requests column)
       const [result] = (await conn.query(
-        `INSERT INTO bookings (user_id, tour_id, vehicle_id, driver_id, start_date, end_date, total_price, number_of_people, booking_date, status, id_picture)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'pending', ?)`,
-        [userId, tourId || null, vehicleId || null, driverId || null, startDate, endDate, totalPrice, peopleCount || 1, idPictures || null]
+        `INSERT INTO bookings (user_id, tour_id, vehicle_id, driver_id, tour_guide_id, start_date, end_date, total_price, number_of_people, booking_date, status, id_picture)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'pending', ?)`,
+        [userId, tourId || null, vehicleId || null, driverId || null, tourGuideId || null, startDate, endDate, totalPrice, peopleCount || 1, idPictures || null]
       )) as any
 
       const bookingId = result.insertId as number
