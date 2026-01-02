@@ -4,6 +4,9 @@
 /node_modules
 /.pnp
 .pnp.*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
 .yarn/*
 !.yarn/patches
 !.yarn/plugins
@@ -12,6 +15,10 @@
 
 # testing
 /coverage
+/test-results/
+/playwright-report/
+/playwright/.cache/
+/.nyc_output
 
 # next.js
 /.next/
@@ -19,6 +26,7 @@
 
 # production
 /build
+/dist
 
 # misc
 .DS_Store
@@ -32,6 +40,15 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+
+# uploads
+public/uploads/
+*.jpg
+*.jpeg
+*.png
+*.webp
+*.gif
+*.svg
 
 # vercel
 .vercel
