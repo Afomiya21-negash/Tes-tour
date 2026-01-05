@@ -157,6 +157,72 @@ export async function POST(request: NextRequest) {
       ]
     ) as any
 
+    // Get customer info for notification
+    const [customerRows] = await pool.execute(
+      `SELECT first_name, last_name, email FROM users WHERE user_id = ?`,
+      [userId]
+    ) as any
+
+    const customer = customerRows && customerRows.length > 0 ? customerRows[0] : null
+    const customerName = customer ? `${customer.first_name} ${customer.last_name}` : 'Customer'
+
+    // Get tour name for notification
+    const [tourRows] = await pool.execute(
+      `SELECT t.name as tour_name FROM bookings b
+       LEFT JOIN tours t ON b.tour_id = t.tour_id
+       WHERE b.booking_id = ?`,
+      [booking_id]
+    ) as any
+
+    const tourName = tourRows && tourRows.length > 0 && tourRows[0].tour_name 
+      ? tourRows[0].tour_name 
+      : 'Tour'
+
+    // Create notification for admin
+    // Try to create admin_notifications table if it doesn't exist
+    try {
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS admin_notifications (
+          notification_id INT AUTO_INCREMENT PRIMARY KEY,
+          type VARCHAR(50) NOT NULL,
+          booking_id INT,
+          customer_id INT,
+          customer_name VARCHAR(255),
+          customer_email VARCHAR(255),
+          message TEXT NOT NULL,
+          is_read BOOLEAN DEFAULT FALSE,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_type (type),
+          INDEX idx_read (is_read),
+          INDEX idx_created (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+      `)
+    } catch (createError: any) {
+      // Table might already exist, continue
+      console.log('Admin notification table check:', createError?.message || 'Table exists')
+    }
+
+    // Insert notification for admin
+    const requestTypeText = request_type === 'both' 
+      ? 'tour guide and driver' 
+      : request_type === 'tour_guide' 
+      ? 'tour guide' 
+      : 'driver'
+
+    await pool.execute(
+      `INSERT INTO admin_notifications 
+       (type, booking_id, customer_id, customer_name, customer_email, message, is_read)
+       VALUES (?, ?, ?, ?, ?, ?, FALSE)`,
+      [
+        'change_request',
+        booking_id,
+        userId,
+        customerName,
+        customer?.email || null,
+        `${customerName} requested to change ${requestTypeText} for booking #${booking_id} - ${tourName}. ${reason ? `Reason: ${reason}` : ''}`
+      ]
+    )
+
     return NextResponse.json({
       success: true,
       request_id: result.insertId,

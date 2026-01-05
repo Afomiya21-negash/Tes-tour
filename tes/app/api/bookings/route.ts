@@ -35,11 +35,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Either tour or vehicle must be specified' }, { status: 400 })
     }
 
-    // Handle file uploads
+    // Handle file uploads or previous ID pictures
     const idPictures: string[] = []
+    
+    // First, check for new file uploads
     for (let i = 0; i < 3; i++) {
       const file = formData.get(`idPicture${i}`) as File
-      if (file) {
+      if (file && file.size > 0) {
         // Create uploads directory if it doesn't exist
         const uploadsDir = join(process.cwd(), 'public', 'uploads', 'id-pictures')
         try {
@@ -59,6 +61,16 @@ export async function POST(req: NextRequest) {
 
         // Store relative path for database
         idPictures.push(`/uploads/id-pictures/${fileName}`)
+      }
+    }
+    
+    // If no new files uploaded, check for previous ID pictures
+    if (idPictures.length === 0) {
+      for (let i = 0; i < 3; i++) {
+        const previousUrl = formData.get(`previousIdPicture${i}`) as string
+        if (previousUrl) {
+          idPictures.push(previousUrl)
+        }
       }
     }
 

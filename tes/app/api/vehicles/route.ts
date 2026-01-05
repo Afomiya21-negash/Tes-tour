@@ -26,7 +26,9 @@ export async function GET(req: NextRequest) {
     
     const params: any[] = []
 
-    //  exclude vehicles that are already booked during this period
+    // Exclude vehicles that are already booked during this period
+    // Only exclude active bookings (confirmed, in-progress, pending)
+    // Completed and cancelled bookings are available again
     if (startDate && endDate) {
       query += `
         AND v.vehicle_id NOT IN (
@@ -34,15 +36,11 @@ export async function GET(req: NextRequest) {
           FROM bookings b
           WHERE b.vehicle_id IS NOT NULL
             AND b.status IN ('confirmed', 'in-progress', 'pending')
-            AND (
-              (b.start_date <= ? AND b.end_date >= ?)
-              OR (b.start_date <= ? AND b.end_date >= ?)
-              OR (b.start_date >= ? AND b.end_date <= ?)
-            )
+            AND b.start_date <= ?
+            AND b.end_date >= ?
         )
       `
-      // Add parameters for date overlap check
-      params.push(endDate, startDate, startDate, endDate, startDate, endDate)
+      params.push(endDate, startDate)
     }
 
     const [rows] = await pool.query(query, params)

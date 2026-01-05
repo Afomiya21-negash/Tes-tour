@@ -65,18 +65,27 @@ export default function CustomerDashboard() {
   }, [])
 
   // Check for completed bookings without ratings and show rating popup
+  // Only show once per booking using localStorage
   useEffect(() => {
-    if (bookings.length > 0) {
+    if (bookings.length > 0 && !showRatingPopup) {
       const completedWithoutRating = bookings.find(
         b => b.status === 'completed' && !b.has_rating
       )
       
-      if (completedWithoutRating && !showRatingPopup) {
-        setBookingToRate(completedWithoutRating)
-        setShowRatingPopup(true)
+      if (completedWithoutRating) {
+        // Check if we've already shown the popup for this booking
+        const ratingShownKey = `rating_shown_${completedWithoutRating.booking_id}`
+        const hasShownRating = localStorage.getItem(ratingShownKey)
+        
+        if (!hasShownRating) {
+          setBookingToRate(completedWithoutRating)
+          setShowRatingPopup(true)
+          // Mark as shown in localStorage
+          localStorage.setItem(ratingShownKey, 'true')
+        }
       }
     }
-  }, [bookings])
+  }, [bookings, showRatingPopup])
 
   const checkAuth = async () => {
     try {
@@ -187,8 +196,16 @@ export default function CustomerDashboard() {
     setBookingToChange(booking)
     setShowChangeRequestModal(true)
     setChangeRequestReason('')
-    // Default to 'both' but allow user to select
-    setChangeRequestType('both')
+    // Set default based on what's available
+    if (booking.tour_guide_id && booking.driver_id) {
+      setChangeRequestType('both')
+    } else if (booking.tour_guide_id) {
+      setChangeRequestType('tour_guide')
+    } else if (booking.driver_id) {
+      setChangeRequestType('driver')
+    } else {
+      setChangeRequestType('both')
+    }
   }
 
   const closeChangeRequestModal = () => {
@@ -714,10 +731,20 @@ export default function CustomerDashboard() {
           hasDriver={!!bookingToRate.driver_id}
           onClose={() => {
             setShowRatingPopup(false)
+            if (bookingToRate) {
+              // Mark as dismissed in localStorage so it doesn't show again on refresh
+              const ratingShownKey = `rating_shown_${bookingToRate.booking_id}`
+              localStorage.setItem(ratingShownKey, 'true')
+            }
             setBookingToRate(null)
           }}
           onSubmitSuccess={() => {
             setShowRatingPopup(false)
+            if (bookingToRate) {
+              // Mark as rated in localStorage so it doesn't show again
+              const ratingShownKey = `rating_shown_${bookingToRate.booking_id}`
+              localStorage.setItem(ratingShownKey, 'true')
+            }
             setBookingToRate(null)
             // Refresh bookings to update has_rating status
             fetchBookings()

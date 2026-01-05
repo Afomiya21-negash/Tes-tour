@@ -42,7 +42,9 @@ export async function GET(request: NextRequest) {
     
     const params: any[] = []
     
-    //  exclude drivers who are already booked during this period
+    // Exclude drivers who are already booked during this period
+    // Only exclude active bookings (confirmed, in-progress, pending)
+    // Completed and cancelled bookings are available again
     if (startDate && endDate) {
       query += `
         AND u.user_id NOT IN (
@@ -50,14 +52,11 @@ export async function GET(request: NextRequest) {
           FROM bookings b
           WHERE b.driver_id IS NOT NULL
             AND b.status IN ('confirmed', 'in-progress', 'pending')
-            AND (
-              (b.start_date <= ? AND b.end_date >= ?)
-              OR (b.start_date <= ? AND b.end_date >= ?)
-              OR (b.start_date >= ? AND b.end_date <= ?)
-            )
+            AND b.start_date <= ?
+            AND b.end_date >= ?
         )
       `
-      params.push(endDate, startDate, startDate, endDate, startDate, endDate)
+      params.push(endDate, startDate)
     }
     
     query += ` ORDER BY average_rating DESC, total_trips DESC`

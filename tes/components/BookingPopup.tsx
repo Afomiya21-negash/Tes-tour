@@ -89,16 +89,31 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
       if (!res.ok) return
       const data = await res.json()
       // Find the most recent booking with stored pictures
-      const withPics = (data || []).find((b: any) => b.id_pictures)
-      if (withPics && typeof withPics.id_pictures === 'string') {
-        try {
-          const parsed = JSON.parse(withPics.id_pictures)
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setPreviousIdPictures(parsed as string[])
+      const withPics = (data || []).find((b: any) => b.id_pictures || b.id_picture)
+      if (withPics) {
+        const idPics = withPics.id_pictures || withPics.id_picture
+        if (idPics && typeof idPics === 'string') {
+          try {
+            const parsed = JSON.parse(idPics)
+            if (Array.isArray(parsed) && parsed.length >= 3) {
+              setPreviousIdPictures(parsed as string[])
+            }
+          } catch {
+            // If it's not JSON, try as a single string URL (legacy format)
+            if (idPics.startsWith('http') || idPics.startsWith('/')) {
+              // If it's a single URL, we can't use it (need 3 pictures)
+              // But if it's a comma-separated string, parse it
+              const urls = idPics.split(',').map((url: string) => url.trim()).filter(Boolean)
+              if (urls.length >= 3) {
+                setPreviousIdPictures(urls)
+              }
+            }
           }
-        } catch {}
+        }
       }
-    } catch {}
+    } catch (error) {
+      console.error('Error fetching previous ID pictures:', error)
+    }
   }
 
   const fetchTourByName = async () => {
@@ -349,10 +364,22 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
       bookingFormData.append('customerName', formData.name)
       bookingFormData.append('customerPhone', formData.phone)
 
-      // Add uploaded files
-      uploadedFiles.forEach((file, index) => {
-        bookingFormData.append(`idPicture${index}`, file)
-      })
+      // Add uploaded files or previous ID pictures
+      // Priority: new uploaded files override previous pictures
+      if (uploadedFiles.length > 0) {
+        uploadedFiles.forEach((file, index) => {
+          bookingFormData.append(`idPicture${index}`, file)
+        })
+      } else if (previousIdPictures.length >= 3) {
+        // If no new files uploaded but previous pictures exist, send them as URLs
+        previousIdPictures.slice(0, 3).forEach((url, index) => {
+          bookingFormData.append(`previousIdPicture${index}`, url)
+        })
+        console.log('Using previous ID pictures:', previousIdPictures.slice(0, 3))
+      } else {
+        // No files and no previous pictures - this should be caught by validation
+        console.warn('No ID pictures provided')
+      }
 
       const bookingResponse = await fetch('/api/bookings', {
         method: 'POST',
@@ -683,12 +710,17 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
               <p className="text-gray-600">Please upload 3 ID or passport pictures</p>
 
               {previousIdPictures.length >= 3 && (
-                <div className="bg-green-50 border border-green-200 p-4 rounded">
-                  <p className="text-sm text-green-800 font-medium mb-2">We found your previously uploaded ID pictures. You can reuse them or upload new ones.</p>
+                <div className="bg-green-50 border border-green-200 p-4 rounded mb-4">
+                  <p className="text-sm text-green-800 font-medium mb-2">
+                    ✅ We found your previously uploaded ID pictures. They will be automatically used for this booking. You can upload new ones to replace them.
+                  </p>
                   <div className="grid grid-cols-3 gap-4">
                     {previousIdPictures.slice(0,3).map((url, i) => (
-                      <div key={`prev-id-${i}`} className="border rounded overflow-hidden">
+                      <div key={`prev-id-${i}`} className="border-2 border-green-400 rounded overflow-hidden relative">
                         <img src={url} alt={`Previous ID ${i+1}`} className="w-full h-32 object-cover" />
+                        <div className="absolute top-1 right-1 bg-green-600 text-white text-xs px-2 py-1 rounded">
+                          ✓ Using
+                        </div>
                       </div>
                     ))}
                   </div>

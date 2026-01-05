@@ -16,17 +16,27 @@ export async function GET(request: NextRequest) {
     }
     
     const decoded = verifyJwt(token)
-    if (!decoded || decoded.role !== 'employee') {
+    if (!decoded) {
       return NextResponse.json(
-        { error: 'Employee access required' },
-        { status: 403 }
+        { error: 'Authentication required' },
+        { status: 401 }
       )
     }
 
-    // Require HR position for access to employee dashboard
-    const isHr = await Employee.isHR(Number(decoded.user_id))
-    if (!isHr) {
-      return NextResponse.json({ error: 'HR access required' }, { status: 403 })
+    // Allow both employee (HR) and admin roles
+    if (decoded.role === 'admin') {
+      // Admin can access directly
+    } else if (decoded.role === 'employee') {
+      // Require HR position for employee access
+      const isHr = await Employee.isHR(Number(decoded.user_id))
+      if (!isHr) {
+        return NextResponse.json({ error: 'HR access required' }, { status: 403 })
+      }
+    } else {
+      return NextResponse.json(
+        { error: 'Employee or Admin access required' },
+        { status: 403 }
+      )
     }
     
     const pool = getPool()
@@ -68,7 +78,9 @@ export async function GET(request: NextRequest) {
     `
     const params: any[] = []
     
-    // ISSUE 2 FIX: Exclude tour guides already assigned during the requested date range
+    // Exclude tour guides already assigned during the requested date range
+    // Only exclude active bookings (confirmed, in-progress, pending)
+    // Completed and cancelled bookings are available again
     if (startDate && endDate) {
       query += `
         AND u.user_id NOT IN (
@@ -76,14 +88,11 @@ export async function GET(request: NextRequest) {
           FROM bookings b
           WHERE b.tour_guide_id IS NOT NULL
             AND b.status IN ('confirmed', 'in-progress', 'pending')
-            AND (
-              (b.start_date <= ? AND b.end_date >= ?)
-              OR (b.start_date <= ? AND b.end_date >= ?)
-              OR (b.start_date >= ? AND b.end_date <= ?)
-            )
+            AND b.start_date <= ?
+            AND b.end_date >= ?
         )
       `
-      params.push(endDate, startDate, startDate, endDate, startDate, endDate)
+      params.push(endDate, startDate)
     }
     
     query += ` ORDER BY average_rating DESC, total_tours DESC`

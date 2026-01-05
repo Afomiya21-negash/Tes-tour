@@ -757,27 +757,64 @@ export class BookingService {
       }
 
       // Check vehicle availability if vehicle is specified
+      // First check if vehicle status is available
       if (vehicleId) {
-        const [vehicleRows] = (await conn.query(
+        const [vehicleStatusRows] = (await conn.query(
           'SELECT status FROM vehicles WHERE vehicle_id = ? LIMIT 1',
           [vehicleId]
         )) as any
-        const vehicleStatus = (vehicleRows && vehicleRows[0] ? String(vehicleRows[0].status || '') : '').toLowerCase()
-        if (!vehicleRows || vehicleRows.length === 0 || vehicleStatus !== 'available') {
+        const vehicleStatus = (vehicleStatusRows && vehicleStatusRows[0] ? String(vehicleStatusRows[0].status || '') : '').toLowerCase()
+        if (!vehicleStatusRows || vehicleStatusRows.length === 0 || vehicleStatus !== 'available') {
           throw new Error('Vehicle is not available')
+        }
+        
+        // Then check if vehicle is booked during the requested dates
+        // Only check active bookings (confirmed, in-progress, pending)
+        // Completed and cancelled bookings don't block availability
+        const [vehicleRows] = (await conn.query(
+          `SELECT COUNT(*) as active_bookings FROM bookings
+           WHERE vehicle_id = ? 
+           AND status IN ('confirmed', 'in-progress', 'pending')
+           AND start_date <= ? 
+           AND end_date >= ?`,
+          [vehicleId, endDate, startDate]
+        )) as any
+        if (vehicleRows && vehicleRows[0] && vehicleRows[0].active_bookings > 0) {
+          throw new Error('Vehicle is not available for the selected dates')
         }
       }
 
       // Check driver availability if driver is specified
+      // Only check active bookings (confirmed, in-progress, pending)
+      // Completed and cancelled bookings don't block availability
       if (driverId) {
         const [driverRows] = (await conn.query(
           `SELECT COUNT(*) as active_bookings FROM bookings
-           WHERE driver_id = ? AND status IN ('confirmed', 'in-progress')
-           AND ((start_date <= ? AND end_date >= ?) OR (start_date <= ? AND end_date >= ?))`,
-          [driverId, startDate, startDate, endDate, endDate]
+           WHERE driver_id = ? 
+           AND status IN ('confirmed', 'in-progress', 'pending')
+           AND start_date <= ? 
+           AND end_date >= ?`,
+          [driverId, endDate, startDate]
         )) as any
         if (driverRows && driverRows[0] && driverRows[0].active_bookings > 0) {
           throw new Error('Driver is not available for the selected dates')
+        }
+      }
+
+      // Check tour guide availability if tour guide is specified
+      // Only check active bookings (confirmed, in-progress, pending)
+      // Completed and cancelled bookings don't block availability
+      if (tourGuideId) {
+        const [guideRows] = (await conn.query(
+          `SELECT COUNT(*) as active_bookings FROM bookings
+           WHERE tour_guide_id = ? 
+           AND status IN ('confirmed', 'in-progress', 'pending')
+           AND start_date <= ? 
+           AND end_date >= ?`,
+          [tourGuideId, endDate, startDate]
+        )) as any
+        if (guideRows && guideRows[0] && guideRows[0].active_bookings > 0) {
+          throw new Error('Tour guide is not available for the selected dates')
         }
       }
 
@@ -836,6 +873,10 @@ export class BookingService {
         b.total_price,
         b.booking_date,
         b.status,
+        b.number_of_people,
+        b.tour_guide_id,
+        b.driver_id,
+        b.id_picture,
         t.name as tour_name,
         t.destination,
         t.duration_days,
@@ -844,11 +885,23 @@ export class BookingService {
         v.capacity as vehicle_capacity,
         p.amount as payment_amount,
         p.status as payment_status,
-        p.payment_method
+        p.payment_method,
+        p.refund_request as payment_refund_request,
+        tg.first_name as tour_guide_first_name,
+        tg.last_name as tour_guide_last_name,
+        tg.email as tour_guide_email,
+        tg.phone_number as tour_guide_phone,
+        d.first_name as driver_first_name,
+        d.last_name as driver_last_name,
+        d.email as driver_email,
+        d.phone_number as driver_phone,
+        (SELECT COUNT(*) > 0 FROM ratings WHERE booking_id = b.booking_id) as has_rating
       FROM bookings b
       LEFT JOIN tours t ON b.tour_id = t.tour_id
       LEFT JOIN vehicles v ON b.vehicle_id = v.vehicle_id
       LEFT JOIN payments p ON b.booking_id = p.booking_id
+      LEFT JOIN users tg ON b.tour_guide_id = tg.user_id
+      LEFT JOIN users d ON b.driver_id = d.user_id
       WHERE b.user_id = ?
       ORDER BY b.booking_date DESC`,
       [userId]
