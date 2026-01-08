@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthCookieOptions, signJwt } from '@/lib/auth'
 import { Guest, Validators } from '@/lib/domain'
 
 export async function POST(req: NextRequest) {
@@ -46,10 +45,18 @@ export async function POST(req: NextRequest) {
         lastName: last_name ?? null,
       })
 
-      const token = signJwt({ user_id: created.user_id, role: 'customer' })
-      const res = NextResponse.json(created, { status: 201 })
-      res.cookies.set('auth_token', token, getAuthCookieOptions())
-      return res
+      // Don't log in unverified users - they need to verify email first
+      // Return success message indicating verification email was sent
+      return NextResponse.json(
+        { 
+          message: 'Registration successful! Please check your email to verify your account.',
+          user_id: created.user_id,
+          username: created.username,
+          email: created.email,
+          requires_verification: true
+        }, 
+        { status: 201 }
+      )
     } catch (e: any) {
       if (e?.code === 'DUPLICATE') {
         return NextResponse.json({ message: 'Email or username already exists' }, { status: 409 })
