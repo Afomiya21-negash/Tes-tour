@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyJwt } from '@/lib/auth'
 import { getPool } from '@/lib/db'
+import { Employee } from '@/lib/domain'
 
 // GET /api/change-requests - Get change requests (customer or admin)
 export async function GET(request: NextRequest) {
@@ -55,6 +56,23 @@ export async function GET(request: NextRequest) {
       const [rows] = await pool.execute(query, [userId])
       return NextResponse.json(Array.isArray(rows) ? rows : [])
     } else if (role === 'admin') {
+      query += ` ORDER BY 
+        CASE cr.status 
+          WHEN 'pending' THEN 1 
+          WHEN 'approved' THEN 2 
+          WHEN 'completed' THEN 3 
+          WHEN 'rejected' THEN 4 
+        END,
+        cr.created_at DESC`
+      const [rows] = await pool.execute(query)
+      return NextResponse.json(Array.isArray(rows) ? rows : [])
+    } else if (role === 'employee') {
+      // Check if employee has HR access
+      const isHr = await Employee.isHR(userId)
+      if (!isHr) {
+        return NextResponse.json({ error: 'HR access required' }, { status: 403 })
+      }
+      
       query += ` ORDER BY 
         CASE cr.status 
           WHEN 'pending' THEN 1 
@@ -178,11 +196,11 @@ export async function POST(request: NextRequest) {
       ? tourRows[0].tour_name 
       : 'Tour'
 
-    // Create notification for admin
-    // Try to create admin_notifications table if it doesn't exist
+    // Create notification for HR employees
+    // Try to create notification table if it doesn't exist
     try {
       await pool.execute(`
-        CREATE TABLE IF NOT EXISTS admin_notifications (
+        CREATE TABLE IF NOT EXISTS notification (
           notification_id INT AUTO_INCREMENT PRIMARY KEY,
           type VARCHAR(50) NOT NULL,
           booking_id INT,
@@ -199,10 +217,10 @@ export async function POST(request: NextRequest) {
       `)
     } catch (createError: any) {
       // Table might already exist, continue
-      console.log('Admin notification table check:', createError?.message || 'Table exists')
+      console.log('Notification table check:', createError?.message || 'Table exists')
     }
 
-    // Insert notification for admin
+    // Insert notification for HR employees
     const requestTypeText = request_type === 'both' 
       ? 'tour guide and driver' 
       : request_type === 'tour_guide' 
@@ -210,7 +228,7 @@ export async function POST(request: NextRequest) {
       : 'driver'
 
     await pool.execute(
-      `INSERT INTO admin_notifications 
+      `INSERT INTO notification 
        (type, booking_id, customer_id, customer_name, customer_email, message, is_read)
        VALUES (?, ?, ?, ?, ?, ?, FALSE)`,
       [

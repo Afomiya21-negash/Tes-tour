@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyJwt } from '@/lib/auth'
 import { getPool } from '@/lib/db'
+import { Employee } from '@/lib/domain'
 
-// PUT /api/change-requests/[id] - Process change request (admin only)
+// PUT /api/change-requests/[id] - Process change request (admin or HR only)
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -14,14 +15,27 @@ export async function PUT(
     }
     
     const decoded = verifyJwt(token)
-    if (!decoded || decoded.role !== 'admin') {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    if (!decoded) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
-    const adminUserId = Number(decoded.user_id)
+    const userId = Number(decoded.user_id)
     const requestId = parseInt(params.id)
     const body = await request.json()
     const { status, new_tour_guide_id, new_driver_id } = body
+
+    // Check authorization - admin or HR employee can process
+    let isAuthorized = false
+    if (decoded.role === 'admin') {
+      isAuthorized = true
+    } else if (decoded.role === 'employee') {
+      const isHr = await Employee.isHR(userId)
+      isAuthorized = isHr
+    }
+
+    if (!isAuthorized) {
+      return NextResponse.json({ error: 'Admin or HR access required' }, { status: 403 })
+    }
 
     if (!status || !['approved', 'rejected'].includes(status)) {
       return NextResponse.json(
@@ -66,7 +80,7 @@ export async function PUT(
           `UPDATE change_requests 
            SET status = 'rejected', processed_at = NOW(), processed_by = ?
            WHERE request_id = ?`,
-          [adminUserId, requestId]
+          [userId, requestId]
         )
         await conn.commit()
         return NextResponse.json({ success: true, message: 'Request rejected' })
@@ -116,7 +130,7 @@ export async function PUT(
              processed_at = NOW(), 
              processed_by = ?
          WHERE request_id = ?`,
-        [new_tour_guide_id || null, new_driver_id || null, adminUserId, requestId]
+        [new_tour_guide_id || null, new_driver_id || null, userId, requestId]
       )
 
       await conn.commit()

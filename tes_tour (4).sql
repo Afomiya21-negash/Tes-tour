@@ -311,10 +311,10 @@ INSERT INTO `employees` (`employee_id`, `position`, `department`, `hire_date`) V
 -- --------------------------------------------------------
 
 --
--- Table structure for table `employee_notifications`
+-- Table structure for table `notification`
 --
 
-CREATE TABLE `employee_notifications` (
+CREATE TABLE `notification` (
   `notification_id` int NOT NULL,
   `type` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
   `booking_id` int NOT NULL,
@@ -327,10 +327,10 @@ CREATE TABLE `employee_notifications` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data for table `employee_notifications`
+-- Dumping data for table `notification`
 --
 
-INSERT INTO `employee_notifications` (`notification_id`, `type`, `booking_id`, `customer_id`, `customer_name`, `customer_email`, `message`, `is_read`, `created_at`) VALUES
+INSERT INTO `notification` (`notification_id`, `type`, `booking_id`, `customer_id`, `customer_name`, `customer_email`, `message`, `is_read`, `created_at`) VALUES
 (1, 'refund_request', 19, 19, 'abel tesd', 'arsemateferi57@gmail.com', 'Customer requested refund', 1, '2025-12-30 18:20:01');
 
 -- --------------------------------------------------------
@@ -788,9 +788,9 @@ ALTER TABLE `employees`
   ADD PRIMARY KEY (`employee_id`);
 
 --
--- Indexes for table `employee_notifications`
+-- Indexes for table `notification`
 --
-ALTER TABLE `employee_notifications`
+ALTER TABLE `notification`
   ADD PRIMARY KEY (`notification_id`),
   ADD KEY `idx_is_read` (`is_read`),
   ADD KEY `idx_created_at` (`created_at`),
@@ -914,9 +914,9 @@ ALTER TABLE `custom_itineraries`
   MODIFY `itinerary_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
--- AUTO_INCREMENT for table `employee_notifications`
+-- AUTO_INCREMENT for table `notification`
 --
-ALTER TABLE `employee_notifications`
+ALTER TABLE `notification`
   MODIFY `notification_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
@@ -1026,11 +1026,11 @@ ALTER TABLE `employees`
   ADD CONSTRAINT `employees_ibfk_1` FOREIGN KEY (`employee_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 
 --
--- Constraints for table `employee_notifications`
+-- Constraints for table `notification`
 --
-ALTER TABLE `employee_notifications`
-  ADD CONSTRAINT `employee_notifications_ibfk_1` FOREIGN KEY (`booking_id`) REFERENCES `bookings` (`booking_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `employee_notifications_ibfk_2` FOREIGN KEY (`customer_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
+ALTER TABLE `notification`
+  ADD CONSTRAINT `notification_ibfk_1` FOREIGN KEY (`booking_id`) REFERENCES `bookings` (`booking_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `notification_ibfk_2` FOREIGN KEY (`customer_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `itinerary`

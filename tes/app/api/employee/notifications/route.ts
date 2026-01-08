@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
           b.booking_date,
           p.amount as payment_amount,
           p.payment_id
-        FROM employee_notifications n
+        FROM notification n
         LEFT JOIN bookings b ON n.booking_id = b.booking_id
         LEFT JOIN tours t ON b.tour_id = t.tour_id
         LEFT JOIN payments p ON b.booking_id = p.booking_id
@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
     const pool = getPool()
 
     await pool.query(
-      `UPDATE employee_notifications
+      `UPDATE notification
        SET is_read = TRUE
        WHERE notification_id = ?`,
       [notificationId]
@@ -150,7 +150,7 @@ export async function DELETE(req: NextRequest) {
     const pool = getPool()
 
     await pool.query(
-      `UPDATE employee_notifications
+      `UPDATE notification
        SET is_read = TRUE
        WHERE type = 'refund_request' AND is_read = FALSE`
     )

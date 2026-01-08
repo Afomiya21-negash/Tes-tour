@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Star, UserPlus, BarChart3, Calendar, LogOut, Briefcase, X, Check, Lock, Bell, DollarSign } from "lucide-react"
+import { Star, UserPlus, BarChart3, Calendar, LogOut, Briefcase, X, Check, Lock, Bell, DollarSign, RefreshCcw, CheckCircle, XCircle } from "lucide-react"
 
 type Booking = {
   booking_id: number
@@ -68,8 +68,38 @@ type RefundNotification = {
   booking_date?: string
 }
 
+type ChangeRequest = {
+  request_id: number
+  booking_id: number
+  user_id: number
+  request_type: 'tour_guide' | 'driver' | 'both'
+  current_tour_guide_id: number | null
+  current_driver_id: number | null
+  new_tour_guide_id: number | null
+  new_driver_id: number | null
+  reason: string | null
+  status: 'pending' | 'approved' | 'rejected' | 'completed'
+  created_at: string
+  updated_at: string
+  processed_at: string | null
+  processed_by: number | null
+  tour_name?: string
+  start_date?: string
+  end_date?: string
+  customer_first_name?: string
+  customer_last_name?: string
+  current_guide_first_name?: string | null
+  current_guide_last_name?: string | null
+  current_driver_first_name?: string | null
+  current_driver_last_name?: string | null
+  new_guide_first_name?: string | null
+  new_guide_last_name?: string | null
+  new_driver_first_name?: string | null
+  new_driver_last_name?: string | null
+}
+
 export default function EmployeeDashboard() {
-  const [activeTab, setActiveTab] = useState<"bookings" | "assign" | "ratings" | "notifications">("bookings")
+  const [activeTab, setActiveTab] = useState<"bookings" | "assign" | "ratings" | "notifications" | "change-requests">("bookings")
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [loading, setLoading] = useState(true)
@@ -81,6 +111,11 @@ export default function EmployeeDashboard() {
   const [ratings, setRatings] = useState<Rating[]>([])
   const [refundNotifications, setRefundNotifications] = useState<RefundNotification[]>([])
   const [unreadRefundCount, setUnreadRefundCount] = useState(0)
+  const [changeRequests, setChangeRequests] = useState<ChangeRequest[]>([])
+  const [showProcessModal, setShowProcessModal] = useState(false)
+  const [selectedRequest, setSelectedRequest] = useState<ChangeRequest | null>(null)
+  const [availableGuides, setAvailableGuides] = useState<TourGuide[]>([])
+  const [availableDrivers, setAvailableDrivers] = useState<any[]>([])
 
   // Removed edit form states (Edit Details feature removed)
 
@@ -267,7 +302,8 @@ export default function EmployeeDashboard() {
         fetchBookings(),
         fetchTourGuides(),
         fetchRatings(),
-        fetchRefundNotifications()
+        fetchRefundNotifications(),
+        fetchChangeRequests()
       ])
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -371,6 +407,23 @@ export default function EmployeeDashboard() {
       }
     } catch (error) {
       console.error('Error fetching ratings:', error)
+    }
+  }
+
+  const fetchChangeRequests = async () => {
+    try {
+      const response = await fetch('/api/change-requests', {
+        credentials: 'include'
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setChangeRequests(data)
+      } else if (response.status === 403) {
+        // Not HR, no access to change requests
+        setChangeRequests([])
+      }
+    } catch (error) {
+      console.error('Error fetching change requests:', error)
     }
   }
 
@@ -482,6 +535,229 @@ export default function EmployeeDashboard() {
                   <span class="font-semibold text-red-800">Error</span>
                 </div>
                 <p class="text-sm text-red-700">${error.message || 'Failed to assign tour guide. Please try again.'}</p>
+              </div>
+              <button onclick="this.closest('.fixed').remove()" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition-colors">
+                Try Again
+              </button>
+            </div>
+          </div>
+        `
+        document.body.appendChild(popup)
+      }, 100)
+    }
+  }
+
+  const handleProcessChangeRequest = async (request: ChangeRequest) => {
+    setSelectedRequest(request)
+    setShowProcessModal(true)
+    
+    // Fetch available guides and drivers for the booking dates
+    if (request.start_date && request.end_date) {
+      try {
+        // Fetch available tour guides
+        const guidesResponse = await fetch(`/api/employee/tourguides?startDate=${encodeURIComponent(request.start_date)}&endDate=${encodeURIComponent(request.end_date)}`, {
+          credentials: 'include'
+        })
+        if (guidesResponse.ok) {
+          const guidesData = await guidesResponse.json()
+          setAvailableGuides(guidesData)
+        }
+
+        // Fetch available drivers
+        const driversResponse = await fetch(
+          `/api/drivers?startDate=${request.start_date}&endDate=${request.end_date}`,
+          { credentials: 'include' }
+        )
+        if (driversResponse.ok) {
+          const driversData = await driversResponse.json()
+          setAvailableDrivers(driversData)
+        } else {
+          // If drivers endpoint doesn't exist, set empty array
+          setAvailableDrivers([])
+        }
+      } catch (error) {
+        console.error('Error fetching available personnel:', error)
+        setAvailableGuides([])
+        setAvailableDrivers([])
+      }
+    }
+  }
+
+  const handleApproveRequest = async (newGuideId?: number | null, newDriverId?: number | null) => {
+    if (!selectedRequest) return
+
+    try {
+      const response = await fetch(`/api/change-requests/${selectedRequest.request_id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          status: 'approved',
+          new_tour_guide_id: newGuideId,
+          new_driver_id: newDriverId
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to process request' }))
+        throw new Error(errorData.error || 'Failed to process request')
+      }
+
+      // Show success popup
+      setTimeout(() => {
+        const popup = document.createElement('div')
+        popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4'
+        popup.innerHTML = `
+          <div class="bg-white rounded-lg w-full max-w-md">
+            <div class="flex justify-between items-center p-6 border-b border-gray-200">
+              <h3 class="text-xl font-semibold text-green-800">Request Approved</h3>
+              <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="p-6">
+              <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                <div class="flex items-center mb-2">
+                  <svg class="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <span class="font-semibold text-green-800">Change Request Processed</span>
+                </div>
+                <p class="text-sm text-green-700">The change request has been approved and assignments updated.</p>
+              </div>
+              <button onclick="this.closest('.fixed').remove()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-colors">
+                Continue
+              </button>
+            </div>
+          </div>
+        `
+        document.body.appendChild(popup)
+      }, 100)
+
+      // Close modal and refresh data
+      setShowProcessModal(false)
+      setSelectedRequest(null)
+      fetchChangeRequests()
+      fetchBookings()
+    } catch (error: any) {
+      console.error('Error approving request:', error)
+
+      // Show error popup
+      setTimeout(() => {
+        const popup = document.createElement('div')
+        popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4'
+        popup.innerHTML = `
+          <div class="bg-white rounded-lg w-full max-w-md">
+            <div class="flex justify-between items-center p-6 border-b border-gray-200">
+              <h3 class="text-xl font-semibold text-red-800">Processing Failed</h3>
+              <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="p-6">
+              <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                <div class="flex items-center mb-2">
+                  <svg class="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <span class="font-semibold text-red-800">Error</span>
+                </div>
+                <p class="text-sm text-red-700">${error.message || 'Failed to process request. Please try again.'}</p>
+              </div>
+              <button onclick="this.closest('.fixed').remove()" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition-colors">
+                Try Again
+              </button>
+            </div>
+          </div>
+        `
+        document.body.appendChild(popup)
+      }, 100)
+    }
+  }
+
+  const handleRejectRequest = async () => {
+    if (!selectedRequest) return
+
+    try {
+      const response = await fetch(`/api/change-requests/${selectedRequest.request_id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: 'rejected' })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to reject request' }))
+        throw new Error(errorData.error || 'Failed to reject request')
+      }
+
+      // Show success popup
+      setTimeout(() => {
+        const popup = document.createElement('div')
+        popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4'
+        popup.innerHTML = `
+          <div class="bg-white rounded-lg w-full max-w-md">
+            <div class="flex justify-between items-center p-6 border-b border-gray-200">
+              <h3 class="text-xl font-semibold text-orange-800">Request Rejected</h3>
+              <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="p-6">
+              <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                <div class="flex items-center mb-2">
+                  <svg class="w-5 h-5 text-orange-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                  </svg>
+                  <span class="font-semibold text-orange-800">Change Request Rejected</span>
+                </div>
+                <p class="text-sm text-orange-700">The change request has been rejected.</p>
+              </div>
+              <button onclick="this.closest('.fixed').remove()" class="w-full bg-orange-600 hover:bg-orange-700 text-white py-2 px-4 rounded-lg transition-colors">
+                Continue
+              </button>
+            </div>
+          </div>
+        `
+        document.body.appendChild(popup)
+      }, 100)
+
+      // Close modal and refresh data
+      setShowProcessModal(false)
+      setSelectedRequest(null)
+      fetchChangeRequests()
+    } catch (error: any) {
+      console.error('Error rejecting request:', error)
+
+      // Show error popup
+      setTimeout(() => {
+        const popup = document.createElement('div')
+        popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4'
+        popup.innerHTML = `
+          <div class="bg-white rounded-lg w-full max-w-md">
+            <div class="flex justify-between items-center p-6 border-b border-gray-200">
+              <h3 class="text-xl font-semibold text-red-800">Rejection Failed</h3>
+              <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="p-6">
+              <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                <div class="flex items-center mb-2">
+                  <svg class="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <span class="font-semibold text-red-800">Error</span>
+                </div>
+                <p class="text-sm text-red-700">${error.message || 'Failed to reject request. Please try again.'}</p>
               </div>
               <button onclick="this.closest('.fixed').remove()" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition-colors">
                 Try Again
@@ -663,6 +939,24 @@ export default function EmployeeDashboard() {
                 {unreadRefundCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                     {unreadRefundCount > 9 ? '9+' : unreadRefundCount}
+                  </span>
+                )}
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab("change-requests")}
+              className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors relative ${
+                activeTab === "change-requests"
+                  ? "border-green-600 text-green-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <RefreshCcw className="w-5 h-5" />
+                <span>Change Requests</span>
+                {changeRequests.filter(r => r.status === 'pending').length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {changeRequests.filter(r => r.status === 'pending').length > 9 ? '9+' : changeRequests.filter(r => r.status === 'pending').length}
                   </span>
                 )}
               </div>
@@ -1162,6 +1456,115 @@ export default function EmployeeDashboard() {
             )}
           </div>
         )}
+
+        {/* Change Requests Tab */}
+        {activeTab === "change-requests" && (
+          <div>
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Change Requests</h2>
+              <p className="text-gray-600 mt-1">Manage customer requests to change tour guides or drivers</p>
+            </div>
+
+            <div className="bg-white shadow-sm rounded-lg overflow-hidden">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tour</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Request Type</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {changeRequests.map((request) => (
+                    <tr key={request.request_id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {request.customer_first_name} {request.customer_last_name}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900">{request.tour_name || 'Custom Booking'}</div>
+                        <div className="text-xs text-gray-500">
+                          {request.start_date && request.end_date 
+                            ? `${formatDate(request.start_date)} - ${formatDate(request.end_date)}`
+                            : 'Not specified'
+                          }
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {request.request_type === 'both' ? 'Both' : request.request_type === 'tour_guide' ? 'Tour Guide' : 'Driver'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {request.current_guide_first_name && (
+                          <div>Guide: {request.current_guide_first_name} {request.current_guide_last_name}</div>
+                        )}
+                        {request.current_driver_first_name && (
+                          <div>Driver: {request.current_driver_first_name} {request.current_driver_last_name}</div>
+                        )}
+                        {!request.current_guide_first_name && !request.current_driver_first_name && (
+                          <div>Not assigned</div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {request.status === 'pending' && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            Pending
+                          </span>
+                        )}
+                        {request.status === 'completed' && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Completed
+                          </span>
+                        )}
+                        {request.status === 'rejected' && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            Rejected
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatDate(request.created_at)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        {request.status === 'pending' && (
+                          <button
+                            onClick={() => handleProcessChangeRequest(request)}
+                            className="text-green-600 hover:text-green-900 font-medium"
+                          >
+                            Process
+                          </button>
+                        )}
+                        {request.status === 'completed' && request.new_guide_first_name && (
+                          <div className="text-xs text-gray-500">
+                            <div>New Guide: {request.new_guide_first_name} {request.new_guide_last_name}</div>
+                          </div>
+                        )}
+                        {request.status === 'completed' && request.new_driver_first_name && (
+                          <div className="text-xs text-gray-500">
+                            <div>New Driver: {request.new_driver_first_name} {request.new_driver_last_name}</div>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {changeRequests.length === 0 && (
+                <div className="text-center py-12">
+                  <RefreshCcw className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">No change requests</p>
+                  <p className="text-sm text-gray-400">Customer requests will appear here</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Edit Booking Modal removed */}
@@ -1361,6 +1764,127 @@ export default function EmployeeDashboard() {
                 className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg transition-colors"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Process Change Request Modal */}
+      {showProcessModal && selectedRequest && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-2xl font-bold text-gray-900">Process Change Request</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Assign new guide/driver for {selectedRequest.tour_name || 'Custom Booking'}
+              </p>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="font-semibold text-gray-900 mb-2">Request Details:</h3>
+                <div className="space-y-1 text-sm">
+                  <p><strong>Customer:</strong> {selectedRequest.customer_first_name} {selectedRequest.customer_last_name}</p>
+                  <p><strong>Tour:</strong> {selectedRequest.tour_name || 'Custom Booking'}</p>
+                  <p><strong>Dates:</strong> {selectedRequest.start_date && selectedRequest.end_date 
+                    ? `${formatDate(selectedRequest.start_date)} - ${formatDate(selectedRequest.end_date)}`
+                    : 'Not specified'
+                  }</p>
+                  <p><strong>Type:</strong> {selectedRequest.request_type === 'both' ? 'Both' : selectedRequest.request_type === 'tour_guide' ? 'Tour Guide' : 'Driver'}</p>
+                  {selectedRequest.reason && <p><strong>Reason:</strong> {selectedRequest.reason}</p>}
+                </div>
+              </div>
+
+              {(selectedRequest.request_type === 'tour_guide' || selectedRequest.request_type === 'both') && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select New Tour Guide <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={selectedRequest.new_tour_guide_id || ''}
+                    onChange={(e) => setSelectedRequest(prev => prev ? {...prev, new_tour_guide_id: Number(e.target.value) || null} : null)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="">-- Select Tour Guide --</option>
+                    {availableGuides.map((guide) => (
+                      <option key={guide.user_id} value={guide.user_id}>
+                        {guide.first_name} {guide.last_name} - ⭐ {guide.average_rating ? Number(guide.average_rating).toFixed(1) : 'N/A'} ({guide.total_tours || 0} tours)
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Only guides available for the tour dates are shown
+                  </p>
+                </div>
+              )}
+
+              {(selectedRequest.request_type === 'driver' || selectedRequest.request_type === 'both') && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select New Driver <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={selectedRequest.new_driver_id || ''}
+                    onChange={(e) => setSelectedRequest(prev => prev ? {...prev, new_driver_id: Number(e.target.value) || null} : null)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="">-- Select Driver --</option>
+                    {availableDrivers.map((driver: any) => (
+                      <option key={driver.user_id} value={driver.user_id}>
+                        {driver.first_name} {driver.last_name} - ⭐ {driver.average_rating ? Number(driver.average_rating).toFixed(1) : 'N/A'} ({driver.total_trips || 0} trips)
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Only drivers available for the tour dates are shown
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex gap-3">
+              <button
+                onClick={() => {
+                  setShowProcessModal(false)
+                  setSelectedRequest(null)
+                }}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleRejectRequest()}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2"
+              >
+                <XCircle className="w-4 h-4" />
+                Reject
+              </button>
+              <button
+                onClick={() => {
+                  const newGuideId = selectedRequest.request_type === 'tour_guide' || selectedRequest.request_type === 'both' 
+                    ? selectedRequest.new_tour_guide_id 
+                    : null
+                  const newDriverId = selectedRequest.request_type === 'driver' || selectedRequest.request_type === 'both' 
+                    ? selectedRequest.new_driver_id 
+                    : null
+
+                  // Validate selections
+                  if ((selectedRequest.request_type === 'tour_guide' || selectedRequest.request_type === 'both') && !newGuideId) {
+                    alert('Please select a new tour guide')
+                    return
+                  }
+                  if ((selectedRequest.request_type === 'driver' || selectedRequest.request_type === 'both') && !newDriverId) {
+                    alert('Please select a new driver')
+                    return
+                  }
+
+                  handleApproveRequest(newGuideId, newDriverId)
+                }}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
+              >
+                <CheckCircle className="w-4 h-4" />
+                Approve
               </button>
             </div>
           </div>

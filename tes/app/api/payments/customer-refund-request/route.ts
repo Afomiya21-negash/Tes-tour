@@ -120,10 +120,10 @@ export async function POST(req: NextRequest) {
       )
 
       // Create notification for employees
-      // First, check if employee_notifications table exists, if not create it
+      // First, check if notification table exists, if not create it
       try {
         await conn.query(`
-          CREATE TABLE IF NOT EXISTS employee_notifications (
+          CREATE TABLE IF NOT EXISTS notification (
             notification_id INT AUTO_INCREMENT PRIMARY KEY,
             type VARCHAR(50) NOT NULL,
             booking_id INT NOT NULL,
@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
 
       // Insert notification
       await conn.query(
-        `INSERT INTO employee_notifications 
+        `INSERT INTO notification 
          (type, booking_id, customer_id, customer_name, customer_email, message, is_read)
          VALUES (?, ?, ?, ?, ?, ?, FALSE)`,
         [
