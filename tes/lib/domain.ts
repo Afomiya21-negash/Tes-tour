@@ -212,8 +212,7 @@ export class Guest {
         if (availableCols.has('first_name')) push('first_name', fName)
         if (availableCols.has('last_name')) push('last_name', lName)
         if (availableCols.has('phone_number')) push('phone_number', phoneNo || null)
-        if (availableCols.has('date_of_birth')) push('date_of_birth', DOB || null)
-        push('role', 'customer')
+                push('role', 'customer')
         if (availableCols.has('email_verified')) push('email_verified', false)
 
         const placeholders = cols.map(() => '?').join(', ')
@@ -229,9 +228,9 @@ export class Guest {
         // Fallback to known schema from tes_tour.sql
         try {
           const [ins] = (await conn.query(
-            `INSERT INTO users (username, email, password_hash, first_name, last_name, phone_number, date_of_birth, role, email_verified)
+            `INSERT INTO users (username, email, password_hash, first_name, last_name, phone_number, address, role, email_verified)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [username, email, password_hash, fName, lName, phoneNo || null, DOB || null, 'customer', false]
+            [username, email, password_hash, fName, lName, phoneNo || null, address || null, 'customer', false]
           )) as any
           result = ins
           userId = result.insertId as number
@@ -1427,3 +1426,5 @@ export class ItineraryService {
     }
   }
 }
+
+

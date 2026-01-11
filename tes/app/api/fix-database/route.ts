@@ -6,7 +6,19 @@ export async function POST(request: NextRequest) {
     const pool = getPool()
     
     console.log('Starting database fixes...')
-    
+
+    // 0. Ensure address column exists in users table (needed for all user types)
+    try {
+      await pool.execute(`ALTER TABLE users ADD COLUMN address VARCHAR(255) DEFAULT NULL`)
+      console.log('✓ Added address column to users table')
+    } catch (e: any) {
+      if (e.message.includes('Duplicate column name')) {
+        console.log('ℹ️  address column already exists')
+      } else {
+        console.log('address column issue:', e.message)
+      }
+    }
+
     // 1. Create customers table if it doesn't exist
     try {
       await pool.execute(`
