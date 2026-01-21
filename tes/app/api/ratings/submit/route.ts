@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyJwt } from '@/lib/auth'
-import { RatingService } from '@/lib/domain'
+import { RatingService } from '@/lib/rating-service'
 
 /**
  * POST /api/ratings/submit

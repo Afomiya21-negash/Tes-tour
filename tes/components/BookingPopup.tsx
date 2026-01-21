@@ -127,29 +127,25 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
         // Normalize tour name for better matching
         const normalizedTourName = tourName.toLowerCase().trim()
 
-        // Find the exact tour by name first
+        // Find the exact tour by name first (strict match)
         let tour = tours.find((t: Tour) => t.name.toLowerCase().trim() === normalizedTourName)
 
+        // If no exact match, try to find the best match by checking if the tour name contains the key parts
         if (!tour) {
-          // Try partial matching if exact match fails
+          // Extract key parts from the requested tour name
+          const keyParts = normalizedTourName.split(' ').filter(word => word.length > 2)
+          
           tour = tours.find((t: Tour) => {
             const normalizedTourDbName = t.name.toLowerCase().trim()
-            return normalizedTourDbName.includes(normalizedTourName) ||
-                   normalizedTourName.includes(normalizedTourDbName)
+            
+            // Check if all key parts are present in the database tour name
+            return keyParts.every(part => normalizedTourDbName.includes(part))
           })
         }
 
-        if (!tour) {
-          // Try keyword-based matching for common tour types
-          const keywords = normalizedTourName.split(/[\s-]+/)
-          tour = tours.find((t: Tour) => {
-            const normalizedTourDbName = t.name.toLowerCase().trim()
-            return keywords.some(keyword =>
-              keyword.length > 2 && normalizedTourDbName.includes(keyword)
-            )
-          })
-        }
-
+        // Debug logging
+        console.log('Looking for tour:', tourName)
+        console.log('Available tours:', tours.map((t: any) => ({ id: t.id, name: t.name })))
         console.log('Selected tour:', tour)
 
         if (tour) {
@@ -355,7 +351,7 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
       bookingFormData.append('tourId', selectedTour?.id?.toString() || '')
       bookingFormData.append('vehicleId', selectedVehicleData?.id?.toString() || '')
       bookingFormData.append('driverId', selectedDriverData?.user_id?.toString() || '')
-      bookingFormData.append('tourGuideId', selectedTour?.tour_guide_id?.toString() || '') // ✅ FIX: Pass tour guide ID from tour
+      bookingFormData.append('tourGuideId', '') // Don't auto-assign tour guide - HR will assign
       bookingFormData.append('startDate', formData.startDate)
       bookingFormData.append('endDate', formData.endDate)
       bookingFormData.append('totalPrice', totalPrice.toString())

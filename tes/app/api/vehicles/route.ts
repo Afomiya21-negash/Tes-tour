@@ -13,7 +13,6 @@ export async function GET(req: NextRequest) {
     let query = `
       SELECT 
         v.vehicle_id, 
-        v.driver_id, 
         v.make, 
         v.model, 
         v.year, 
@@ -70,7 +69,6 @@ export async function GET(req: NextRequest) {
 
       return {
         id: row.vehicle_id,
-        driverId: row.driver_id,
         make: row.make,
         model: row.model,
         year: row.year,
