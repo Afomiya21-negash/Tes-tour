@@ -887,30 +887,6 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
               <h2 className="text-2xl font-bold text-gray-900">Registered Employees</h2>
               <div className="flex space-x-3">
                 <button
-                  onClick={async () => {
-                    if (confirm('This will add sample bookings, customers, and ratings to the database. Continue?')) {
-                      try {
-                        const res = await fetch('/api/admin/populate-sample-data', {
-                          method: 'POST',
-                          credentials: 'include'
-                        })
-                        const data = await res.json()
-                        if (res.ok) {
-                          alert(`Sample data populated successfully!\n\nBookings: ${data.data.bookings}\nCustomers: ${data.data.customers}\nPayments: ${data.data.payments}\nRatings: ${data.data.ratings}`)
-                        } else {
-                          alert(`Error: ${data.error}`)
-                        }
-                      } catch (error) {
-                        alert('Failed to populate sample data')
-                      }
-                    }
-                  }}
-                  className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-                >
-                  <BarChart3 className="w-5 h-5" />
-                  <span>Add Sample Data</span>
-                </button>
-                <button
                   onClick={() => setShowRegisterModal(true)}
                   className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
                 >
