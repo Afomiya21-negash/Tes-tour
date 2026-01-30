@@ -1,2 +1,3 @@
 // tests/setup.ts
-import '@testing-library/jest-dom';
+// Optional: Add global test setup here
+// import '@testing-library/jest-dom'; // Uncomment if jest-dom is installed

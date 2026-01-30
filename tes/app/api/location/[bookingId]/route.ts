@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyJwt } from '@/lib/auth'
-import { LocationTrackingService } from '@/lib/domain'
+import { LocationTrackingService } from '@/lib/location-tracking'
 
 export async function GET(
   req: NextRequest,

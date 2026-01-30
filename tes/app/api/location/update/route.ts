@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyJwt } from '@/lib/auth'
-import { LocationTrackingService, UserType } from '@/lib/domain'
+import { LocationTrackingService, UserType } from '@/lib/location-tracking'
 
 export async function POST(req: NextRequest) {
   try {

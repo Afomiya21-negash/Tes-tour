@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { MapPin, Calendar, Users, Star, LogOut, User, Clock, Navigation, Lock, XCircle } from "lucide-react"
+import { MapPin, Calendar, Users, Star, LogOut, User, Clock, Navigation, Lock, XCircle, CheckCircle } from "lucide-react"
 import FreeMapTracker from "@/components/FreeMapTracker"
 import ItineraryNotifications from "@/components/ItineraryNotifications"
 import TourGuideItineraryView from "@/components/TourGuideItineraryView"
@@ -171,6 +171,15 @@ export default function TourGuideDashboard() {
     return status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ')
   }
 
+  // Toast notification state
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+
+  // Show toast notification
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 4000)
+  }
+
   // TASK 2: Handle tour status updates (Start/Finish)
   const handleUpdateTourStatus = async (bookingId: number, newStatus: string) => {
     try {
@@ -183,16 +192,16 @@ export default function TourGuideDashboard() {
 
       if (response.ok) {
         const data = await response.json()
-        alert(data.message)
+        showToast(data.message, 'success')
         // Refresh tours to show updated status
         await fetchTours()
       } else {
         const error = await response.json()
-        alert(`Error: ${error.error || 'Failed to update status'}`)
+        showToast(`Error: ${error.error || 'Failed to update status'}`, 'error')
       }
     } catch (error) {
       console.error('Error updating tour status:', error)
-      alert('Failed to update tour status. Please try again.')
+      showToast('Failed to update tour status. Please try again.', 'error')
     }
   }
 
@@ -843,6 +852,30 @@ export default function TourGuideDashboard() {
               bookingId={viewingItineraryBookingId}
               onClose={() => setViewingItineraryBookingId(null)}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 animate-slide-in">
+          <div className={`rounded-lg shadow-lg p-4 max-w-md ${
+            toast.type === 'success'
+              ? 'bg-green-50 border-2 border-green-500'
+              : 'bg-red-50 border-2 border-red-500'
+          }`}>
+            <div className="flex items-center space-x-3">
+              {toast.type === 'success' ? (
+                <CheckCircle className="w-6 h-6 text-green-600" />
+              ) : (
+                <XCircle className="w-6 h-6 text-red-600" />
+              )}
+              <p className={`font-medium ${
+                toast.type === 'success' ? 'text-green-800' : 'text-red-800'
+              }`}>
+                {toast.message}
+              </p>
+            </div>
           </div>
         </div>
       )}

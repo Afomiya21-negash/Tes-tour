@@ -124,18 +124,25 @@ export default function RouteTrackingMap({
         const response = await fetch(`/api/location/track/${bookingId}`)
         const data = await response.json()
 
-        if (data.success && data.tourGuide?.location) {
-          const location = data.tourGuide.location
-          setCurrentLocation(location)
-          setTourStarted(true)
+        if (data.success) {
+          // Check if tour has started based on booking status
+          if (data.status === 'in-progress' || data.status === 'completed') {
+            setTourStarted(true)
+          }
 
-          // Update marker
-          updateMarker(location)
+          // Update location if available
+          if (data.tourGuide?.location) {
+            const location = data.tourGuide.location
+            setCurrentLocation(location)
 
-          // Draw route if destination exists
-          if (destinationCoords) {
-            drawRoute(location, destinationCoords)
-            calculateDistance(location, destinationCoords)
+            // Update marker
+            updateMarker(location)
+
+            // Draw route if destination exists
+            if (destinationCoords) {
+              drawRoute(location, destinationCoords)
+              calculateDistance(location, destinationCoords)
+            }
           }
         }
       } catch (err) {

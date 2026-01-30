@@ -75,6 +75,7 @@ export async function GET(
       // No location data yet
       return NextResponse.json({
         success: true,
+        status: booking.status,
         tourGuide: null,
         message: 'Tour guide has not started sharing location yet'
       })
@@ -84,6 +85,7 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
+      status: booking.status,
       tourGuide: {
         location: {
           latitude: parseFloat(location.latitude),

@@ -16,13 +16,13 @@ export async function GET(request: NextRequest) {
     }
 
     const pool = getPool()
-    
-    // Get reviews/ratings for this tour guide
+
+    // Get reviews/ratings for this tour guide using the correct schema
     const [rows] = await pool.execute(
-      `SELECT 
+      `SELECT
         r.rating_id,
-        r.rating,
-        r.comment,
+        r.rating_tourguide as rating,
+        r.review_tourguide as comment,
         r.created_at,
         u.first_name as customer_first_name,
         u.last_name as customer_last_name,
@@ -35,11 +35,11 @@ export async function GET(request: NextRequest) {
       JOIN bookings b ON r.booking_id = b.booking_id
       LEFT JOIN users u ON r.customer_id = u.user_id
       LEFT JOIN tours t ON b.tour_id = t.tour_id
-      WHERE r.rated_user_id = ? AND r.rating_type = 'tourguide'
+      WHERE r.tour_guide_id = ? AND r.rating_tourguide IS NOT NULL
       ORDER BY r.created_at DESC`,
       [payload.user_id]
     )
-    
+
     return NextResponse.json(Array.isArray(rows) ? rows : [])
   } catch (error) {
     console.error('Error fetching tour guide reviews:', error)
