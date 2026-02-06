@@ -1102,11 +1102,14 @@ export class TourService {
         t.price,
         t.availability,
         p.promoid,
+        p.title as promotion_title,
         p.dis as discount_percentage,
-        p.date as promotion_date
+        p.date as promotion_date,
+        p.end_date as promotion_end_date
       FROM tours t
       LEFT JOIN promotion p ON t.tour_id = p.tour_id
-        AND p.date >= CURDATE()
+        AND p.date <= CURDATE()
+        AND (p.end_date IS NULL OR p.end_date >= CURDATE())
       WHERE t.availability = 1
       ORDER BY t.tour_id, p.date ASC
     `)) as any
@@ -1135,8 +1138,10 @@ export class TourService {
       if (row.promoid) {
         toursMap.get(tourId).promotions.push({
           id: row.promoid,
+          title: row.promotion_title,
           discount_percentage: row.discount_percentage,
-          date: row.promotion_date
+          date: row.promotion_date,
+          end_date: row.promotion_end_date
         })
       }
     }

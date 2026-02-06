@@ -5,6 +5,8 @@ import { MapPin, Calendar, Users, Star, LogOut, User, Clock, Navigation, Lock, X
 import FreeMapTracker from "@/components/FreeMapTracker"
 import ItineraryNotifications from "@/components/ItineraryNotifications"
 import TourGuideItineraryView from "@/components/TourGuideItineraryView"
+import { useToast } from "@/hooks/useToast"
+import ToastContainer from "@/components/ToastContainer"
 
 type Tour = {
   booking_id: number
@@ -62,6 +64,7 @@ type Review = {
 }
 
 export default function TourGuideDashboard() {
+  const { toasts, removeToast, success, error: showError, warning, info } = useToast()
   const [activeTab, setActiveTab] = useState<"tours" | "itineraries" | "location" | "reviews">("tours")
   const [selectedBookingForTracking, setSelectedBookingForTracking] = useState<number | null>(null)
   const [viewingItineraryBookingId, setViewingItineraryBookingId] = useState<number | null>(null)
@@ -76,6 +79,8 @@ export default function TourGuideDashboard() {
   const [tours, setTours] = useState<Tour[]>([])
   const [itineraries, setItineraries] = useState<CustomerItinerary[]>([])
   const [reviews, setReviews] = useState<Review[]>([])
+  const [averageRating, setAverageRating] = useState(0)
+  const [totalRatings, setTotalRatings] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -130,7 +135,17 @@ export default function TourGuideDashboard() {
       const response = await fetch('/api/tourguide/reviews', { credentials: 'include' })
       if (response.ok) {
         const data = await response.json()
-        setReviews(data)
+        // Handle new API response structure
+        if (data.reviews && data.stats) {
+          setReviews(data.reviews)
+          setAverageRating(Number(data.stats.average_rating) || 0)
+          setTotalRatings(Number(data.stats.total_ratings) || 0)
+        } else {
+          // Fallback for old API response format
+          setReviews(Array.isArray(data) ? data : [])
+          setAverageRating(0)
+          setTotalRatings(0)
+        }
       }
     } catch (err) {
       console.error('Error fetching reviews:', err)
@@ -215,10 +230,10 @@ export default function TourGuideDashboard() {
             address: "Location updated (using browser geolocation)",
             lastUpdated: new Date().toLocaleTimeString(),
           })
-          alert("Location updated successfully!")
+          success("Location updated successfully!")
         },
         (error) => {
-          alert("Unable to get location. Using default location.")
+          warning("Unable to get location. Using default location.")
           setCurrentLocation({
             ...currentLocation,
             lastUpdated: new Date().toLocaleTimeString(),
@@ -226,16 +241,13 @@ export default function TourGuideDashboard() {
         },
       )
     } else {
-      alert("Geolocation is not supported by this browser.")
+      warning("Geolocation is not supported by this browser.")
     }
   }
 
-
-
-  const averageRating = reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 0
-
   return (
     <div className="min-h-screen bg-white">
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
       {/* Header */}
       <header className="bg-green-600 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -715,14 +727,14 @@ export default function TourGuideDashboard() {
                               })
                               const data = await response.json()
                               if (data.success) {
-                                alert('✅ Tour started! Please click "Start Journey" on the map below to begin sharing your location.')
+                                success('Tour started! Please click "Start Journey" on the map below to begin sharing your location.')
                                 fetchTours() // Refresh tours - this will update status to in-progress
                                 // The map component will auto-start tracking when isJourneyActive becomes true
                               } else {
-                                alert('❌ ' + data.message)
+                                showError(data.message)
                               }
                             } catch (err) {
-                              alert('Failed to start tour')
+                              showError('Failed to start tour')
                             }
                           }}
                           className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors font-semibold flex items-center gap-2"
@@ -743,13 +755,13 @@ export default function TourGuideDashboard() {
                               })
                               const data = await response.json()
                               if (data.success) {
-                                alert('✅ Tour ended successfully!')
+                                success('Tour ended successfully!')
                                 fetchTours() // Refresh tours
                               } else {
-                                alert('❌ ' + data.message)
+                                showError(data.message)
                               }
                             } catch (err) {
-                              alert('Failed to end tour')
+                              showError('Failed to end tour')
                             }
                           }}
                           className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors font-semibold flex items-center gap-2"
@@ -804,8 +816,8 @@ export default function TourGuideDashboard() {
               <div className="bg-green-100 px-4 py-2 rounded-lg">
                 <div className="flex items-center space-x-2">
                   <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                  <span className="text-lg font-bold text-gray-900">{averageRating.toFixed(1)}</span>
-                  <span className="text-gray-600">average rating</span>
+                  <span className="text-lg font-bold text-gray-900">{Number(averageRating).toFixed(1)}</span>
+                  <span className="text-gray-600">average rating ({totalRatings} {totalRatings === 1 ? 'review' : 'reviews'})</span>
                 </div>
               </div>
             </div>

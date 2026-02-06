@@ -112,6 +112,16 @@ export class RatingService {
         ratingId = result.insertId
       }
 
+      // Calculate and update average rating for tour guide
+      if (ratingData.rating_tourguide !== undefined && booking.tour_guide_id) {
+        await this.updateTourGuideAverageRating(conn, booking.tour_guide_id)
+      }
+
+      // Calculate and update average rating for driver
+      if (ratingData.rating_driver !== undefined && booking.driver_id) {
+        await this.updateDriverAverageRating(conn, booking.driver_id)
+      }
+
       await conn.commit()
 
       return { rating_id: ratingId }
@@ -120,6 +130,66 @@ export class RatingService {
       throw error
     } finally {
       conn.release()
+    }
+  }
+
+  /**
+   * Update the average rating for a tour guide
+   * @param conn - Database connection
+   * @param tourGuideId - The ID of the tour guide
+   */
+  private static async updateTourGuideAverageRating(conn: any, tourGuideId: number): Promise<void> {
+    // Calculate average rating from all ratings for this tour guide
+    const [avgResult] = (await conn.query(
+      `SELECT
+        AVG(rating_tourguide) as avg_rating,
+        COUNT(*) as total_ratings
+      FROM ratings
+      WHERE tour_guide_id = ? AND rating_tourguide IS NOT NULL`,
+      [tourGuideId]
+    )) as any
+
+    if (avgResult && avgResult.length > 0) {
+      const avgRating = Number(avgResult[0].avg_rating) || 0
+      const totalRatings = Number(avgResult[0].total_ratings) || 0
+
+      // Update the tourguides table with the new average rating
+      await conn.query(
+        `UPDATE tourguides
+         SET rating = ?, total_ratings = ?
+         WHERE tour_guide_id = ?`,
+        [avgRating, totalRatings, tourGuideId]
+      )
+    }
+  }
+
+  /**
+   * Update the average rating for a driver
+   * @param conn - Database connection
+   * @param driverId - The ID of the driver
+   */
+  private static async updateDriverAverageRating(conn: any, driverId: number): Promise<void> {
+    // Calculate average rating from all ratings for this driver
+    const [avgResult] = (await conn.query(
+      `SELECT
+        AVG(rating_driver) as avg_rating,
+        COUNT(*) as total_ratings
+      FROM ratings
+      WHERE driver_id = ? AND rating_driver IS NOT NULL`,
+      [driverId]
+    )) as any
+
+    if (avgResult && avgResult.length > 0) {
+      const avgRating = Number(avgResult[0].avg_rating) || 0
+      const totalRatings = Number(avgResult[0].total_ratings) || 0
+
+      // Update the drivers table with the new average rating
+      await conn.query(
+        `UPDATE drivers
+         SET rating = ?, total_ratings = ?
+         WHERE driver_id = ?`,
+        [avgRating, totalRatings, driverId]
+      )
     }
   }
 

@@ -4,8 +4,11 @@ import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff } from "lucide-react"
+import { useToast } from "@/hooks/useToast"
+import ToastContainer from "@/components/ToastContainer"
 
 export default function SignupForm() {
+  const { toasts, removeToast, success, error: showError, warning, info } = useToast()
   const [email, setEmail] = useState("")
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
@@ -85,9 +88,10 @@ export default function SignupForm() {
     }
   }
 
-  
+
   return (
     <div className="w-full max-w-md mx-auto">
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
       <div className="bg-white rounded-lg shadow-lg p-8">
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Create Account</h2>
@@ -140,7 +144,7 @@ export default function SignupForm() {
               // Don't redirect immediately - show verification message
             } else {
               const data = await res.json().catch(() => ({}))
-              alert(data.message || 'Signup failed')
+              showError(data.message || 'Signup failed')
             }
           } finally {
             setIsLoading(false)

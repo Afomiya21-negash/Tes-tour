@@ -1,11 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Calendar, MapPin, Users, CreditCard, Clock, CheckCircle, XCircle, Edit3, HelpCircle, LogOut, Navigation, RefreshCcw } from "lucide-react"
+import { Calendar, MapPin, Users, CreditCard, Clock, CheckCircle, XCircle, Edit3, HelpCircle, LogOut, Navigation, RefreshCcw, X } from "lucide-react"
 import ItineraryCustomization from "@/components/ItineraryCustomization"
 import FreeMapTracker from "@/components/FreeMapTracker"
 import RatingPopup from "@/components/RatingPopup"
 import dynamic from 'next/dynamic'
+import { useToast } from "@/hooks/useToast"
+import ToastContainer from "@/components/ToastContainer"
 
 // Dynamically import RouteTrackingMap to avoid SSR issues with Leaflet
 const RouteTrackingMap = dynamic(() => import('@/components/RouteTrackingMap'), { ssr: false })
@@ -44,6 +46,7 @@ interface Booking {
 }
 
 export default function CustomerDashboard() {
+  const { toasts, removeToast, success, error: showError, warning, info } = useToast()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string>('')
@@ -58,6 +61,15 @@ export default function CustomerDashboard() {
   const [bookingToChange, setBookingToChange] = useState<Booking | null>(null)
   const [changeRequestType, setChangeRequestType] = useState<'tour_guide' | 'driver' | 'both'>('both')
   const [changeRequestReason, setChangeRequestReason] = useState('')
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [confirmModalConfig, setConfirmModalConfig] = useState<{
+    title: string
+    message: string
+    confirmText: string
+    cancelText: string
+    onConfirm: () => void
+    type: 'danger' | 'warning' | 'info'
+  } | null>(null)
 
   useEffect(() => {
     checkAuth()
@@ -231,16 +243,16 @@ export default function CustomerDashboard() {
       })
 
       if (response.ok) {
-        alert('Change request submitted successfully! We will assign a new guide/driver within 24 hours.')
+        success('Change request submitted successfully! We will assign a new guide/driver within 24 hours.')
         closeChangeRequestModal()
         fetchBookings() // Refresh bookings
       } else {
         const data = await response.json()
-        alert(data.error || 'Failed to submit change request')
+        showError(data.error || 'Failed to submit change request')
       }
     } catch (error) {
       console.error('Error submitting change request:', error)
-      alert('An error occurred while submitting your request')
+      showError('An error occurred while submitting your request')
     }
   }
 
@@ -254,6 +266,7 @@ export default function CustomerDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
       {/* Header */}
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -557,31 +570,39 @@ export default function CustomerDashboard() {
                                       </p>
                                     </div>
                                     <button
-                                      onClick={async () => {
-                                        if (!confirm('Are you sure you want to request a refund? This action cannot be undone.')) {
-                                          return
-                                        }
-                                        try {
-                                          const response = await fetch('/api/payments/customer-refund-request', {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            credentials: 'include',
-                                            body: JSON.stringify({
-                                              bookingId: booking.booking_id,
-                                              reason: 'Customer requested refund'
-                                            })
-                                          })
-                                          const data = await response.json()
-                                          if (response.ok) {
-                                            alert('✅ Refund request submitted successfully! An employee will review your request.')
-                                            fetchBookings() // Refresh bookings
-                                          } else {
-                                            alert(`❌ ${data.error || 'Failed to submit refund request'}`)
+                                      onClick={() => {
+                                        setConfirmModalConfig({
+                                          title: 'Request Refund',
+                                          message: 'Are you sure you want to request a refund? This action cannot be undone. An employee will review your request.',
+                                          confirmText: 'Request Refund',
+                                          cancelText: 'Cancel',
+                                          type: 'warning',
+                                          onConfirm: async () => {
+                                            setShowConfirmModal(false)
+                                            try {
+                                              const response = await fetch('/api/payments/customer-refund-request', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                credentials: 'include',
+                                                body: JSON.stringify({
+                                                  bookingId: booking.booking_id,
+                                                  reason: 'Customer requested refund'
+                                                })
+                                              })
+                                              const data = await response.json()
+                                              if (response.ok) {
+                                                success('Refund request submitted successfully! An employee will review your request.')
+                                                fetchBookings() // Refresh bookings
+                                              } else {
+                                                showError(data.error || 'Failed to submit refund request')
+                                              }
+                                            } catch (error) {
+                                              console.error('Error requesting refund:', error)
+                                              showError('Failed to submit refund request. Please try again.')
+                                            }
                                           }
-                                        } catch (error) {
-                                          console.error('Error requesting refund:', error)
-                                          alert('Failed to submit refund request. Please try again.')
-                                        }
+                                        })
+                                        setShowConfirmModal(true)
                                       }}
                                       className="ml-3 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors"
                                     >
@@ -860,6 +881,62 @@ export default function CustomerDashboard() {
               >
                 Submit Request
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && confirmModalConfig && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-md">
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+              <h3 className={`text-xl font-semibold ${
+                confirmModalConfig.type === 'danger' ? 'text-red-800' :
+                confirmModalConfig.type === 'warning' ? 'text-orange-800' :
+                'text-blue-800'
+              }`}>
+                {confirmModalConfig.title}
+              </h3>
+              <button 
+                onClick={() => setShowConfirmModal(false)} 
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className={`mb-4 border rounded-lg p-4 ${
+                confirmModalConfig.type === 'danger' ? 'bg-red-50 border-red-200' :
+                confirmModalConfig.type === 'warning' ? 'bg-orange-50 border-orange-200' :
+                'bg-blue-50 border-blue-200'
+              }`}>
+                <p className={`text-sm ${
+                  confirmModalConfig.type === 'danger' ? 'text-red-700' :
+                  confirmModalConfig.type === 'warning' ? 'text-orange-700' :
+                  'text-blue-700'
+                }`}>
+                  {confirmModalConfig.message}
+                </p>
+              </div>
+              <div className="flex space-x-3">
+                <button
+                  onClick={confirmModalConfig.onConfirm}
+                  className={`flex-1 py-2 px-4 rounded-lg transition-colors text-white ${
+                    confirmModalConfig.type === 'danger' ? 'bg-red-600 hover:bg-red-700' :
+                    confirmModalConfig.type === 'warning' ? 'bg-orange-600 hover:bg-orange-700' :
+                    'bg-blue-600 hover:bg-blue-700'
+                  }`}
+                >
+                  {confirmModalConfig.confirmText}
+                </button>
+                <button
+                  onClick={() => setShowConfirmModal(false)}
+                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg transition-colors"
+                >
+                  {confirmModalConfig.cancelText}
+                </button>
+              </div>
             </div>
           </div>
         </div>

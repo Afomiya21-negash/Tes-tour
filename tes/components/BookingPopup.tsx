@@ -672,7 +672,7 @@ export default function BookingPopup({ isOpen, onClose, tourName }: BookingPopup
                             </p>
                             {selectedTour.promotions && selectedTour.promotions.length > 0 && (
                               <p className="text-xs text-red-600 font-medium mt-1">
-                                🎉 Limited Time Offer!
+                                🎉 {selectedTour.promotions[0].title || 'Limited Time Offer!'}
                               </p>
                             )}
                           </div>

@@ -4,18 +4,22 @@ import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff } from "lucide-react"
+import { useToast } from "@/hooks/useToast"
+import ToastContainer from "@/components/ToastContainer"
 
 export default function LoginForm() {
+  const { toasts, removeToast, success, error: showError, warning, info } = useToast()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
 
-  
+
 
   return (
     <div className="w-full max-w-md mx-auto">
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
       <div className="bg-white rounded-lg shadow-lg p-8">
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h2>
@@ -44,7 +48,7 @@ export default function LoginForm() {
         router.push(dest)
       } else {
         const data = await res.json().catch(() => ({}))
-        alert(data.message || 'Login failed')
+        showError(data.message || 'Login failed')
       }
     } finally {
       setIsLoading(false)

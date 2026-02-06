@@ -255,8 +255,14 @@ export default function SixDaysNorthenTourPage() {
             <div className="lg:col-span-1">
               {/* TES Logo */}
               <div className="bg-white rounded-lg shadow-lg p-6 mb-8 text-center">
-                <div className="w-32 h-32 mx-auto mb-4 bg-gradient-to-br from-orange-400 via-red-500 to-purple-600 rounded-full flex items-center justify-center">
-                  <div className="text-white font-bold text-2xl">TES</div>
+                <div className="w-32 h-32 mx-auto mb-4">
+                  <Image
+                    src="/images/tes.jpg"
+                    alt="Tes Tour Logo"
+                    width={128}
+                    height={128}
+                    className="rounded-lg object-cover w-full h-full"
+                  />
                 </div>
               </div>
 

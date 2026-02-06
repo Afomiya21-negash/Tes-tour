@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { Star, UserPlus, BarChart3, Calendar, LogOut, Briefcase, X, Check, Lock, Bell, DollarSign, RefreshCcw, CheckCircle, XCircle } from "lucide-react"
+import { useToast } from "@/hooks/useToast"
+import ToastContainer from "@/components/ToastContainer"
 
 type Booking = {
   booking_id: number
@@ -99,6 +101,7 @@ type ChangeRequest = {
 }
 
 export default function EmployeeDashboard() {
+  const { toasts, removeToast, success, error: showError, warning, info } = useToast()
   const [activeTab, setActiveTab] = useState<"bookings" | "assign" | "ratings" | "notifications" | "change-requests">("bookings")
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
@@ -834,6 +837,7 @@ export default function EmployeeDashboard() {
 
   return (
     <div className="min-h-screen bg-white">
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
       {/* Header */}
       <header className="bg-green-600 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1871,11 +1875,11 @@ export default function EmployeeDashboard() {
 
                   // Validate selections
                   if ((selectedRequest.request_type === 'tour_guide' || selectedRequest.request_type === 'both') && !newGuideId) {
-                    alert('Please select a new tour guide')
+                    warning('Please select a new tour guide')
                     return
                   }
                   if ((selectedRequest.request_type === 'driver' || selectedRequest.request_type === 'both') && !newDriverId) {
-                    alert('Please select a new driver')
+                    warning('Please select a new driver')
                     return
                   }
 

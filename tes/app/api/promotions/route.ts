@@ -10,8 +10,10 @@ export async function GET(request: NextRequest) {
     const [promotions] = await pool.execute(`
       SELECT
         p.promoid,
+        p.title,
         p.dis,
         p.date,
+        p.end_date,
         p.tour_id,
         t.name as tour_name,
         t.description as tour_description,
@@ -57,10 +59,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Tour ID and title are required' }, { status: 400 })
     }
 
-    // Validate tour exists
+    // Validate tour exists and get tour price
     const pool = getPool()
     const [tourCheck] = await pool.execute(
-      'SELECT tour_id FROM tours WHERE tour_id = ?',
+      'SELECT tour_id, price FROM tours WHERE tour_id = ?',
       [tour_id]
     ) as any
 
@@ -68,26 +70,49 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Tour not found' }, { status: 404 })
     }
 
-    // Validate discount value (decimal(5,2) means max 999.99)
-    let discountValue = discount_percentage || discount_amount || 0
-    if (discountValue > 99.99) {
-      discountValue = 99.99 // Cap at 99.99%
+    const tourPrice = tourCheck[0].price || 0
+
+    // Calculate discount percentage
+    let discountValue = 0
+    if (discount_percentage) {
+      // If percentage is provided, use it directly
+      discountValue = parseFloat(discount_percentage)
+      if (discountValue > 100) {
+        discountValue = 100 // Cap at 100%
+      }
+      if (discountValue < 0) {
+        discountValue = 0
+      }
+    } else if (discount_amount && tourPrice > 0) {
+      // If amount is provided, calculate percentage from tour price
+      const amount = parseFloat(discount_amount)
+      discountValue = (amount / tourPrice) * 100
+      if (discountValue > 100) {
+        discountValue = 100 // Cap at 100%
+      }
+      if (discountValue < 0) {
+        discountValue = 0
+      }
     }
-    if (discountValue < 0) {
-      discountValue = 0
-    }
+
+    // Round to 2 decimal places
+    discountValue = Math.round(discountValue * 100) / 100
 
     // Insert promotion
     const [result] = await pool.execute(`
       INSERT INTO promotion (
         tour_id,
+        title,
         dis,
-        date
-      ) VALUES (?, ?, ?)
+        date,
+        end_date
+      ) VALUES (?, ?, ?, ?, ?)
     `, [
       tour_id,
+      title || null,
       discountValue,
-      start_date || new Date().toISOString().split('T')[0]
+      start_date || new Date().toISOString().split('T')[0],
+      end_date || null
     ]) as any
 
     return NextResponse.json({

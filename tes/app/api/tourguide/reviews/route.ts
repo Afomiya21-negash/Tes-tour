@@ -17,6 +17,24 @@ export async function GET(request: NextRequest) {
 
     const pool = getPool()
 
+    // Get the tour guide's average rating from the tourguides table
+    const [statsRows] = await pool.execute(
+      `SELECT
+        COALESCE(rating, 0) as average_rating,
+        COALESCE(total_ratings, 0) as total_ratings
+      FROM tourguides
+      WHERE tour_guide_id = ?
+      LIMIT 1`,
+      [payload.user_id]
+    ) as any
+
+    const stats = statsRows && statsRows.length > 0
+      ? {
+          average_rating: Number(statsRows[0].average_rating) || 0,
+          total_ratings: Number(statsRows[0].total_ratings) || 0
+        }
+      : { average_rating: 0, total_ratings: 0 }
+
     // Get reviews/ratings for this tour guide using the correct schema
     const [rows] = await pool.execute(
       `SELECT
@@ -40,7 +58,10 @@ export async function GET(request: NextRequest) {
       [payload.user_id]
     )
 
-    return NextResponse.json(Array.isArray(rows) ? rows : [])
+    return NextResponse.json({
+      reviews: Array.isArray(rows) ? rows : [],
+      stats
+    })
   } catch (error) {
     console.error('Error fetching tour guide reviews:', error)
     return NextResponse.json(

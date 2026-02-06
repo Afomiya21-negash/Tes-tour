@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { Star, UserPlus, Users, X, LogOut, BarChart3, Shield, Lock, Tag, RefreshCcw, CheckCircle, XCircle, Bell } from "lucide-react"
+import { useToast } from "@/hooks/useToast"
+import ToastContainer from "@/components/ToastContainer"
 
 type Employee = {
   id: number
@@ -78,6 +80,7 @@ type RefundRequest = {
 }
 
 export default function AdminDashboard() {
+  const { toasts, removeToast, success, error: showError, warning, info } = useToast()
   const [activeTab, setActiveTab] = useState<"dashboard" | "ratings" | "customers" | "promotions" | "requests" | "refunds">("dashboard")
   const [showRegisterModal, setShowRegisterModal] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -241,6 +244,17 @@ export default function AdminDashboard() {
   const [availableDrivers, setAvailableDrivers] = useState<any[]>([])
   const [refundRequests, setRefundRequests] = useState<RefundRequest[]>([])
   const [loadingRefundRequests, setLoadingRefundRequests] = useState(false)
+
+  // Confirmation modal states
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [confirmModalConfig, setConfirmModalConfig] = useState<{
+    title: string
+    message: string
+    confirmText: string
+    cancelText: string
+    onConfirm: () => void
+    type: 'danger' | 'warning' | 'info'
+  } | null>(null)
 
   // Promotion states
   const [promotions, setPromotions] = useState<any[]>([])
@@ -410,14 +424,14 @@ export default function AdminDashboard() {
         (selectedRequest.request_type === 'tour_guide' || selectedRequest.request_type === 'both') &&
         !selectedNewGuideId
       ) {
-        alert('Please select a new tour guide')
+        warning('Please select a new tour guide')
         return
       }
       if (
         (selectedRequest.request_type === 'driver' || selectedRequest.request_type === 'both') &&
         !selectedNewDriverId
       ) {
-        alert('Please select a new driver')
+        warning('Please select a new driver')
         return
       }
     }
@@ -435,17 +449,17 @@ export default function AdminDashboard() {
       })
 
       if (res.ok) {
-        alert(`Request ${action} successfully`)
+        success(`Request ${action} successfully`)
         setShowProcessRequestModal(false)
         setSelectedRequest(null)
         fetchChangeRequests() // Refresh the list
       } else {
         const data = await res.json()
-        alert(data.error || 'Failed to process request')
+        showError(data.error || 'Failed to process request')
       }
     } catch (error) {
       console.error('Error processing request:', error)
-      alert('An error occurred while processing the request')
+      showError('An error occurred while processing the request')
     }
   }
 
@@ -453,33 +467,33 @@ export default function AdminDashboard() {
 
   const handleRegisterEmployee = async () => {
     if (!employeeName || !employeeEmail || !employeePhone) {
-      alert("Please fill in all fields")
+      warning("Please fill in all fields")
       return
     }
 
     // Role-specific validation
     if (employeeRole === "driver") {
       if (!licenseNo) {
-        alert("License number is required for drivers")
+        warning("License number is required for drivers")
         return
       }
     } else if (employeeRole === "tourguide") {
       if (!licenseNo) {
-        alert("License number is required for tour guides")
+        warning("License number is required for tour guides")
         return
       }
       if (experience === "" || Number.isNaN(Number(experience))) {
-        alert("Experience (years) is required for tour guides")
+        warning("Experience (years) is required for tour guides")
         return
       }
     } else if (employeeRole === "employee") {
       // For general employees, require position and department
       if (!position) {
-        alert('Please select a position for the employee')
+        warning('Please select a position for the employee')
         return
       }
       if (!department) {
-        alert('Please enter a department for the employee')
+        warning('Please enter a department for the employee')
         return
       }
     }
@@ -589,35 +603,53 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
         document.body.appendChild(popup)
       }, 100)
     } catch (e: any) {
-      alert(e?.message || "Failed to register employee")
+      showError(e?.message || "Failed to register employee")
     }
   }
 
   const handleDeleteEmployee = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this employee?")) return
-
-    try {
-      const res = await fetch(`/api/admin/employees/${id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({ message: 'Failed to delete' }))
-        throw new Error(data?.message || 'Failed to delete employee')
+    setConfirmModalConfig({
+      title: 'Delete Employee',
+      message: 'Are you sure you want to delete this employee? This action cannot be undone.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'danger',
+      onConfirm: async () => {
+        setShowConfirmModal(false)
+        try {
+          const res = await fetch(`/api/admin/employees/${id}`, {
+            method: 'DELETE',
+            credentials: 'include',
+          })
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({ message: 'Failed to delete' }))
+            throw new Error(data?.message || 'Failed to delete employee')
+          }
+          // Optimistically remove then refresh from server
+          setEmployees((prev) => prev.filter((emp) => emp.id !== id))
+          fetchEmployees()
+          success('Employee removed successfully!')
+        } catch (e: any) {
+          showError(e?.message || 'Failed to remove employee')
+        }
       }
-      // Optimistically remove then refresh from server
-      setEmployees((prev) => prev.filter((emp) => emp.id !== id))
-      fetchEmployees()
-      alert('Employee removed successfully!')
-    } catch (e: any) {
-      alert(e?.message || 'Failed to remove employee')
-    }
+    })
+    setShowConfirmModal(true)
   }
 
   const handleDeleteCustomer = (id: number) => {
-    if (confirm("Are you sure you want to delete this customer?")) {
-      alert("Customer deleted successfully!")
-    }
+    setConfirmModalConfig({
+      title: 'Delete Customer',
+      message: 'Are you sure you want to delete this customer? This action cannot be undone.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'danger',
+      onConfirm: () => {
+        setShowConfirmModal(false)
+        success("Customer deleted successfully!")
+      }
+    })
+    setShowConfirmModal(true)
   }
 
   const getAverageRating = (employeeName: string) => {
@@ -655,7 +687,7 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
 
   const handleCreatePromotion = async () => {
     if (!promotionTitle || !selectedTourId) {
-      alert("Please fill in all required fields")
+      warning("Please fill in all required fields")
       return
     }
 
@@ -695,9 +727,9 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
       // Refresh promotions
       fetchPromotions()
 
-      alert('Promotion created successfully!')
+      success('Promotion created successfully!')
     } catch (e: any) {
-      alert(e.message || 'Failed to create promotion')
+      showError(e.message || 'Failed to create promotion')
     }
   }
 
@@ -737,6 +769,7 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
 
   return (
     <div className="min-h-screen bg-white">
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
       {/* Header */}
       <header className="bg-green-600 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1199,8 +1232,8 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {promotion.tour_name}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        Promotion
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                        {promotion.title || 'Promotion'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {promotion.dis ? `${promotion.dis}%` : 'N/A'}
@@ -1209,12 +1242,35 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
                         {promotion.date ? new Date(promotion.date).toLocaleDateString() : 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        N/A
+                        {promotion.end_date ? new Date(promotion.end_date).toLocaleDateString() : 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
-                          Active
-                        </span>
+                        {(() => {
+                          const today = new Date()
+                          today.setHours(0, 0, 0, 0)
+                          const startDate = promotion.date ? new Date(promotion.date) : null
+                          const endDate = promotion.end_date ? new Date(promotion.end_date) : null
+                          
+                          if (startDate && endDate) {
+                            startDate.setHours(0, 0, 0, 0)
+                            endDate.setHours(0, 0, 0, 0)
+                            if (today < startDate) {
+                              return <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">Upcoming</span>
+                            } else if (today > endDate) {
+                              return <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">Expired</span>
+                            } else {
+                              return <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Active</span>
+                            }
+                          } else if (startDate) {
+                            startDate.setHours(0, 0, 0, 0)
+                            if (today < startDate) {
+                              return <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">Upcoming</span>
+                            } else {
+                              return <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Active</span>
+                            }
+                          }
+                          return <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">Unknown</span>
+                        })()}
                       </td>
                     </tr>
                   ))}
@@ -1390,25 +1446,35 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
                           <button
-                            onClick={async () => {
-                              if (!confirm('Approve refund for this payment?')) return
-                              try {
-                                const res = await fetch('/api/payments/refund-approve', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  credentials: 'include',
-                                  body: JSON.stringify({ paymentId: req.payment_id }),
-                                })
-                                const data = await res.json().catch(() => ({}))
-                                if (!res.ok) {
-                                  alert(data.error || 'Failed to approve refund')
-                                  return
+                            onClick={() => {
+                              setConfirmModalConfig({
+                                title: 'Approve Refund',
+                                message: `Are you sure you want to approve the refund of ETB ${Number(req.amount).toFixed(2)} for this payment?`,
+                                confirmText: 'Approve',
+                                cancelText: 'Cancel',
+                                type: 'warning',
+                                onConfirm: async () => {
+                                  setShowConfirmModal(false)
+                                  try {
+                                    const res = await fetch('/api/payments/refund-approve', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      credentials: 'include',
+                                      body: JSON.stringify({ paymentId: req.payment_id }),
+                                    })
+                                    const data = await res.json().catch(() => ({}))
+                                    if (!res.ok) {
+                                      showError(data.error || 'Failed to approve refund')
+                                      return
+                                    }
+                                    success('Refund approved and payment marked as refunded.')
+                                    fetchRefundRequests()
+                                  } catch {
+                                    showError('Failed to approve refund')
+                                  }
                                 }
-                                alert('Refund approved and payment marked as refunded.')
-                                fetchRefundRequests()
-                              } catch {
-                                alert('Failed to approve refund')
-                              }
+                              })
+                              setShowConfirmModal(true)
                             }}
                             className="text-green-600 hover:text-green-900 font-medium"
                           >
@@ -1828,6 +1894,62 @@ IMPORTANT: Copy these credentials now - they will not be shown again!`
               >
                 Cancel
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && confirmModalConfig && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-md">
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+              <h3 className={`text-xl font-semibold ${
+                confirmModalConfig.type === 'danger' ? 'text-red-800' :
+                confirmModalConfig.type === 'warning' ? 'text-orange-800' :
+                'text-blue-800'
+              }`}>
+                {confirmModalConfig.title}
+              </h3>
+              <button 
+                onClick={() => setShowConfirmModal(false)} 
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className={`mb-4 border rounded-lg p-4 ${
+                confirmModalConfig.type === 'danger' ? 'bg-red-50 border-red-200' :
+                confirmModalConfig.type === 'warning' ? 'bg-orange-50 border-orange-200' :
+                'bg-blue-50 border-blue-200'
+              }`}>
+                <p className={`text-sm ${
+                  confirmModalConfig.type === 'danger' ? 'text-red-700' :
+                  confirmModalConfig.type === 'warning' ? 'text-orange-700' :
+                  'text-blue-700'
+                }`}>
+                  {confirmModalConfig.message}
+                </p>
+              </div>
+              <div className="flex space-x-3">
+                <button
+                  onClick={confirmModalConfig.onConfirm}
+                  className={`flex-1 py-2 px-4 rounded-lg transition-colors text-white ${
+                    confirmModalConfig.type === 'danger' ? 'bg-red-600 hover:bg-red-700' :
+                    confirmModalConfig.type === 'warning' ? 'bg-orange-600 hover:bg-orange-700' :
+                    'bg-blue-600 hover:bg-blue-700'
+                  }`}
+                >
+                  {confirmModalConfig.confirmText}
+                </button>
+                <button
+                  onClick={() => setShowConfirmModal(false)}
+                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg transition-colors"
+                >
+                  {confirmModalConfig.cancelText}
+                </button>
+              </div>
             </div>
           </div>
         </div>

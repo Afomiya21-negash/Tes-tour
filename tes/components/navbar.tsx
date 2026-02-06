@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { Menu, X, ChevronDown, Phone } from "lucide-react"
 
 export default function Navbar() {
@@ -122,10 +123,14 @@ export default function Navbar() {
         <div className="flex justify-between items-center py-4 border-b border-gray-100">
           {/* Logo and brand */}
           <Link href="/" className="flex items-center space-x-3">
-            {/* Logo placeholder - you can replace this with your actual logo */}
-            <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xl">LOGO</span>
-            </div>
+            {/* Tes Tour Logo */}
+            <Image
+              src="/images/tes.jpg"
+              alt="Tes Tour Logo"
+              width={64}
+              height={64}
+              className="rounded-lg object-cover"
+            />
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Tes Tour</h1>
               <p className="text-sm text-gray-600">Tour Ethiopia with Tes</p>

@@ -16,11 +16,6 @@ export default function SignupLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
-        {/* Main content area without navbar and footer */}
-        <main className="min-h-screen">{children}</main>
-      </body>
-    </html>
+    <main className="min-h-screen">{children}</main>
   )
 }
